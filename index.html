@@ -344,28 +344,6 @@
   .log-profit { color: var(--accent2); }
   .log-tax { color: var(--muted); font-size: 0.7rem; }
 
-  /* ── LIVE MODAL ── */
-  #liveModal .indicator-row { background: var(--surface2); }
-  .tf-row {
-    display: flex; justify-content: space-around;
-    background: var(--surface2); padding: 4px;
-    border-bottom: 1px solid var(--border); flex-shrink: 0;
-  }
-  .tf-btn {
-    background: transparent; border: none; color: var(--muted);
-    font-family: var(--mono); font-size: 0.72rem; padding: 5px 12px;
-    cursor: pointer; transition: color 0.15s; letter-spacing: 0.06em;
-    border-radius: var(--radius-sm);
-  }
-  .tf-btn:hover { color: var(--text); }
-  .tf-btn.active { color: var(--accent); font-weight: 700; background: var(--accent-dim); }
-  .reset-zoom {
-    font-size: 0.6rem; background: transparent; border: 1px solid var(--border2);
-    color: var(--muted); padding: 3px 8px; border-radius: var(--radius-sm); cursor: pointer;
-    font-family: var(--mono); letter-spacing: 0.06em; transition: all 0.15s;
-  }
-  .reset-zoom:hover { border-color: var(--muted); color: var(--text); }
-
   /* ── REVIEW ── */
   .review-container { padding: 18px; overflow-y: auto; flex-grow: 1; }
   .score-card { background: var(--surface2); border: 1px solid var(--border); padding: 15px; border-radius: var(--radius); margin-bottom: 14px; }
@@ -659,13 +637,10 @@ function selectAMC(amc, el, isInit = false) {
 window.addEventListener('DOMContentLoaded', () => {
   const savedAMC = localStorage.getItem('ld_v3_amc') || 'ICICI';
   const savedFund = localStorage.getItem('ld_v3_fund');
-  
   const boxes = Array.from(document.querySelectorAll('.fund-box'));
   let targetBox = boxes.find(b => b.textContent.trim() === savedAMC);
   if (!targetBox) targetBox = boxes[1]; 
-  
   selectAMC(savedAMC, targetBox, true);
-  
   const sel = document.getElementById('fundSelect');
   if (savedFund) {
     sel.value = savedFund;
@@ -673,7 +648,6 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-// ── V2.05 HELPER: EXTRACT BRIEF FUND NAME ──
 function getBriefFundName() {
   const sel = document.getElementById('fundSelect');
   if (!sel || sel.selectedIndex === -1) return '';
@@ -729,10 +703,8 @@ const universalAnnotationsPlugin = {
     const ctx = ci.ctx;
     const meta = ci.getDatasetMeta(0);
     if (!meta.data || meta.data.length === 0) return;
-
     const isLive = ci.canvas.id.includes('live');
     const activeIdx = isLive ? liveHoverIdx : simHoverIdx;
-
     if (activeIdx !== null && meta.data[activeIdx]) {
       const ax = meta.data[activeIdx].x;
       ctx.save();
@@ -741,16 +713,13 @@ const universalAnnotationsPlugin = {
       ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(148,163,184,0.6)'; ctx.stroke();
       ctx.restore();
     }
-
     if (ci.canvas.id === 'liveChartCanvas' || ci.canvas.id === 'mainChart') {
       const data = ci.data.datasets[0].data;
       const wma  = ci.data.datasets[1] ? ci.data.datasets[1].data : [];
       if (!data || data.length === 0) return;
-
       ctx.save();
       const startX = meta.data[0].x;
       const endX   = meta.data[data.length - 1].x;
-
       let swingLows = [];
       for (let i = data.length - 3; i >= 2; i--) {
         if (data[i] < data[i-1] && data[i] < data[i-2] && data[i] <= data[i+1] && data[i] <= data[i+2]) {
@@ -772,7 +741,6 @@ const universalAnnotationsPlugin = {
           ctx.fillText(`TSL ${i+1}: ₹${low.val.toFixed(2)}`, startX + 5, yPos - 5);
         });
       }
-
       if (wma.length > 0) {
         ctx.font = '8px "Space Mono"'; ctx.textAlign = 'center'; ctx.setLineDash([]);
         let lastLabelIdx = -50;
@@ -799,7 +767,6 @@ const universalAnnotationsPlugin = {
           }
         }
       }
-
       const lastVal = data[data.length - 1];
       const lastY   = ci.scales.y.getPixelForValue(lastVal);
       ctx.beginPath(); ctx.setLineDash([2, 4]);
@@ -825,9 +792,7 @@ function syncPair(activeElements, sourceChart, targetChart, isLive) {
 async function fetchFundData() {
   const code = document.getElementById('fundSelect').value;
   document.getElementById('ov').style.display = 'flex';
-  const url = code.startsWith('SM')
-    ? `https://npsnav.in/api/historical/${code}`
-    : `https://api.mfapi.in/mf/${code}`;
+  const url = code.startsWith('SM') ? `https://npsnav.in/api/historical/${code}` : `https://api.mfapi.in/mf/${code}`;
   try {
     const res  = await fetch(url);
     const data = await res.json();
@@ -836,7 +801,6 @@ async function fetchFundData() {
     return data.data.map(d => ({ nav: parseFloat(d.nav), date: d.date })).reverse();
   } catch(e) {
     document.getElementById('ov').style.display = 'none';
-    alert('API temporarily unavailable.');
     return [];
   }
 }
@@ -845,7 +809,6 @@ async function fetchFundData() {
 async function initLive() {
   saveFundSelection(); 
   document.getElementById('liveFundName').textContent = getBriefFundName();
-  
   profitDeltaLevel = parseFloat(document.getElementById('profitDeltaIn').value) || 15;
   buyDeltaLevel    = parseFloat(document.getElementById('buyDeltaIn').value)    || -15;
   document.getElementById('ovTxt').textContent = 'FETCHING LIVE...';
@@ -864,14 +827,12 @@ function updateLiveChart(days, btnEl) {
     for (const b of document.getElementById('liveTfRow').children) b.classList.remove('active');
     btnEl.classList.add('active');
   }
-
   liveHoverIdx = null;
   const dataSlice = globalLiveData.slice(-days);
   const wmaSlice  = dataSlice.map((_, i) => {
     const ai = globalLiveData.length - dataSlice.length + i;
     return calculateWMA(globalLiveData.slice(Math.max(0, ai - 19), ai + 1).map(h => h.nav), 20);
   });
-
   const latestPrices = globalLiveData.map(d => d.nav);
   const lastNav      = latestPrices[latestPrices.length - 1];
   const lastDate     = globalLiveData[globalLiveData.length - 1].date;
@@ -879,10 +840,8 @@ function updateLiveChart(days, btnEl) {
   const lastWRsi     = calculateRSI(latestPrices.filter((_, i) => i % 5 === 0), 14);
   const lastRegime   = lastWRsi >= 50 ? 'A' : (lastWRsi >= 40 ? 'B' : 'C');
   const lastDelta    = lastDRsi - lastWRsi;
-
   document.getElementById('liveNavDate').textContent = `NAV (${lastDate})`;
   document.getElementById('liveNav').textContent     = `₹${lastNav.toFixed(2)}`;
-
   const dEl = document.getElementById('liveDRsi');
   dEl.textContent = Math.round(lastDRsi);
   dEl.style.color = lastDRsi >= 50 ? 'var(--accent)' : (lastDRsi >= 40 ? 'var(--accent2)' : 'var(--red)');
@@ -922,7 +881,6 @@ function updateLiveChart(days, btnEl) {
 
   if (liveChart) liveChart.destroy();
   if (liveDeltaChart) liveDeltaChart.destroy();
-
   liveChart = new Chart(document.getElementById('liveChartCanvas').getContext('2d'), {
     type: 'line', plugins: [universalAnnotationsPlugin],
     data: {
@@ -946,7 +904,6 @@ function updateLiveChart(days, btnEl) {
       scales: { x: { display: false, offset: true }, y: { grid: { color: '#1a2a45' }, ticks: { display: false } } }
     }
   });
-
   liveDeltaChart = new Chart(document.getElementById('liveDeltaCanvas').getContext('2d'), {
     type: 'bar', plugins: [universalAnnotationsPlugin],
     data: {
@@ -985,13 +942,7 @@ async function initGame(mode) {
   buyDeltaLevel    = parseFloat(document.getElementById('buyDeltaIn').value)    || -15;
   document.getElementById('ovTxt').textContent = 'SYNCING SIMULATION...';
   fullHistory = await fetchFundData();
-
-  if (!fullHistory.length) {
-    document.getElementById('ov').style.display = 'none';
-    alert('No data available.');
-    return;
-  }
-
+  if (!fullHistory.length) { document.getElementById('ov').style.display = 'none'; return; }
   const minRequired = 20;
   if (mode === 'wave') {
     const waveIdx = fullHistory.findIndex(item => {
@@ -1004,13 +955,11 @@ async function initGame(mode) {
     simStartIdx = Math.floor(Math.random() * (fullHistory.length - 450)) + 200;
   }
   if (simStartIdx < minRequired) simStartIdx = minRequired;
-
   currentIdx = simStartIdx;
   tradeLog = []; cash = 100000; tranches = [];
   prevRegime = null; prevNav = null; prevWma = null;
   totalTaxPaid = 0; peakNetWorth = 100000; maxDrawdown = 0; buyLockoutTimer = 0;
   simHoverIdx = null;
-
   document.getElementById('setupScreen').style.display = 'none';
   document.getElementById('gameUI').style.display = 'flex';
   updateDisplay();
@@ -1025,22 +974,28 @@ function updateDisplay() {
   const wRsi = calculateRSI(prices.filter((_, i) => i % 5 === 0), 14);
   const delta = dRsi - wRsi;
   const dayNum = currentIdx - simStartIdx;
-
   document.getElementById('simDay').textContent = `Day ${dayNum}`;
   document.getElementById('simNav').textContent = `NAV: ₹${currentNav.toFixed(2)}`;
-
   const currentRegime = wRsi >= 50 ? 'A' : (wRsi >= 40 ? 'B' : 'C');
   currentRegimeLog = currentRegime;
   const rBlock = document.getElementById('regimeBlock');
-  rBlock.className = 'ind-val ' + (currentRegime === 'A' ? 'reg-A' : currentRegime === 'B' ? 'reg-B' : 'reg-C');
+  rBlock.className = 'ind-val ' + (currentRegime === 'A' ? 'reg-A' : (currentRegime === 'B' ? 'reg-B' : 'reg-C'));
   rBlock.textContent = `Regime ${currentRegime}`;
+
+  // ── PSYCHOLOGY LOGIC RESTORED ──
+  const lines = currentRegime === 'A'
+    ? (dRsi <= 50 ? ['Optimal Entry Window.', 'Institutional trend intact.', 'Execute tranche.', 'Trust Weekly RSI.']
+                  : ['Structural Bull Trend.', 'Institutions accumulating.', 'Ride momentum, respect TSL.', 'Wait for Daily RSI dip to add.'])
+    : currentRegime === 'B'
+    ? ['Regime B Fatigue.', 'Smart money pausing.', 'Market chopping sideways.', 'Halt buying.', 'Manage with TSL.']
+    : ['Trust Cycle Broken.', 'Institutional distribution.', 'Do not catch falling knife.', 'Preserve capital.', 'Stay in cash.'];
+  document.getElementById('psyMsg').innerHTML = lines.map((l, i) => `<div class="psy-line">(${i+1}) ${l}</div>`).join('');
 
   const totalUnits = tranches.reduce((s, t) => s + t.units, 0);
   const currentNW = cash + totalUnits * currentNav;
   if (currentNW > peakNetWorth) peakNetWorth = currentNW;
   const currentDD = (peakNetWorth - currentNW) / peakNetWorth * 100;
   if (currentDD > maxDrawdown) maxDrawdown = currentDD;
-
   document.getElementById('cashVal').textContent = `₹${Math.round(cash).toLocaleString('en-IN')}`;
   document.getElementById('nwVal').textContent = `₹${Math.round(currentNW).toLocaleString('en-IN')}`;
   document.getElementById('ddVal').textContent = `-${currentDD.toFixed(1)}%`;
@@ -1062,10 +1017,7 @@ function updateDisplay() {
 
   const updateLocalSimHud = (activeElements) => {
     const hm = document.getElementById('simHudMain'), hd = document.getElementById('simHudDelta');
-    if (!activeElements || !activeElements.length) {
-      hm.innerHTML = ""; hd.innerHTML = "";
-      return;
-    }
+    if (!activeElements || !activeElements.length) { hm.innerHTML = ""; hd.innerHTML = ""; return; }
     const i = activeElements[0].index;
     const reg = wmaRegimes[i];
     const regColor = reg === 'A' ? '#00e8a2' : (reg === 'B' ? '#f59e0b' : '#f04060');
@@ -1076,16 +1028,13 @@ function updateDisplay() {
 
   if (chart) chart.destroy();
   if (deltaChart) deltaChart.destroy();
-
   chart = new Chart(document.getElementById('mainChart').getContext('2d'), {
     type: 'line', plugins: [universalAnnotationsPlugin],
     data: {
       labels: chartData.map((_, i) => i),
       datasets: [
         { data: chartData.map(d => d.nav), borderColor: '#00e8a2', borderWidth: 1.5, pointRadius: 0, fill: true, backgroundColor: 'rgba(0,232,162,0.04)' },
-        { data: wmaData, borderWidth: 1.5, borderDash: [4,4], pointRadius: 0, fill: false,
-          segment: { borderColor: ctx => { const r = wmaRegimes[ctx.p1DataIndex]; return r==='A'?'#00e8a2':r==='B'?'#f59e0b':'#f04060'; } }
-        }
+        { data: wmaData, borderWidth: 1.5, borderDash: [4,4], pointRadius: 0, fill: false, segment: { borderColor: ctx => { const r = wmaRegimes[ctx.p1DataIndex]; return r==='A'?'#00e8a2':r==='B'?'#f59e0b':'#f04060'; } } }
       ]
     },
     options: {
@@ -1097,7 +1046,6 @@ function updateDisplay() {
       scales: { x: { display: false, offset: true }, y: { grid: { color: '#1a2a45' }, ticks: { display: false } } }
     }
   });
-
   deltaChart = new Chart(document.getElementById('deltaChart').getContext('2d'), {
     type: 'bar', plugins: [universalAnnotationsPlugin],
     data: {
@@ -1105,7 +1053,7 @@ function updateDisplay() {
       datasets: [
         { type: 'bar',  data: deltaData, backgroundColor: deltaColors, barPercentage: 1.0, categoryPercentage: 1.0 },
         { type: 'line', data: Array(chartData.length).fill(profitDeltaLevel), borderColor: '#f04060', borderDash: [2,2], pointRadius: 0, borderWidth: 1 },
-        { type: 'line', data: Array(chartData.length).fill(buyDeltaLevel),    borderColor: '#00e8a2', borderDash: [2,2], pointRadius: 0, borderWidth: 1 }
+        { type: 'line', data: Array(chartData.length).fill(buyDeltaLevel), borderColor: '#00e8a2', borderDash: [2,2], pointRadius: 0, borderWidth: 1 }
       ]
     },
     options: {
@@ -1132,7 +1080,6 @@ function trade(action) {
   }
   nextDay();
 }
-
 function nextDay() { if (currentIdx < fullHistory.length - 1) { currentIdx++; updateDisplay(); } }
 function showLog() { document.getElementById('logModal').style.display = 'flex'; }
 function closeLog() { document.getElementById('logModal').style.display = 'none'; }
