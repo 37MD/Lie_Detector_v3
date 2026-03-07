@@ -394,7 +394,7 @@
     <div class="fund-box" onclick="selectAMC('ABSL', this)">ABSL</div>
   </div>
 
-  <select id="fundSelect" class="dropdown"></select>
+  <select id="fundSelect" class="dropdown" onchange="saveFundSelection()"></select>
 
   <div class="custom-inputs">
     <div class="c-input-box">
@@ -621,7 +621,17 @@ const amcFunds = {
   ]
 };
 
-function selectAMC(amc, el) {
+// ── V2.04 LOCAL STORAGE SAVING ──
+function saveFundSelection() {
+  const activeBtn = document.querySelector('#fundGrid .fund-box.active');
+  if (activeBtn) {
+    localStorage.setItem('ld_v3_amc', activeBtn.textContent);
+  }
+  const fundCode = document.getElementById('fundSelect').value;
+  localStorage.setItem('ld_v3_fund', fundCode);
+}
+
+function selectAMC(amc, el, isInit = false) {
   document.querySelectorAll('#fundGrid .fund-box').forEach(b => b.classList.remove('active'));
   el.classList.add('active');
   const sel = document.getElementById('fundSelect');
@@ -630,8 +640,27 @@ function selectAMC(amc, el) {
     const o = document.createElement('option');
     o.value = f.code; o.textContent = f.name; sel.appendChild(o);
   });
+  if (!isInit) saveFundSelection();
 }
-window.onload = () => selectAMC('ICICI', document.querySelector('.fund-box.active'));
+
+// ── V2.04 LOCAL STORAGE LOADING ──
+window.onload = () => {
+  const savedAMC = localStorage.getItem('ld_v3_amc') || 'ICICI';
+  const savedFund = localStorage.getItem('ld_v3_fund');
+  
+  const boxes = Array.from(document.querySelectorAll('.fund-box'));
+  let targetBox = boxes.find(b => b.textContent === savedAMC);
+  if (!targetBox) targetBox = boxes[1]; // default to ICICI if something goes wrong
+  
+  selectAMC(savedAMC, targetBox, true);
+  
+  const sel = document.getElementById('fundSelect');
+  if (savedFund) {
+    sel.value = savedFund;
+    // If the saved code isn't in the list (e.g., they switched AMCs quickly), fallback to the first option
+    if (!sel.value) sel.selectedIndex = 0; 
+  }
+};
 
 // ─────────────────────────────────────────────
 //  STATE
