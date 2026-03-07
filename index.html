@@ -864,7 +864,6 @@ function updateLiveChart(days, btnEl) {
   const lastDelta    = lastDRsi - lastWRsi;
   document.getElementById('liveNavDate').textContent = `NAV (${lastDate})`;
   document.getElementById('liveNav').textContent     = `₹${lastNav.toFixed(2)}`;
-  
   const dEl = document.getElementById('liveDRsi');
   dEl.textContent = Math.round(lastDRsi);
   dEl.style.color = lastDRsi >= 50 ? 'var(--accent)' : (lastDRsi >= 40 ? 'var(--accent2)' : 'var(--red)');
@@ -980,15 +979,16 @@ async function initGame(mode) {
 function updateDisplay() {
   const visible = fullHistory.slice(0, currentIdx + 1);
   const currentNav = visible[visible.length - 1].nav;
+  const currentWma = calculateWMA(visible.map(v => v.nav), 20);
   const prices = visible.map(v => v.nav);
   const dRsi = calculateRSI(prices, 14);
   const wRsi = calculateRSI(prices.filter((_, i) => i % 5 === 0), 14);
+  const delta = dRsi - wRsi;
   const dayNum = currentIdx - simStartIdx;
   
   document.getElementById('simDay').textContent = `Day ${dayNum}`;
   document.getElementById('simNav').textContent = `NAV: ₹${currentNav.toFixed(2)}`;
   
-  // ── RSI DISPLAY WIRING FIXED ──
   const colorFor = v => v >= 50 ? 'var(--accent)' : (v >= 40 ? 'var(--accent2)' : 'var(--red)');
   document.getElementById('dRsi').textContent = Math.round(dRsi);
   document.getElementById('dRsi').style.color = colorFor(dRsi);
@@ -1012,13 +1012,86 @@ function updateDisplay() {
   const totalUnits = tranches.reduce((s, t) => s + t.units, 0);
   const currentNW = cash + totalUnits * currentNav;
   if (currentNW > peakNetWorth) peakNetWorth = currentNW;
-  const currentDD = (peakNetWorth - currentNW) / peakNetWorth * 100;
+  const currentDD = peakNetWorth > 0 ? (peakNetWorth - currentNW) / peakNetWorth * 100 : 0;
   if (currentDD > maxDrawdown) maxDrawdown = currentDD;
   document.getElementById('cashVal').textContent = `₹${Math.round(cash).toLocaleString('en-IN')}`;
   document.getElementById('nwVal').textContent = `₹${Math.round(currentNW).toLocaleString('en-IN')}`;
   document.getElementById('ddVal').textContent = `-${currentDD.toFixed(1)}%`;
 
+  const isFlexi = document.getElementById('fundSelect').options[document.getElementById('fundSelect').selectedIndex].text.toLowerCase().includes('flexi');
+  const firstBuyDay = tranches.length > 0 ? Math.min(...tranches.map(t => t.day)) : null;
+  const lockEnabled = document.getElementById('flexiLockToggle').checked;
+  const flexiLocked = lockEnabled && isFlexi && firstBuyDay !== null && (dayNum - firstBuyDay) < 220;
+
+  let pcAlert = false, ncAlert = false;
+  if (prices.length >= 56) {
+    const box = prices.slice(-6, -1);
+    const boxMax = Math.max(...box), boxMin = Math.min(...box);
+    const preBox = prices.slice(-56, -6);
+    const preMax = Math.max(...preBox);
+    const boxWma = calculateWMA(prices.slice(0, -1), 20);
+    if ((boxMax - boxMin) / boxMin <= 0.02 && (boxWma ? Math.abs(boxMin - boxWma) / boxWma <= 0.04 : false) && preMax > boxMax * 1.02) {
+      if (currentNav > boxMax) pcAlert = true;
+      if (currentNav < boxMin) ncAlert = true;
+    }
+  }
+
   const chartData = visible.slice(-80);
+  let tsl1 = null;
+  for (let i = chartData.length - 3; i >= 2; i--) {
+    if (chartData[i].nav < chartData[i-1].nav && chartData[i].nav < chartData[i-2].nav &&
+        chartData[i].nav <= chartData[i+1].nav && chartData[i].nav <= chartData[i+2].nav) {
+      tsl1 = chartData[i].nav; break;
+    }
+  }
+  const tslHit = tsl1 && prevNav !== null && prevNav >= tsl1 && currentNav < tsl1;
+
+  const regimeDowngrade = prevRegime && ((prevRegime === 'A' && (currentRegime === 'B' || currentRegime === 'C')) || (prevRegime === 'B' && currentRegime === 'C'));
+  const regimeUpgrade = prevRegime && ((prevRegime === 'C' && (currentRegime === 'B' || currentRegime === 'A')) || (prevRegime === 'B' && currentRegime === 'A'));
+
+  // ── ALERT BANNER LOGIC RESTORED ──
+  const banner = document.getElementById('alertBanner');
+  let alertText = '', alertClass = '';
+  if (currentIdx > simStartIdx) {
+    if (tslHit) { alertText = '🚨 TSL BREAKDOWN'; alertClass = 'alert-danger'; }
+    else if (regimeDowngrade) {
+      alertText = `⚠️ REGIME DOWNGRADE: ${prevRegime} ➔ ${currentRegime}`; alertClass = 'alert-danger';
+      if (currentRegime === 'C') { alertText = `🚨 REGIME CRASH: ${prevRegime} ➔ C`; }
+    }
+    else if (ncAlert) { alertText = '🚨 DANGER: NC BREAKDOWN'; alertClass = 'alert-danger'; }
+    else if (regimeUpgrade) {
+      alertText = `🟢 REGIME UPGRADE: ${prevRegime} ➔ ${currentRegime}`; alertClass = 'alert-buy';
+      if (currentRegime === 'A') { alertText = '🟢 REGIME A RESTORED: BULL TREND'; alertClass = 'alert-buy alert-mega'; }
+    }
+    else if (currentRegime === 'A') {
+      if (pcAlert) { alertText = '🟢 BUY SIGNAL: PC BREAKOUT'; alertClass = 'alert-buy'; }
+      else if (dRsi < 40) { alertText = '🟢 BUY SIGNAL: OVERSOLD (RSI < 40)'; alertClass = 'alert-buy'; }
+      else if (delta < buyDeltaLevel) { alertText = `🟢 BUY SIGNAL: SLINGSHOT (Delta < ${buyDeltaLevel})`; alertClass = 'alert-buy'; }
+      else if (prevWma !== null && prevNav !== null && prevNav < prevWma && currentNav > currentWma) { alertText = '🟢 BUY SIGNAL: WMA RECLAIM'; alertClass = 'alert-buy'; }
+    }
+    if (!alertText && delta > profitDeltaLevel) { alertText = `🟠 TAKE PROFIT: OVERHEATED (Delta > ${profitDeltaLevel})`; alertClass = 'alert-profit'; }
+  }
+  banner.textContent = alertText; banner.className = alertClass;
+  banner.style.display = alertText ? 'block' : 'none';
+
+  prevRegime = currentRegime; prevNav = currentNav; prevWma = currentWma;
+
+  const b10 = document.getElementById('btnBuy10'), b25 = document.getElementById('btnBuy25'), b50 = document.getElementById('btnBuy50');
+  const sellBtns = [document.getElementById('btnProfit'), document.getElementById('btnTsl'), document.getElementById('btnRegime'), document.getElementById('btnAll')];
+  if (buyLockoutTimer > 0) {
+    [b10, b25, b50].forEach(b => { b.disabled = true; b.textContent = `COOL (${buyLockoutTimer})`; });
+  } else {
+    b10.disabled = false; b10.textContent = 'BUY 10%';
+    b25.disabled = false; b25.textContent = 'BUY 25%';
+    b50.disabled = false; b50.textContent = 'BUY 50%';
+  }
+  sellBtns.forEach(btn => {
+    let locked = flexiLocked;
+    if ((tslHit || currentRegime === 'C') && (btn.id === 'btnTsl' || btn.id === 'btnRegime' || btn.id === 'btnAll')) locked = false;
+    btn.disabled = locked;
+    if (btn.id === 'btnAll') btn.textContent = locked ? `LOCK (${220 - (dayNum - firstBuyDay)}d)` : 'SELL ALL';
+  });
+
   const wmaData = chartData.map((_, i) => calculateWMA(fullHistory.slice(0, currentIdx - (chartData.length - 1) + i + 1).map(h => h.nav), 20));
   const deltaData = [], deltaColors = [], wmaRegimes = [], drsiArrHud = [], wrsiArrHud = [];
   for (let i = 0; i < chartData.length; i++) {
@@ -1094,13 +1167,95 @@ function trade(action) {
   } else if (action === 'SELLALL') {
     const totalUnits = tranches.reduce((s, t) => s + t.units, 0);
     cash += totalUnits * nav; tranches = [];
+  } else if (action === 'SELL_PROFIT') {
+    const totalUnits = tranches.reduce((s, t) => s + t.units, 0);
+    const totalCost = tranches.reduce((s, t) => s + t.units * t.price, 0);
+    const profit = totalUnits * nav - totalCost;
+    if (profit > 10) executeSell(profit / nav, nav, dayNum, 'SELL PROFIT');
+  } else if (action === 'SELL_TSL') { 
+    const totalUnits = tranches.reduce((s, t) => s + t.units, 0);
+    const r = currentRegimeLog === 'A' ? 0.5 : 1.0; 
+    executeSell(totalUnits * r, nav, dayNum, `SELL TSL (${r*100}%)`); buyLockoutTimer = 5; 
+  } else if (action === 'SELL_REGIME') { 
+    const totalUnits = tranches.reduce((s, t) => s + t.units, 0);
+    executeSell(totalUnits, nav, dayNum, 'SELL REGIME'); buyLockoutTimer = 5; 
   }
+  document.getElementById('alertBanner').style.display = 'none';
   nextDay();
 }
+
+function executeSell(unitsToSell, nav, dayNum, actionName) {
+  if (unitsToSell <= 0) return;
+  let remaining = unitsToSell, totalCash = 0, taxIncurred = 0, actualSold = 0;
+  for (let i = 0; i < tranches.length; i++) {
+    if (remaining <= 0) break;
+    const t = tranches[i];
+    const chunk = Math.min(t.units, remaining);
+    t.units -= chunk; remaining -= chunk; actualSold += chunk;
+    const profit = (nav - t.price) * chunk;
+    const tax    = (profit > 0 && (dayNum - t.day < 220)) ? profit * 0.20 : 0;
+    taxIncurred += tax; totalCash += nav * chunk - tax;
+  }
+  tranches = tranches.filter(t => t.units > 0.001);
+  if (actualSold > 0.001) {
+    cash += totalCash; totalTaxPaid += taxIncurred;
+    tradeLog.push({ day: dayNum, action: actionName, nav, units: actualSold, tax: taxIncurred, regime: currentRegimeLog });
+  }
+}
+
 function nextDay() { if (currentIdx < fullHistory.length - 1) { currentIdx++; updateDisplay(); } }
-function showLog() { document.getElementById('logModal').style.display = 'flex'; }
+function showLog() { 
+  const tbody = document.getElementById('logBody');
+  tbody.innerHTML = '';
+  if (!tradeLog.length) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--muted);">No trades executed yet.</td></tr>';
+  } else {
+    tradeLog.forEach(t => {
+      const cls = t.action.includes('BUY') ? 'log-buy' : t.action.includes('PROFIT') ? 'log-profit' : 'log-sell';
+      tbody.innerHTML += `<tr><td>Day ${t.day}</td><td class="${cls}">${t.action}</td><td>₹${t.nav.toFixed(2)}</td><td class="log-tax">₹${Math.round(t.tax)}</td></tr>`;
+    });
+  }
+  document.getElementById('logModal').style.display = 'flex'; 
+}
 function closeLog() { document.getElementById('logModal').style.display = 'none'; }
-function endAndReview() { document.getElementById('reviewModal').style.display = 'flex'; }
+function endAndReview() { 
+  let scoreEntry = 0, scoreExit = 0, scoreProfit = 0;
+  tradeLog.forEach(t => {
+    if (t.action.includes('BUY'))    { t.regime === 'A' ? scoreEntry += 20 : scoreEntry -= 10; }
+    if (t.action.includes('TSL') || t.action.includes('REGIME')) scoreExit += 30;
+    if (t.action.includes('PROFIT')) scoreProfit += 5;
+  });
+  for (let i = simStartIdx; i <= currentIdx; i++) {
+    const sp     = fullHistory.slice(0, i + 1).map(h => h.nav);
+    const dr     = calculateRSI(sp, 14);
+    const wr     = calculateRSI(sp.filter((_, j) => j % 5 === 0), 14);
+    const regime = wr >= 50 ? 'A' : wr >= 40 ? 'B' : 'C';
+    const d      = dr - wr;
+    const dayT   = tradeLog.find(t => t.day === (i - simStartIdx));
+    if (regime === 'A' && d < buyDeltaLevel && (!dayT || !dayT.action.includes('BUY'))) scoreEntry -= 5;
+    if (d > profitDeltaLevel && (!dayT || !dayT.action.includes('PROFIT')))             scoreProfit -= 2;
+  }
+  const totalScore  = scoreEntry + scoreExit + scoreProfit;
+  const totalUnits  = tranches.reduce((s, t) => s + t.units, 0);
+  const finalNW     = cash + totalUnits * fullHistory[currentIdx].nav;
+
+  const fmt = v => `<div class="rep-score ${v >= 0 ? 'pos-score' : 'neg-score'}">${v}</div>`;
+  document.getElementById('totalScore').textContent    = totalScore;
+  document.getElementById('totalScore').style.color    = totalScore > 0 ? 'var(--accent)' : 'var(--red)';
+  document.getElementById('scoreEntry').outerHTML      = fmt(scoreEntry).replace('div', 'div id="scoreEntry"');
+  document.getElementById('scoreExit').outerHTML       = fmt(scoreExit).replace('div', 'div id="scoreExit"');
+  document.getElementById('scoreProfit').outerHTML     = fmt(scoreProfit).replace('div', 'div id="scoreProfit"');
+  document.getElementById('revNW2').innerHTML          = `<div class="rep-score pos-score">₹${Math.round(finalNW).toLocaleString('en-IN')}</div>`;
+
+  let fb = '';
+  if      (scoreExit  < 0) fb += `<div class="feedback-box fb-bad"><strong>⚠️ Critical Failure:</strong> Negative Defense score. You are holding losers or selling winners too early.</div>`;
+  else if (scoreEntry < 0) fb += `<div class="feedback-box fb-warn"><strong>⚠️ Hesitation Detected:</strong> Missing key entry signals. Trust the Sacred RSI regime.</div>`;
+  else                     fb += `<div class="feedback-box fb-good"><strong>✅ Disciplined Process:</strong> Solid execution. Keep it up.</div>`;
+  if (maxDrawdown > 20) fb += `<div class="feedback-box fb-warn"><strong>⚠️ High Drawdown (${maxDrawdown.toFixed(1)}%):</strong> Review your TSL discipline.</div>`;
+  document.getElementById('feedbackContainer').innerHTML = fb;
+  document.getElementById('reviewModal').style.display = 'flex'; 
+}
+
 if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(() => {}); }
 </script>
 </body>
