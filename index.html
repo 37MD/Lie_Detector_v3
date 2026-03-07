@@ -228,15 +228,18 @@
     top: 4px;
     left: 8px;
     font-family: var(--sans);
-    font-size: 0.58rem; /* REDUCED BASE FONT SIZE */
+    font-size: 0.58rem;
     color: #ffffff;
     z-index: 10;
     pointer-events: none;
-    white-space: nowrap;
-    background: rgba(7, 9, 15, 0.7);
+    white-space: nowrap; /* Stays on one line on desktop */
+    letter-spacing: -0.02em;
+  }
+  /* The grey box only shows if the div is not totally empty */
+  .chart-hud:not(:empty) {
+    background: rgba(7, 9, 15, 0.85);
     padding: 2px 4px;
     border-radius: 2px;
-    letter-spacing: -0.02em; /* Tighter letter spacing */
   }
   .chart-hud.delta {
     top: 16px; 
@@ -245,10 +248,12 @@
   /* ── MOBILE OPTIMIZATION FOR HUD ── */
   @media (max-width: 600px) {
     .chart-hud {
-      font-size: 0.48rem; /* EVEN SMALLER ON MOBILE */
-      left: 4px; /* Push slightly closer to the edge */
-      padding: 2px;
-      letter-spacing: -0.05em; /* Compress text slightly more */
+      font-size: 0.5rem;
+      left: 4px;
+      letter-spacing: -0.05em;
+      white-space: normal; /* Allows text to wrap instead of cutting off */
+      max-width: 95%; /* Keeps it inside the screen */
+      line-height: 1.2;
     }
   }
 
@@ -442,12 +447,12 @@
   <div style="flex-grow:1;padding:6px 8px 8px;display:flex;flex-direction:column;min-height:0;">
     <div class="chart-split">
       <div class="chart-main-pane">
-        <div class="chart-hud" id="liveHudMain">I will not modify the base Code, without instructions</div>
+        <div class="chart-hud" id="liveHudMain"></div>
         <div class="canvas-box"><canvas id="liveChartCanvas"></canvas></div>
       </div>
       <div class="chart-delta-pane">
         <div class="delta-label">RSI DELTA · Daily − Weekly</div>
-        <div class="chart-hud delta" id="liveHudDelta">I will not modify the base Code, without instructions</div>
+        <div class="chart-hud delta" id="liveHudDelta"></div>
         <div class="canvas-box-bottom"><canvas id="liveDeltaCanvas"></canvas></div>
       </div>
     </div>
@@ -515,12 +520,12 @@
       </div>
       <div class="chart-split">
         <div class="chart-main-pane">
-          <div class="chart-hud" id="simHudMain">I will not modify the base Code, without instructions</div>
+          <div class="chart-hud" id="simHudMain"></div>
           <div class="canvas-box"><canvas id="mainChart"></canvas></div>
         </div>
         <div class="chart-delta-pane">
           <div class="delta-label">RSI DELTA · Daily − Weekly</div>
-          <div class="chart-hud delta" id="simHudDelta">I will not modify the base Code, without instructions</div>
+          <div class="chart-hud delta" id="simHudDelta"></div>
           <div class="canvas-box-bottom"><canvas id="deltaChart"></canvas></div>
         </div>
       </div>
@@ -921,8 +926,8 @@ function updateLiveChart(days, btnEl) {
   const updateLocalLiveHud = (activeElements) => {
     const hm = document.getElementById('liveHudMain'), hd = document.getElementById('liveHudDelta');
     if (!activeElements || !activeElements.length) {
-      const def = "I will not modify the base Code, without instructions";
-      hm.textContent = def; hd.textContent = def;
+      const def = ""; // BLANK DEFAULT STATE
+      hm.innerHTML = def; hd.innerHTML = def;
       return;
     }
     const i = activeElements[0].index;
@@ -1196,8 +1201,8 @@ function updateDisplay() {
   const updateLocalSimHud = (activeElements) => {
     const hm = document.getElementById('simHudMain'), hd = document.getElementById('simHudDelta');
     if (!activeElements || !activeElements.length) {
-      const def = "I will not modify the base Code, without instructions";
-      hm.textContent = def; hd.textContent = def;
+      const def = ""; // BLANK DEFAULT STATE
+      hm.innerHTML = def; hd.innerHTML = def;
       return;
     }
     const i = activeElements[0].index;
