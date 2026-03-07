@@ -344,6 +344,28 @@
   .log-profit { color: var(--accent2); }
   .log-tax { color: var(--muted); font-size: 0.7rem; }
 
+  /* ── LIVE MODAL ── */
+  #liveModal .indicator-row { background: var(--surface2); }
+  .tf-row {
+    display: flex; justify-content: space-around;
+    background: var(--surface2); padding: 4px;
+    border-bottom: 1px solid var(--border); flex-shrink: 0;
+  }
+  .tf-btn {
+    background: transparent; border: none; color: var(--muted);
+    font-family: var(--mono); font-size: 0.72rem; padding: 5px 12px;
+    cursor: pointer; transition: color 0.15s; letter-spacing: 0.06em;
+    border-radius: var(--radius-sm);
+  }
+  .tf-btn:hover { color: var(--text); }
+  .tf-btn.active { color: var(--accent); font-weight: 700; background: var(--accent-dim); }
+  .reset-zoom {
+    font-size: 0.6rem; background: transparent; border: 1px solid var(--border2);
+    color: var(--muted); padding: 3px 8px; border-radius: var(--radius-sm); cursor: pointer;
+    font-family: var(--mono); letter-spacing: 0.06em; transition: all 0.15s;
+  }
+  .reset-zoom:hover { border-color: var(--muted); color: var(--text); }
+
   /* ── REVIEW ── */
   .review-container { padding: 18px; overflow-y: auto; flex-grow: 1; }
   .score-card { background: var(--surface2); border: 1px solid var(--border); padding: 15px; border-radius: var(--radius); margin-bottom: 14px; }
@@ -611,7 +633,7 @@ const amcFunds = {
   ]
 };
 
-// ── V2.04 LOCAL STORAGE SAVING ──
+// ── LOCAL STORAGE SAVING ──
 function saveFundSelection() {
   const activeBtn = document.querySelector('#fundGrid .fund-box.active');
   const sel = document.getElementById('fundSelect');
@@ -633,7 +655,7 @@ function selectAMC(amc, el, isInit = false) {
   if (!isInit) saveFundSelection();
 }
 
-// ── V2.04 LOCAL STORAGE LOADING ──
+// ── LOCAL STORAGE LOADING ──
 window.addEventListener('DOMContentLoaded', () => {
   const savedAMC = localStorage.getItem('ld_v3_amc') || 'ICICI';
   const savedFund = localStorage.getItem('ld_v3_fund');
@@ -842,6 +864,7 @@ function updateLiveChart(days, btnEl) {
   const lastDelta    = lastDRsi - lastWRsi;
   document.getElementById('liveNavDate').textContent = `NAV (${lastDate})`;
   document.getElementById('liveNav').textContent     = `₹${lastNav.toFixed(2)}`;
+  
   const dEl = document.getElementById('liveDRsi');
   dEl.textContent = Math.round(lastDRsi);
   dEl.style.color = lastDRsi >= 50 ? 'var(--accent)' : (lastDRsi >= 40 ? 'var(--accent2)' : 'var(--red)');
@@ -867,10 +890,7 @@ function updateLiveChart(days, btnEl) {
 
   const updateLocalLiveHud = (activeElements) => {
     const hm = document.getElementById('liveHudMain'), hd = document.getElementById('liveHudDelta');
-    if (!activeElements || !activeElements.length) {
-      hm.innerHTML = ""; hd.innerHTML = "";
-      return;
-    }
+    if (!activeElements || !activeElements.length) { hm.innerHTML = ""; hd.innerHTML = ""; return; }
     const i = activeElements[0].index;
     const reg = wmaRegimes[i];
     const regColor = reg === 'A' ? '#00e8a2' : (reg === 'B' ? '#f59e0b' : '#f04060');
@@ -887,19 +907,14 @@ function updateLiveChart(days, btnEl) {
       labels: dataSlice.map(d => d.date),
       datasets: [
         { data: dataSlice.map(d => d.nav), borderColor: '#00e8a2', borderWidth: 1.5, pointRadius: 0, fill: true, backgroundColor: 'rgba(0,232,162,0.04)' },
-        { data: wmaSlice, borderWidth: 1.5, borderDash: [4, 4], pointRadius: 0, fill: false,
-          segment: { borderColor: ctx => { const r = wmaRegimes[ctx.p1DataIndex]; return r==='A'?'#00e8a2':r==='B'?'#f59e0b':'#f04060'; } }
-        }
+        { data: wmaSlice, borderWidth: 1.5, borderDash: [4, 4], pointRadius: 0, fill: false, segment: { borderColor: ctx => { const r = wmaRegimes[ctx.p1DataIndex]; return r==='A'?'#00e8a2':r==='B'?'#f59e0b':'#f04060'; } } }
       ]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
       layout: { padding: { top: 15, bottom: 4, left: 8, right: 8 } },
       interaction: { mode: 'index', intersect: false },
-      onHover: (event, activeElements) => {
-        if (liveDeltaChart) syncPair(activeElements, liveChart, liveDeltaChart, true);
-        updateLocalLiveHud(activeElements);
-      },
+      onHover: (event, activeElements) => { if (liveDeltaChart) syncPair(activeElements, liveChart, liveDeltaChart, true); updateLocalLiveHud(activeElements); },
       plugins: { legend: { display: false }, tooltip: { enabled: false }, zoom: { zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' }, pan: { enabled: true, mode: 'x' } } },
       scales: { x: { display: false, offset: true }, y: { grid: { color: '#1a2a45' }, ticks: { display: false } } }
     }
@@ -911,17 +926,14 @@ function updateLiveChart(days, btnEl) {
       datasets: [
         { type: 'bar',  data: deltaData, backgroundColor: deltaColors, barPercentage: 1.0, categoryPercentage: 1.0 },
         { type: 'line', data: Array(dataSlice.length).fill(profitDeltaLevel), borderColor: '#f04060', borderDash: [2,2], pointRadius: 0, borderWidth: 1 },
-        { type: 'line', data: Array(dataSlice.length).fill(buyDeltaLevel),    borderColor: '#00e8a2', borderDash: [2,2], pointRadius: 0, borderWidth: 1 }
+        { type: 'line', data: Array(dataSlice.length).fill(buyDeltaLevel), borderColor: '#00e8a2', borderDash: [2,2], pointRadius: 0, borderWidth: 1 }
       ]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
       layout: { padding: { top: 4, bottom: 4, left: 8, right: 8 } },
       interaction: { mode: 'index', intersect: false },
-      onHover: (event, activeElements) => {
-        if (liveChart) syncPair(activeElements, liveDeltaChart, liveChart, true);
-        updateLocalLiveHud(activeElements);
-      },
+      onHover: (event, activeElements) => { if (liveChart) syncPair(activeElements, liveDeltaChart, liveChart, true); updateLocalLiveHud(activeElements); },
       plugins: { legend: { display: false }, tooltip: { enabled: false } },
       scales: {
         x: { display: true, offset: true, grid: { display: false }, ticks: { maxTicksLimit: 6, color: '#6080a0', font: { size: 9, family: '"Space Mono"' }, maxRotation: 0, align: 'inner' } },
@@ -968,21 +980,27 @@ async function initGame(mode) {
 function updateDisplay() {
   const visible = fullHistory.slice(0, currentIdx + 1);
   const currentNav = visible[visible.length - 1].nav;
-  const currentWma = calculateWMA(visible.map(v => v.nav), 20);
   const prices = visible.map(v => v.nav);
   const dRsi = calculateRSI(prices, 14);
   const wRsi = calculateRSI(prices.filter((_, i) => i % 5 === 0), 14);
-  const delta = dRsi - wRsi;
   const dayNum = currentIdx - simStartIdx;
+  
   document.getElementById('simDay').textContent = `Day ${dayNum}`;
   document.getElementById('simNav').textContent = `NAV: ₹${currentNav.toFixed(2)}`;
+  
+  // ── RSI DISPLAY WIRING FIXED ──
+  const colorFor = v => v >= 50 ? 'var(--accent)' : (v >= 40 ? 'var(--accent2)' : 'var(--red)');
+  document.getElementById('dRsi').textContent = Math.round(dRsi);
+  document.getElementById('dRsi').style.color = colorFor(dRsi);
+  document.getElementById('wRsi').textContent = Math.round(wRsi);
+  document.getElementById('wRsi').style.color = colorFor(wRsi);
+
   const currentRegime = wRsi >= 50 ? 'A' : (wRsi >= 40 ? 'B' : 'C');
   currentRegimeLog = currentRegime;
   const rBlock = document.getElementById('regimeBlock');
   rBlock.className = 'ind-val ' + (currentRegime === 'A' ? 'reg-A' : (currentRegime === 'B' ? 'reg-B' : 'reg-C'));
   rBlock.textContent = `Regime ${currentRegime}`;
 
-  // ── PSYCHOLOGY LOGIC RESTORED ──
   const lines = currentRegime === 'A'
     ? (dRsi <= 50 ? ['Optimal Entry Window.', 'Institutional trend intact.', 'Execute tranche.', 'Trust Weekly RSI.']
                   : ['Structural Bull Trend.', 'Institutions accumulating.', 'Ride momentum, respect TSL.', 'Wait for Daily RSI dip to add.'])
@@ -1002,17 +1020,16 @@ function updateDisplay() {
 
   const chartData = visible.slice(-80);
   const wmaData = chartData.map((_, i) => calculateWMA(fullHistory.slice(0, currentIdx - (chartData.length - 1) + i + 1).map(h => h.nav), 20));
-  const deltaData = [], deltaColors = [], wmaRegimes = [], drsiArr = [], wrsiArr = [];
+  const deltaData = [], deltaColors = [], wmaRegimes = [], drsiArrHud = [], wrsiArrHud = [];
   for (let i = 0; i < chartData.length; i++) {
     const ei = currentIdx - (chartData.length - 1) + i;
     const sp = fullHistory.slice(0, ei + 1).map(h => h.nav);
     const dr = calculateRSI(sp, 14);
     const wr = calculateRSI(sp.filter((_, j) => j % 5 === 0), 14);
-    const d = dr - wr;
-    deltaData.push(d);
-    deltaColors.push(i === 0 ? (d >= 0 ? '#00e8a2' : '#f04060') : (d > deltaData[i-1] ? '#00e8a2' : '#f04060'));
+    deltaData.push(dr - wr);
+    deltaColors.push(i === 0 ? (dr - wr >= 0 ? '#00e8a2' : '#f04060') : (dr - wr > deltaData[i-1] ? '#00e8a2' : '#f04060'));
     wmaRegimes.push(wr >= 50 ? 'A' : (wr >= 40 ? 'B' : 'C'));
-    drsiArr.push(dr); wrsiArr.push(wr);
+    drsiArrHud.push(dr); wrsiArrHud.push(wr);
   }
 
   const updateLocalSimHud = (activeElements) => {
@@ -1022,7 +1039,7 @@ function updateDisplay() {
     const reg = wmaRegimes[i];
     const regColor = reg === 'A' ? '#00e8a2' : (reg === 'B' ? '#f59e0b' : '#f04060');
     const wmaText = wmaData[i] ? wmaData[i].toFixed(2) : '--';
-    const html = `NAV: ${chartData[i].nav.toFixed(2)} | WMA: <span style="color:${regColor}; font-weight:700;">${wmaText}</span> | REG: <span style="color:${regColor}; font-weight:700;">${reg}</span> | D-RSI: ${Math.round(drsiArr[i])} | W-RSI: ${Math.round(wrsiArr[i])} | DELTA: ${deltaData[i].toFixed(1)}`;
+    const html = `NAV: ${chartData[i].nav.toFixed(2)} | WMA: <span style="color:${regColor}; font-weight:700;">${wmaText}</span> | REG: <span style="color:${regColor}; font-weight:700;">${reg}</span> | D-RSI: ${Math.round(drsiArrHud[i])} | W-RSI: ${Math.round(wrsiArrHud[i])} | DELTA: ${(drsiArrHud[i] - wrsiArrHud[i]).toFixed(1)}`;
     hm.innerHTML = html; hd.innerHTML = html;
   };
 
@@ -1084,7 +1101,6 @@ function nextDay() { if (currentIdx < fullHistory.length - 1) { currentIdx++; up
 function showLog() { document.getElementById('logModal').style.display = 'flex'; }
 function closeLog() { document.getElementById('logModal').style.display = 'none'; }
 function endAndReview() { document.getElementById('reviewModal').style.display = 'flex'; }
-
 if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(() => {}); }
 </script>
 </body>
