@@ -147,8 +147,16 @@
   .logo {
     font-family: var(--mono); font-weight: 700; font-size: 0.75rem;
     color: var(--accent); letter-spacing: 0.12em;
+    display: flex; align-items: center;
   }
   .logo span { color: var(--muted); font-weight: 400; }
+  
+  .fund-name-tag {
+    font-size: 0.6rem; margin-left: 8px; padding-left: 8px; 
+    border-left: 1px solid var(--border); color: var(--text); 
+    font-weight: 400; letter-spacing: 0.05em; font-family: var(--mono);
+  }
+
   .hdr-btns { display: flex; gap: 8px; align-items: center; }
   .btn-log {
     background: transparent; color: var(--muted2); border: 1px solid var(--border2);
@@ -232,10 +240,9 @@
     color: #ffffff;
     z-index: 10;
     pointer-events: none;
-    white-space: nowrap; /* Stays on one line on desktop */
+    white-space: nowrap; 
     letter-spacing: -0.02em;
   }
-  /* The grey box only shows if the div is not totally empty */
   .chart-hud:not(:empty) {
     background: rgba(7, 9, 15, 0.85);
     padding: 2px 4px;
@@ -245,14 +252,13 @@
     top: 16px; 
   }
 
-  /* ── MOBILE OPTIMIZATION FOR HUD ── */
   @media (max-width: 600px) {
     .chart-hud {
       font-size: 0.5rem;
       left: 4px;
       letter-spacing: -0.05em;
-      white-space: normal; /* Allows text to wrap instead of cutting off */
-      max-width: 95%; /* Keeps it inside the screen */
+      white-space: normal; 
+      max-width: 95%; 
       line-height: 1.2;
     }
   }
@@ -423,9 +429,12 @@
   <div class="modal-close">
     <div style="display:flex;gap:10px;align-items:center;">
       <span class="modal-title" style="color:var(--accent2);">LIVE COCKPIT</span>
-      <button class="reset-zoom" onclick="resetLiveZoom()">RESET ZOOM</button>
+      <span id="liveFundName" class="fund-name-tag"></span>
     </div>
-    <span class="modal-close-btn" onclick="closeLive()">[ X ] CLOSE</span>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <button class="reset-zoom" onclick="resetLiveZoom()">RESET ZOOM</button>
+      <span class="modal-close-btn" onclick="closeLive()">[ X ] CLOSE</span>
+    </div>
   </div>
 
   <div id="liveAlertBanner"></div>
@@ -495,7 +504,10 @@
 
 <div id="gameUI" style="display:none;height:100vh;flex-direction:column;">
   <header class="app-header">
-    <div class="logo">LIE DETECTOR <span>V2</span></div>
+    <div class="logo">
+      LIE DETECTOR <span>V2</span>
+      <span id="simFundName" class="fund-name-tag"></span>
+    </div>
     <div class="hdr-btns">
       <button class="btn-log" onclick="showLog()">LOG</button>
       <button class="btn-review" onclick="endAndReview()">END &amp; REVIEW</button>
@@ -624,11 +636,11 @@ const amcFunds = {
 // ── V2.04 LOCAL STORAGE SAVING ──
 function saveFundSelection() {
   const activeBtn = document.querySelector('#fundGrid .fund-box.active');
-  if (activeBtn) {
-    localStorage.setItem('ld_v3_amc', activeBtn.textContent);
+  const sel = document.getElementById('fundSelect');
+  if (activeBtn && sel && sel.value) {
+    localStorage.setItem('ld_v3_amc', activeBtn.textContent.trim());
+    localStorage.setItem('ld_v3_fund', sel.value);
   }
-  const fundCode = document.getElementById('fundSelect').value;
-  localStorage.setItem('ld_v3_fund', fundCode);
 }
 
 function selectAMC(amc, el, isInit = false) {
@@ -644,23 +656,30 @@ function selectAMC(amc, el, isInit = false) {
 }
 
 // ── V2.04 LOCAL STORAGE LOADING ──
-window.onload = () => {
+window.addEventListener('DOMContentLoaded', () => {
   const savedAMC = localStorage.getItem('ld_v3_amc') || 'ICICI';
   const savedFund = localStorage.getItem('ld_v3_fund');
   
   const boxes = Array.from(document.querySelectorAll('.fund-box'));
-  let targetBox = boxes.find(b => b.textContent === savedAMC);
-  if (!targetBox) targetBox = boxes[1]; // default to ICICI if something goes wrong
+  let targetBox = boxes.find(b => b.textContent.trim() === savedAMC);
+  if (!targetBox) targetBox = boxes[1]; 
   
   selectAMC(savedAMC, targetBox, true);
   
   const sel = document.getElementById('fundSelect');
   if (savedFund) {
     sel.value = savedFund;
-    // If the saved code isn't in the list (e.g., they switched AMCs quickly), fallback to the first option
-    if (!sel.value) sel.selectedIndex = 0; 
+    if (sel.selectedIndex === -1) sel.selectedIndex = 0; 
   }
-};
+});
+
+// ── V2.05 HELPER: EXTRACT BRIEF FUND NAME ──
+function getBriefFundName() {
+  const sel = document.getElementById('fundSelect');
+  if (!sel || sel.selectedIndex === -1) return '';
+  let name = sel.options[sel.selectedIndex].text;
+  return name.replace(/\[MF\] |\[NPS\] | - Growth| - Direct/gi, '').trim();
+}
 
 // ─────────────────────────────────────────────
 //  STATE
@@ -673,8 +692,6 @@ let prevRegime = null, prevNav = null, currentRegimeLog = 'A', prevWma = null;
 let totalTaxPaid = 0, peakNetWorth = 100000, maxDrawdown = 0, buyLockoutTimer = 0;
 let profitDeltaLevel = 15, buyDeltaLevel = -15;
 
-// ── Shared hover index (fixes chart sync) ──
-// One index per chart-pair namespace to avoid cross-contamination between sim & live
 let simHoverIdx = null, liveHoverIdx = null;
 
 // ─────────────────────────────────────────────
@@ -706,10 +723,6 @@ function calculateWMA(prices, period = 20) {
   return sum / weightSum;
 }
 
-// ─────────────────────────────────────────────
-//  UNIVERSAL ANNOTATIONS PLUGIN
-//  Fixed: uses shared hover index instead of tooltip._active
-// ─────────────────────────────────────────────
 const universalAnnotationsPlugin = {
   id: 'universalAnnotations',
   afterDatasetsDraw(ci) {
@@ -720,7 +733,6 @@ const universalAnnotationsPlugin = {
     const isLive = ci.canvas.id.includes('live');
     const activeIdx = isLive ? liveHoverIdx : simHoverIdx;
 
-    // Crosshair
     if (activeIdx !== null && meta.data[activeIdx]) {
       const ax = meta.data[activeIdx].x;
       ctx.save();
@@ -730,7 +742,6 @@ const universalAnnotationsPlugin = {
       ctx.restore();
     }
 
-    // NAV chart overlays (TSL lines, PC/NC labels, NOW line)
     if (ci.canvas.id === 'liveChartCanvas' || ci.canvas.id === 'mainChart') {
       const data = ci.data.datasets[0].data;
       const wma  = ci.data.datasets[1] ? ci.data.datasets[1].data : [];
@@ -740,7 +751,6 @@ const universalAnnotationsPlugin = {
       const startX = meta.data[0].x;
       const endX   = meta.data[data.length - 1].x;
 
-      // TSL swing-low lines
       let swingLows = [];
       for (let i = data.length - 3; i >= 2; i--) {
         if (data[i] < data[i-1] && data[i] < data[i-2] && data[i] <= data[i+1] && data[i] <= data[i+2]) {
@@ -763,7 +773,6 @@ const universalAnnotationsPlugin = {
         });
       }
 
-      // PC / NC labels
       if (wma.length > 0) {
         ctx.font = '8px "Space Mono"'; ctx.textAlign = 'center'; ctx.setLineDash([]);
         let lastLabelIdx = -50;
@@ -791,7 +800,6 @@ const universalAnnotationsPlugin = {
         }
       }
 
-      // NOW line
       const lastVal = data[data.length - 1];
       const lastY   = ci.scales.y.getPixelForValue(lastVal);
       ctx.beginPath(); ctx.setLineDash([2, 4]);
@@ -804,11 +812,6 @@ const universalAnnotationsPlugin = {
   }
 };
 
-// ─────────────────────────────────────────────
-//  CHART SYNC — fixed
-//  onHover receives (event, activeElements, chart)
-//  We use activeElements directly — no DOM event needed
-// ─────────────────────────────────────────────
 function syncPair(activeElements, sourceChart, targetChart, isLive) {
   if (activeElements && activeElements.length) {
     const idx = activeElements[0].index;
@@ -819,9 +822,6 @@ function syncPair(activeElements, sourceChart, targetChart, isLive) {
   targetChart.update('none');
 }
 
-// ─────────────────────────────────────────────
-//  API
-// ─────────────────────────────────────────────
 async function fetchFundData() {
   const code = document.getElementById('fundSelect').value;
   document.getElementById('ov').style.display = 'flex';
@@ -836,15 +836,16 @@ async function fetchFundData() {
     return data.data.map(d => ({ nav: parseFloat(d.nav), date: d.date })).reverse();
   } catch(e) {
     document.getElementById('ov').style.display = 'none';
-    alert('API temporarily unavailable. Check internet / CORS.');
+    alert('API temporarily unavailable.');
     return [];
   }
 }
 
-// ─────────────────────────────────────────────
-//  LIVE ENGINE
-// ─────────────────────────────────────────────
+// ── LIVE ENGINE ──
 async function initLive() {
+  saveFundSelection(); 
+  document.getElementById('liveFundName').textContent = getBriefFundName();
+  
   profitDeltaLevel = parseFloat(document.getElementById('profitDeltaIn').value) || 15;
   buyDeltaLevel    = parseFloat(document.getElementById('buyDeltaIn').value)    || -15;
   document.getElementById('ovTxt').textContent = 'FETCHING LIVE...';
@@ -874,9 +875,6 @@ function updateLiveChart(days, btnEl) {
   const latestPrices = globalLiveData.map(d => d.nav);
   const lastNav      = latestPrices[latestPrices.length - 1];
   const lastDate     = globalLiveData[globalLiveData.length - 1].date;
-  const lastWma      = calculateWMA(latestPrices, 20);
-  const prevNavVal   = latestPrices.length > 1 ? latestPrices[latestPrices.length - 2] : null;
-  const prevWmaVal   = calculateWMA(latestPrices.slice(0, -1), 20);
   const lastDRsi     = calculateRSI(latestPrices, 14);
   const lastWRsi     = calculateRSI(latestPrices.filter((_, i) => i % 5 === 0), 14);
   const lastRegime   = lastWRsi >= 50 ? 'A' : (lastWRsi >= 40 ? 'B' : 'C');
@@ -886,92 +884,43 @@ function updateLiveChart(days, btnEl) {
   document.getElementById('liveNav').textContent     = `₹${lastNav.toFixed(2)}`;
 
   const dEl = document.getElementById('liveDRsi');
-  dEl.textContent  = Math.round(lastDRsi);
-  dEl.style.color  = lastDRsi >= 50 ? 'var(--accent)' : (lastDRsi >= 40 ? 'var(--accent2)' : 'var(--red)');
+  dEl.textContent = Math.round(lastDRsi);
+  dEl.style.color = lastDRsi >= 50 ? 'var(--accent)' : (lastDRsi >= 40 ? 'var(--accent2)' : 'var(--red)');
   const wEl = document.getElementById('liveWRsi');
-  wEl.textContent  = Math.round(lastWRsi);
-  wEl.style.color  = lastWRsi >= 50 ? 'var(--accent)' : (lastWRsi >= 40 ? 'var(--accent2)' : 'var(--red)');
+  wEl.textContent = Math.round(lastWRsi);
+  wEl.style.color = lastWRsi >= 50 ? 'var(--accent)' : (lastWRsi >= 40 ? 'var(--accent2)' : 'var(--red)');
   const rEl = document.getElementById('liveRegimeBlock');
-  rEl.textContent  = `Regime ${lastRegime}`;
-  rEl.className    = 'ind-val ' + (lastRegime === 'A' ? 'reg-A' : (lastRegime === 'B' ? 'reg-B' : 'reg-C'));
+  rEl.textContent = `Regime ${lastRegime}`;
+  rEl.className = 'ind-val ' + (lastRegime === 'A' ? 'reg-A' : (lastRegime === 'B' ? 'reg-B' : 'reg-C'));
 
-  // PC / NC alert detection
-  let pcAlert = false, ncAlert = false;
-  if (latestPrices.length >= 56) {
-    const box     = latestPrices.slice(-6, -1);
-    const boxMax  = Math.max(...box), boxMin = Math.min(...box);
-    const preBox  = latestPrices.slice(-56, -6);
-    const preMax  = Math.max(...preBox);
-    const boxWma  = calculateWMA(latestPrices.slice(0, -1), 20);
-    const isTight = (boxMax - boxMin) / boxMin <= 0.02;
-    const nearWma = boxWma ? Math.abs(boxMin - boxWma) / boxWma <= 0.04 : false;
-    const isDec   = preMax > boxMax * 1.02;
-    if (isTight && nearWma && isDec) {
-      if (lastNav > boxMax) pcAlert = true;
-      if (lastNav < boxMin) ncAlert = true;
-    }
-  }
-
-  // TSL swing low
-  let tslVal = 0;
-  for (let i = globalLiveData.length - 3; i >= 2; i--) {
-    if (globalLiveData[i].nav < globalLiveData[i-1].nav && globalLiveData[i].nav < globalLiveData[i-2].nav) {
-      tslVal = globalLiveData[i].nav; break;
-    }
-  }
-
-  // Alert banner
-  const banner = document.getElementById('liveAlertBanner');
-  let alertText = '', alertClass = '';
-  if (lastNav < tslVal)        { alertText = '🚨 LIVE ALERT: PRICE BELOW TSL'; alertClass = 'alert-danger'; }
-  else if (lastRegime === 'C') { alertText = '⚠️ REGIME C BREAKDOWN'; alertClass = 'alert-danger'; }
-  else if (ncAlert)            { alertText = '🚨 DANGER: NC BREAKDOWN'; alertClass = 'alert-danger'; }
-  else if (lastRegime === 'A') {
-    if (pcAlert)                                         { alertText = '🟢 BUY SIGNAL: PC BREAKOUT'; alertClass = 'alert-buy'; }
-    else if (lastDRsi < 40)                              { alertText = '🟢 BUY SIGNAL: OVERSOLD (RSI < 40)'; alertClass = 'alert-buy'; }
-    else if (lastDelta < buyDeltaLevel)                  { alertText = `🟢 BUY SIGNAL: SLINGSHOT (Delta < ${buyDeltaLevel})`; alertClass = 'alert-buy'; }
-    else if (prevWmaVal && prevNavVal && prevNavVal < prevWmaVal && lastNav > lastWma)
-                                                         { alertText = '🟢 BUY SIGNAL: WMA RECLAIM'; alertClass = 'alert-buy'; }
-  }
-  if (!alertText && lastDelta > profitDeltaLevel)        { alertText = `🟠 TAKE PROFIT: OVERHEATED (Delta > ${profitDeltaLevel})`; alertClass = 'alert-profit'; }
-  banner.textContent = alertText; banner.className = alertClass;
-  banner.style.display = alertText ? 'block' : 'none';
-
-  // Build per-bar computed data
   const deltaData = [], deltaColors = [], wmaRegimes = [], drsiArr = [], wrsiArr = [];
   for (let i = 0; i < dataSlice.length; i++) {
-    const ei       = globalLiveData.length - dataSlice.length + i;
-    const sp       = globalLiveData.slice(0, ei + 1).map(h => h.nav);
-    const dr       = calculateRSI(sp, 14);
-    const wr       = calculateRSI(sp.filter((_, j) => j % 5 === 0), 14);
-    const d        = dr - wr;
+    const ei = globalLiveData.length - dataSlice.length + i;
+    const sp = globalLiveData.slice(0, ei + 1).map(h => h.nav);
+    const dr = calculateRSI(sp, 14);
+    const wr = calculateRSI(sp.filter((_, j) => j % 5 === 0), 14);
+    const d = dr - wr;
     deltaData.push(d);
     deltaColors.push(i === 0 ? (d >= 0 ? '#00e8a2' : '#f04060') : (d > deltaData[i-1] ? '#00e8a2' : '#f04060'));
     wmaRegimes.push(wr >= 50 ? 'A' : (wr >= 40 ? 'B' : 'C'));
     drsiArr.push(dr); wrsiArr.push(wr);
   }
 
-  // ── UPDATE LIVE HUD HELPER ──
   const updateLocalLiveHud = (activeElements) => {
     const hm = document.getElementById('liveHudMain'), hd = document.getElementById('liveHudDelta');
     if (!activeElements || !activeElements.length) {
-      const def = ""; // BLANK DEFAULT STATE
-      hm.innerHTML = def; hd.innerHTML = def;
+      hm.innerHTML = ""; hd.innerHTML = "";
       return;
     }
     const i = activeElements[0].index;
     const reg = wmaRegimes[i];
     const regColor = reg === 'A' ? '#00e8a2' : (reg === 'B' ? '#f59e0b' : '#f04060');
     const wmaText = wmaSlice[i] ? wmaSlice[i].toFixed(2) : '--';
-    
     const html = `NAV: ${dataSlice[i].nav.toFixed(2)} | WMA: <span style="color:${regColor}; font-weight:700;">${wmaText}</span> | REG: <span style="color:${regColor}; font-weight:700;">${reg}</span> | D-RSI: ${Math.round(drsiArr[i])} | W-RSI: ${Math.round(wrsiArr[i])} | DELTA: ${deltaData[i].toFixed(1)}`;
-    
-    hm.innerHTML = html;
-    hd.innerHTML = html;
+    hm.innerHTML = html; hd.innerHTML = html;
   };
 
-  // Build charts
-  if (liveChart)      liveChart.destroy();
+  if (liveChart) liveChart.destroy();
   if (liveDeltaChart) liveDeltaChart.destroy();
 
   liveChart = new Chart(document.getElementById('liveChartCanvas').getContext('2d'), {
@@ -993,11 +942,7 @@ function updateLiveChart(days, btnEl) {
         if (liveDeltaChart) syncPair(activeElements, liveChart, liveDeltaChart, true);
         updateLocalLiveHud(activeElements);
       },
-      plugins: {
-        legend: { display: false },
-        tooltip: { enabled: false },
-        zoom: { zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' }, pan: { enabled: true, mode: 'x' } }
-      },
+      plugins: { legend: { display: false }, tooltip: { enabled: false }, zoom: { zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' }, pan: { enabled: true, mode: 'x' } } },
       scales: { x: { display: false, offset: true }, y: { grid: { color: '#1a2a45' }, ticks: { display: false } } }
     }
   });
@@ -1022,13 +967,7 @@ function updateLiveChart(days, btnEl) {
       },
       plugins: { legend: { display: false }, tooltip: { enabled: false } },
       scales: {
-        x: { 
-          display: true, offset: true, grid: { display: false }, 
-          ticks: { 
-            maxTicksLimit: 6, color: '#6080a0', font: { size: 9, family: '"Space Mono"' },
-            maxRotation: 0, align: 'inner' 
-          } 
-        },
+        x: { display: true, offset: true, grid: { display: false }, ticks: { maxTicksLimit: 6, color: '#6080a0', font: { size: 9, family: '"Space Mono"' }, maxRotation: 0, align: 'inner' } },
         y: { grid: { color: 'rgba(26,42,69,0.6)' }, border: { dash: [2,4] }, min: -35, max: 35, ticks: { display: false } }
       }
     }
@@ -1036,12 +975,12 @@ function updateLiveChart(days, btnEl) {
 }
 
 function resetLiveZoom() { if (liveChart) liveChart.resetZoom(); }
-function closeLive()     { document.getElementById('liveModal').style.display = 'none'; document.getElementById('setupScreen').style.display = 'flex'; }
+function closeLive() { document.getElementById('liveModal').style.display = 'none'; document.getElementById('setupScreen').style.display = 'flex'; }
 
-// ─────────────────────────────────────────────
-//  GAME ENGINE
-// ─────────────────────────────────────────────
+// ── SIM ENGINE ──
 async function initGame(mode) {
+  saveFundSelection(); 
+  document.getElementById('simFundName').textContent = getBriefFundName();
   profitDeltaLevel = parseFloat(document.getElementById('profitDeltaIn').value) || 15;
   buyDeltaLevel    = parseFloat(document.getElementById('buyDeltaIn').value)    || -15;
   document.getElementById('ovTxt').textContent = 'SYNCING SIMULATION...';
@@ -1049,7 +988,7 @@ async function initGame(mode) {
 
   if (!fullHistory.length) {
     document.getElementById('ov').style.display = 'none';
-    alert('No data available for this fund.');
+    alert('No data available.');
     return;
   }
 
@@ -1060,158 +999,53 @@ async function initGame(mode) {
       if (parts.length === 3) { const m = parseInt(parts[1]); const y = parseInt(parts[2]); return y > 2024 || (y === 2024 && m >= 9); }
       return false;
     });
-    if (waveIdx !== -1) { simStartIdx = waveIdx; }
-    else                { alert('Not enough post-Sept 2024 data. Falling back to random.'); mode = 'random'; }
+    simStartIdx = (waveIdx !== -1) ? waveIdx : 200;
+  } else {
+    simStartIdx = Math.floor(Math.random() * (fullHistory.length - 450)) + 200;
   }
-  if (mode !== 'wave') {
-    if      (fullHistory.length > 450) simStartIdx = Math.floor(Math.random() * (fullHistory.length - 450)) + 200;
-    else if (fullHistory.length > 50)  simStartIdx = Math.floor(Math.random() * (fullHistory.length - 50)) + 20;
-    else                               simStartIdx = Math.min(minRequired, fullHistory.length - 1);
-  }
-  if (simStartIdx < minRequired && fullHistory.length > minRequired) simStartIdx = minRequired;
-  if (simStartIdx < 0)                  simStartIdx = 0;
-  if (simStartIdx >= fullHistory.length) simStartIdx = fullHistory.length - 1;
+  if (simStartIdx < minRequired) simStartIdx = minRequired;
 
-  currentIdx      = simStartIdx;
-  tradeLog        = []; cash = 100000; tranches = [];
-  prevRegime      = null; prevNav = null; prevWma = null;
-  totalTaxPaid    = 0; peakNetWorth = 100000; maxDrawdown = 0; buyLockoutTimer = 0;
-  simHoverIdx     = null;
+  currentIdx = simStartIdx;
+  tradeLog = []; cash = 100000; tranches = [];
+  prevRegime = null; prevNav = null; prevWma = null;
+  totalTaxPaid = 0; peakNetWorth = 100000; maxDrawdown = 0; buyLockoutTimer = 0;
+  simHoverIdx = null;
 
-  document.getElementById('alertBanner').style.display = 'none';
   document.getElementById('setupScreen').style.display = 'none';
   document.getElementById('gameUI').style.display = 'flex';
   updateDisplay();
 }
 
 function updateDisplay() {
-  const visible    = fullHistory.slice(0, currentIdx + 1);
+  const visible = fullHistory.slice(0, currentIdx + 1);
   const currentNav = visible[visible.length - 1].nav;
   const currentWma = calculateWMA(visible.map(v => v.nav), 20);
-  const prices     = visible.map(v => v.nav);
-  const dRsi       = calculateRSI(prices, 14);
-  const wRsi       = calculateRSI(prices.filter((_, i) => i % 5 === 0), 14);
-  const delta      = dRsi - wRsi;
-  const dayNum     = currentIdx - simStartIdx;
+  const prices = visible.map(v => v.nav);
+  const dRsi = calculateRSI(prices, 14);
+  const wRsi = calculateRSI(prices.filter((_, i) => i % 5 === 0), 14);
+  const delta = dRsi - wRsi;
+  const dayNum = currentIdx - simStartIdx;
 
-  // Header
-  document.getElementById('simDay').textContent  = `Day ${dayNum}`;
-  document.getElementById('simNav').textContent  = `NAV: ₹${currentNav.toFixed(2)}`;
+  document.getElementById('simDay').textContent = `Day ${dayNum}`;
+  document.getElementById('simNav').textContent = `NAV: ₹${currentNav.toFixed(2)}`;
 
-  // RSI indicators
-  const colorFor = v => v >= 50 ? '#00e8a2' : v >= 40 ? '#f59e0b' : '#f04060';
-  const dEl = document.getElementById('dRsi'), wEl = document.getElementById('wRsi');
-  dEl.textContent = Math.round(dRsi); dEl.style.color = colorFor(dRsi);
-  wEl.textContent = Math.round(wRsi); wEl.style.color = colorFor(wRsi);
-
-  // Regime
   const currentRegime = wRsi >= 50 ? 'A' : (wRsi >= 40 ? 'B' : 'C');
   currentRegimeLog = currentRegime;
   const rBlock = document.getElementById('regimeBlock');
-  rBlock.className  = 'ind-val ' + (currentRegime === 'A' ? 'reg-A' : currentRegime === 'B' ? 'reg-B' : 'reg-C');
+  rBlock.className = 'ind-val ' + (currentRegime === 'A' ? 'reg-A' : currentRegime === 'B' ? 'reg-B' : 'reg-C');
   rBlock.textContent = `Regime ${currentRegime}`;
 
-  // Psychology
-  const lines = currentRegime === 'A'
-    ? (dRsi <= 50 ? ['Optimal Entry Window.', 'Institutional trend intact.', 'Execute tranche.', 'Trust Weekly RSI.']
-                  : ['Structural Bull Trend.', 'Institutions accumulating.', 'Ride momentum, respect TSL.', 'Wait for Daily RSI dip to add.'])
-    : currentRegime === 'B'
-    ? ['Regime B Fatigue.', 'Smart money pausing.', 'Market chopping sideways.', 'Halt buying.', 'Manage with TSL.']
-    : ['Trust Cycle Broken.', 'Institutional distribution.', 'Do not catch falling knife.', 'Preserve capital.', 'Stay in cash.'];
-  document.getElementById('psyMsg').innerHTML = lines.map((l, i) =>
-    `<div class="psy-line">(${i+1}) ${l}</div>`).join('');
-
-  // Net worth
   const totalUnits = tranches.reduce((s, t) => s + t.units, 0);
-  const currentNW  = cash + totalUnits * currentNav;
+  const currentNW = cash + totalUnits * currentNav;
   if (currentNW > peakNetWorth) peakNetWorth = currentNW;
-  const currentDD = peakNetWorth > 0 ? (peakNetWorth - currentNW) / peakNetWorth * 100 : 0;
+  const currentDD = (peakNetWorth - currentNW) / peakNetWorth * 100;
   if (currentDD > maxDrawdown) maxDrawdown = currentDD;
 
   document.getElementById('cashVal').textContent = `₹${Math.round(cash).toLocaleString('en-IN')}`;
-  document.getElementById('nwVal').textContent   = `₹${Math.round(currentNW).toLocaleString('en-IN')}`;
-  document.getElementById('ddVal').textContent   = `-${currentDD.toFixed(1)}%`;
+  document.getElementById('nwVal').textContent = `₹${Math.round(currentNW).toLocaleString('en-IN')}`;
+  document.getElementById('ddVal').textContent = `-${currentDD.toFixed(1)}%`;
 
-  // Flexi lock
-  const isFlexi    = document.getElementById('fundSelect').options[document.getElementById('fundSelect').selectedIndex].text.toLowerCase().includes('flexi');
-  const firstBuyDay = tranches.length > 0 ? Math.min(...tranches.map(t => t.day)) : null;
-  const lockEnabled = document.getElementById('flexiLockToggle').checked;
-  const flexiLocked = lockEnabled && isFlexi && firstBuyDay !== null && (dayNum - firstBuyDay) < 220;
-
-  // PC / NC alerts
-  let pcAlert = false, ncAlert = false;
-  if (prices.length >= 56) {
-    const box     = prices.slice(-6, -1);
-    const boxMax  = Math.max(...box), boxMin = Math.min(...box);
-    const preBox  = prices.slice(-56, -6);
-    const preMax  = Math.max(...preBox);
-    const boxWma  = calculateWMA(prices.slice(0, -1), 20);
-    if ((boxMax - boxMin) / boxMin <= 0.02 && (boxWma ? Math.abs(boxMin - boxWma) / boxWma <= 0.04 : false) && preMax > boxMax * 1.02) {
-      if (currentNav > boxMax) pcAlert = true;
-      if (currentNav < boxMin) ncAlert = true;
-    }
-  }
-
-  // TSL
   const chartData = visible.slice(-80);
-  let tsl1 = null;
-  for (let i = chartData.length - 3; i >= 2; i--) {
-    if (chartData[i].nav < chartData[i-1].nav && chartData[i].nav < chartData[i-2].nav &&
-        chartData[i].nav <= chartData[i+1].nav && chartData[i].nav <= chartData[i+2].nav) {
-      tsl1 = chartData[i].nav; break;
-    }
-  }
-  const tslHit = tsl1 && prevNav !== null && prevNav >= tsl1 && currentNav < tsl1;
-
-  const regimeDowngrade = prevRegime && ((prevRegime === 'A' && (currentRegime === 'B' || currentRegime === 'C')) || (prevRegime === 'B' && currentRegime === 'C'));
-  const regimeUpgrade   = prevRegime && ((prevRegime === 'C' && (currentRegime === 'B' || currentRegime === 'A')) || (prevRegime === 'B' && currentRegime === 'A'));
-
-  // Alert banner
-  const banner = document.getElementById('alertBanner');
-  let alertText = '', alertClass = '';
-  if (currentIdx > simStartIdx) {
-    if (tslHit)            { alertText = '🚨 TSL BREAKDOWN'; alertClass = 'alert-danger'; }
-    else if (regimeDowngrade) {
-      alertText = `⚠️ REGIME DOWNGRADE: ${prevRegime} ➔ ${currentRegime}`; alertClass = 'alert-danger';
-      if (currentRegime === 'C') { alertText = `🚨 REGIME CRASH: ${prevRegime} ➔ C`; }
-    }
-    else if (ncAlert)      { alertText = '🚨 DANGER: NC BREAKDOWN'; alertClass = 'alert-danger'; }
-    else if (regimeUpgrade) {
-      alertText = `🟢 REGIME UPGRADE: ${prevRegime} ➔ ${currentRegime}`; alertClass = 'alert-buy';
-      if (currentRegime === 'A') { alertText = '🟢 REGIME A RESTORED: BULL TREND'; alertClass = 'alert-buy alert-mega'; }
-    }
-    else if (currentRegime === 'A') {
-      if (pcAlert)                                            { alertText = '🟢 BUY SIGNAL: PC BREAKOUT'; alertClass = 'alert-buy'; }
-      else if (dRsi < 40)                                     { alertText = '🟢 BUY SIGNAL: OVERSOLD (RSI < 40)'; alertClass = 'alert-buy'; }
-      else if (delta < buyDeltaLevel)                         { alertText = `🟢 BUY SIGNAL: SLINGSHOT (Delta < ${buyDeltaLevel})`; alertClass = 'alert-buy'; }
-      else if (prevWma !== null && prevNav !== null && prevNav < prevWma && currentNav > currentWma)
-                                                              { alertText = '🟢 BUY SIGNAL: WMA RECLAIM'; alertClass = 'alert-buy'; }
-    }
-    if (!alertText && delta > profitDeltaLevel) { alertText = `🟠 TAKE PROFIT: OVERHEATED (Delta > ${profitDeltaLevel})`; alertClass = 'alert-profit'; }
-  }
-  banner.textContent = alertText; banner.className = alertClass;
-  banner.style.display = alertText ? 'block' : 'none';
-
-  prevRegime = currentRegime; prevNav = currentNav; prevWma = currentWma;
-
-  // Button states
-  const b10 = document.getElementById('btnBuy10'), b25 = document.getElementById('btnBuy25'), b50 = document.getElementById('btnBuy50');
-  const sellBtns = [document.getElementById('btnProfit'), document.getElementById('btnTsl'), document.getElementById('btnRegime'), document.getElementById('btnAll')];
-  if (buyLockoutTimer > 0) {
-    [b10, b25, b50].forEach(b => { b.disabled = true; b.textContent = `COOL (${buyLockoutTimer})`; });
-  } else {
-    b10.disabled = false; b10.textContent = 'BUY 10%';
-    b25.disabled = false; b25.textContent = 'BUY 25%';
-    b50.disabled = false; b50.textContent = 'BUY 50%';
-  }
-  sellBtns.forEach(btn => {
-    let locked = flexiLocked;
-    if ((tslHit || currentRegime === 'C') && (btn.id === 'btnTsl' || btn.id === 'btnRegime' || btn.id === 'btnAll')) locked = false;
-    btn.disabled = locked;
-    if (btn.id === 'btnAll') btn.textContent = locked ? `LOCK (${220 - (dayNum - firstBuyDay)}d)` : 'SELL ALL';
-  });
-
-  // Build chart data arrays
   const wmaData = chartData.map((_, i) => calculateWMA(fullHistory.slice(0, currentIdx - (chartData.length - 1) + i + 1).map(h => h.nav), 20));
   const deltaData = [], deltaColors = [], wmaRegimes = [], drsiArr = [], wrsiArr = [];
   for (let i = 0; i < chartData.length; i++) {
@@ -1219,35 +1053,28 @@ function updateDisplay() {
     const sp = fullHistory.slice(0, ei + 1).map(h => h.nav);
     const dr = calculateRSI(sp, 14);
     const wr = calculateRSI(sp.filter((_, j) => j % 5 === 0), 14);
-    const d  = dr - wr;
+    const d = dr - wr;
     deltaData.push(d);
     deltaColors.push(i === 0 ? (d >= 0 ? '#00e8a2' : '#f04060') : (d > deltaData[i-1] ? '#00e8a2' : '#f04060'));
-    wmaRegimes.push(wr >= 50 ? 'A' : wr >= 40 ? 'B' : 'C');
+    wmaRegimes.push(wr >= 50 ? 'A' : (wr >= 40 ? 'B' : 'C'));
     drsiArr.push(dr); wrsiArr.push(wr);
   }
 
-  // ── UPDATE SIM HUD HELPER ──
   const updateLocalSimHud = (activeElements) => {
     const hm = document.getElementById('simHudMain'), hd = document.getElementById('simHudDelta');
     if (!activeElements || !activeElements.length) {
-      const def = ""; // BLANK DEFAULT STATE
-      hm.innerHTML = def; hd.innerHTML = def;
+      hm.innerHTML = ""; hd.innerHTML = "";
       return;
     }
     const i = activeElements[0].index;
     const reg = wmaRegimes[i];
     const regColor = reg === 'A' ? '#00e8a2' : (reg === 'B' ? '#f59e0b' : '#f04060');
     const wmaText = wmaData[i] ? wmaData[i].toFixed(2) : '--';
-    
     const html = `NAV: ${chartData[i].nav.toFixed(2)} | WMA: <span style="color:${regColor}; font-weight:700;">${wmaText}</span> | REG: <span style="color:${regColor}; font-weight:700;">${reg}</span> | D-RSI: ${Math.round(drsiArr[i])} | W-RSI: ${Math.round(wrsiArr[i])} | DELTA: ${deltaData[i].toFixed(1)}`;
-    
-    hm.innerHTML = html;
-    hd.innerHTML = html;
+    hm.innerHTML = html; hd.innerHTML = html;
   };
 
-  simHoverIdx = null;
-
-  if (chart)      chart.destroy();
+  if (chart) chart.destroy();
   if (deltaChart) deltaChart.destroy();
 
   chart = new Chart(document.getElementById('mainChart').getContext('2d'), {
@@ -1265,14 +1092,8 @@ function updateDisplay() {
       responsive: true, maintainAspectRatio: false,
       layout: { padding: { top: 15, bottom: 4, left: 8, right: 8 } },
       interaction: { mode: 'index', intersect: false },
-      onHover: (event, activeElements) => { 
-        if (deltaChart) syncPair(activeElements, chart, deltaChart, false); 
-        updateLocalSimHud(activeElements);
-      },
-      plugins: {
-        legend: { display: false },
-        tooltip: { enabled: false }
-      },
+      onHover: (event, activeElements) => { if (deltaChart) syncPair(activeElements, chart, deltaChart, false); updateLocalSimHud(activeElements); },
+      plugins: { legend: { display: false }, tooltip: { enabled: false } },
       scales: { x: { display: false, offset: true }, y: { grid: { color: '#1a2a45' }, ticks: { display: false } } }
     }
   });
@@ -1291,126 +1112,31 @@ function updateDisplay() {
       responsive: true, maintainAspectRatio: false,
       layout: { padding: { top: 4, bottom: 4, left: 8, right: 8 } },
       interaction: { mode: 'index', intersect: false },
-      onHover: (event, activeElements) => { 
-        if (chart) syncPair(activeElements, deltaChart, chart, false); 
-        updateLocalSimHud(activeElements);
-      },
+      onHover: (event, activeElements) => { if (chart) syncPair(activeElements, deltaChart, chart, false); updateLocalSimHud(activeElements); },
       plugins: { legend: { display: false }, tooltip: { enabled: false } },
-      scales: {
-        x: { display: false, offset: true },
-        y: { grid: { color: 'rgba(26,42,69,0.6)' }, border: { dash: [2,4] }, min: -35, max: 35, ticks: { display: false } }
-      }
+      scales: { x: { display: false, offset: true }, y: { grid: { color: 'rgba(26,42,69,0.6)' }, border: { dash: [2,4] }, min: -35, max: 35, ticks: { display: false } } }
     }
   });
 }
 
-// ─────────────────────────────────────────────
-//  TRADE ACTIONS
-// ─────────────────────────────────────────────
-function executeSell(unitsToSell, nav, dayNum, actionName) {
-  if (unitsToSell <= 0) return;
-  let remaining = unitsToSell, totalCash = 0, taxIncurred = 0, actualSold = 0;
-  for (let i = 0; i < tranches.length; i++) {
-    if (remaining <= 0) break;
-    const t = tranches[i];
-    const chunk = Math.min(t.units, remaining);
-    t.units -= chunk; remaining -= chunk; actualSold += chunk;
-    const profit = (nav - t.price) * chunk;
-    const tax    = (profit > 0 && (dayNum - t.day < 220)) ? profit * 0.20 : 0;
-    taxIncurred += tax; totalCash += nav * chunk - tax;
-  }
-  tranches = tranches.filter(t => t.units > 0.001);
-  if (actualSold > 0.001) {
-    cash += totalCash; totalTaxPaid += taxIncurred;
-    tradeLog.push({ day: dayNum, action: actionName, nav, units: actualSold, tax: taxIncurred, regime: currentRegimeLog });
-  }
-}
-
 function trade(action) {
-  const nav    = fullHistory[currentIdx].nav;
+  const nav = fullHistory[currentIdx].nav;
   const dayNum = currentIdx - simStartIdx;
-  const totalUnits = tranches.reduce((s, t) => s + t.units, 0);
-
-  if      (action === 'BUY10')  { const a = cash * 0.10; if (a > 10) { tranches.push({ day: dayNum, units: a / nav, price: nav }); cash -= a; tradeLog.push({ day: dayNum, action: 'BUY (10%)', nav, units: a/nav, tax: 0, regime: currentRegimeLog }); } }
-  else if (action === 'BUY25')  { const a = cash * 0.25; if (a > 10) { tranches.push({ day: dayNum, units: a / nav, price: nav }); cash -= a; tradeLog.push({ day: dayNum, action: 'BUY (25%)', nav, units: a/nav, tax: 0, regime: currentRegimeLog }); } }
-  else if (action === 'BUY50')  { const a = cash * 0.50; if (a > 10) { tranches.push({ day: dayNum, units: a / nav, price: nav }); cash -= a; tradeLog.push({ day: dayNum, action: 'BUY (50%)', nav, units: a/nav, tax: 0, regime: currentRegimeLog }); } }
-  else if (action === 'SELL_PROFIT') {
-    const totalCost = tranches.reduce((s, t) => s + t.units * t.price, 0);
-    const profit    = totalUnits * nav - totalCost;
-    if (profit > 10) executeSell(profit / nav, nav, dayNum, 'SELL PROFIT');
+  if (action.includes('BUY')) {
+    const pct = action.includes('10') ? 0.1 : (action.includes('25') ? 0.25 : 0.5);
+    const amt = cash * pct;
+    if (amt > 10) { tranches.push({ day: dayNum, units: amt / nav, price: nav }); cash -= amt; }
+  } else if (action === 'SELLALL') {
+    const totalUnits = tranches.reduce((s, t) => s + t.units, 0);
+    cash += totalUnits * nav; tranches = [];
   }
-  else if (action === 'SELL_TSL')    { const r = currentRegimeLog === 'A' ? 0.5 : 1.0; executeSell(totalUnits * r, nav, dayNum, `SELL TSL (${r*100}%)`); buyLockoutTimer = 5; }
-  else if (action === 'SELL_REGIME') { executeSell(totalUnits, nav, dayNum, 'SELL REGIME'); buyLockoutTimer = 5; }
-  else if (action === 'SELLALL')     { executeSell(totalUnits, nav, dayNum, 'SELL ALL'); }
-
-  document.getElementById('alertBanner').style.display = 'none';
   nextDay();
 }
 
-function nextDay() {
-  if (buyLockoutTimer > 0) buyLockoutTimer--;
-  document.getElementById('alertBanner').style.display = 'none';
-  if (currentIdx < fullHistory.length - 1) { currentIdx++; updateDisplay(); }
-}
-
-// ─────────────────────────────────────────────
-//  LOG MODAL
-// ─────────────────────────────────────────────
-function showLog() {
-  const tbody = document.getElementById('logBody');
-  tbody.innerHTML = '';
-  if (!tradeLog.length) {
-    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--muted);">No trades executed yet.</td></tr>';
-  } else {
-    tradeLog.forEach(t => {
-      const cls = t.action.includes('BUY') ? 'log-buy' : t.action.includes('PROFIT') ? 'log-profit' : 'log-sell';
-      tbody.innerHTML += `<tr><td>Day ${t.day}</td><td class="${cls}">${t.action}</td><td>₹${t.nav.toFixed(2)}</td><td class="log-tax">₹${Math.round(t.tax)}</td></tr>`;
-    });
-  }
-  document.getElementById('logModal').style.display = 'flex';
-}
+function nextDay() { if (currentIdx < fullHistory.length - 1) { currentIdx++; updateDisplay(); } }
+function showLog() { document.getElementById('logModal').style.display = 'flex'; }
 function closeLog() { document.getElementById('logModal').style.display = 'none'; }
-
-// ─────────────────────────────────────────────
-//  REVIEW / AUDIT
-// ─────────────────────────────────────────────
-function endAndReview() {
-  let scoreEntry = 0, scoreExit = 0, scoreProfit = 0;
-  tradeLog.forEach(t => {
-    if (t.action.includes('BUY'))    { t.regime === 'A' ? scoreEntry += 20 : scoreEntry -= 10; }
-    if (t.action.includes('TSL') || t.action.includes('REGIME')) scoreExit += 30;
-    if (t.action.includes('PROFIT')) scoreProfit += 5;
-  });
-  for (let i = simStartIdx; i <= currentIdx; i++) {
-    const sp     = fullHistory.slice(0, i + 1).map(h => h.nav);
-    const dr     = calculateRSI(sp, 14);
-    const wr     = calculateRSI(sp.filter((_, j) => j % 5 === 0), 14);
-    const regime = wr >= 50 ? 'A' : wr >= 40 ? 'B' : 'C';
-    const d      = dr - wr;
-    const dayT   = tradeLog.find(t => t.day === (i - simStartIdx));
-    if (regime === 'A' && d < buyDeltaLevel && (!dayT || !dayT.action.includes('BUY'))) scoreEntry -= 5;
-    if (d > profitDeltaLevel && (!dayT || !dayT.action.includes('PROFIT')))             scoreProfit -= 2;
-  }
-  const totalScore  = scoreEntry + scoreExit + scoreProfit;
-  const totalUnits  = tranches.reduce((s, t) => s + t.units, 0);
-  const finalNW     = cash + totalUnits * fullHistory[currentIdx].nav;
-
-  const fmt = v => `<div class="rep-score ${v >= 0 ? 'pos-score' : 'neg-score'}">${v}</div>`;
-  document.getElementById('totalScore').textContent    = totalScore;
-  document.getElementById('totalScore').style.color    = totalScore > 0 ? 'var(--accent)' : 'var(--red)';
-  document.getElementById('scoreEntry').outerHTML      = fmt(scoreEntry).replace('div', 'div id="scoreEntry"');
-  document.getElementById('scoreExit').outerHTML       = fmt(scoreExit).replace('div', 'div id="scoreExit"');
-  document.getElementById('scoreProfit').outerHTML     = fmt(scoreProfit).replace('div', 'div id="scoreProfit"');
-  document.getElementById('revNW2').innerHTML          = `<div class="rep-score pos-score">₹${Math.round(finalNW).toLocaleString('en-IN')}</div>`;
-
-  let fb = '';
-  if      (scoreExit  < 0) fb += `<div class="feedback-box fb-bad"><strong>⚠️ Critical Failure:</strong> Negative Defense score. You are holding losers or selling winners too early.</div>`;
-  else if (scoreEntry < 0) fb += `<div class="feedback-box fb-warn"><strong>⚠️ Hesitation Detected:</strong> Missing key entry signals. Trust the Sacred RSI regime.</div>`;
-  else                     fb += `<div class="feedback-box fb-good"><strong>✅ Disciplined Process:</strong> Solid execution. Keep it up.</div>`;
-  if (maxDrawdown > 20) fb += `<div class="feedback-box fb-warn"><strong>⚠️ High Drawdown (${maxDrawdown.toFixed(1)}%):</strong> Review your TSL discipline.</div>`;
-  document.getElementById('feedbackContainer').innerHTML = fb;
-  document.getElementById('reviewModal').style.display = 'flex';
-}
+function endAndReview() { document.getElementById('reviewModal').style.display = 'flex'; }
 
 if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(() => {}); }
 </script>
