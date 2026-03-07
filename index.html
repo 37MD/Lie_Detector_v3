@@ -160,7 +160,7 @@
   .btn-review {
     background: var(--gold-dim); color: var(--gold); border: 1px solid var(--gold);
     padding: 5px 10px; font-size: 0.65rem; font-family: var(--mono);
-    cursor: pointer; border-radius: var(--radius-sm); letter-spacing: 0.08em font-weight: 700;
+    cursor: pointer; border-radius: var(--radius-sm); letter-spacing: 0.08em; font-weight: 700;
     transition: all 0.15s;
   }
   .btn-review:hover { background: rgba(251,191,36,0.15); }
@@ -228,7 +228,7 @@
     top: 4px;
     left: 8px;
     font-family: var(--sans);
-    font-size: 0.65rem;
+    font-size: 0.58rem; /* REDUCED BASE FONT SIZE */
     color: #ffffff;
     z-index: 10;
     pointer-events: none;
@@ -236,9 +236,20 @@
     background: rgba(7, 9, 15, 0.7);
     padding: 2px 4px;
     border-radius: 2px;
+    letter-spacing: -0.02em; /* Tighter letter spacing */
   }
   .chart-hud.delta {
     top: 16px; 
+  }
+
+  /* ── MOBILE OPTIMIZATION FOR HUD ── */
+  @media (max-width: 600px) {
+    .chart-hud {
+      font-size: 0.48rem; /* EVEN SMALLER ON MOBILE */
+      left: 4px; /* Push slightly closer to the edge */
+      padding: 2px;
+      letter-spacing: -0.05em; /* Compress text slightly more */
+    }
   }
 
   /* ── INDICATOR ROW ── */
