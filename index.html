@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>MF Lie Detector V2</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+
+  <!-- CDN Libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-zoom/2.0.1/chartjs-plugin-zoom.min.js" defer></script>
+
+  <!-- App Styles -->
+  <link rel="stylesheet" href="css/styles.css">
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+</head>
+<body>
+
+<!-- ── LOADING OVERLAY ──────────────────────────────────── -->
+<div id="ov">
+  <div class="spin"></div>
+  <span id="ovTxt">SYNCING...</span>
+</div>
+
+<!-- ── SETUP SCREEN ─────────────────────────────────────── -->
+<div id="setupScreen">
+  <div class="setup-logo">Sacred RSI Regime System</div>
+  <h1 class="setup-title">MF Lie Detector</h1>
+  <p class="setup-sub">V2 &mdash; Modular &bull; Chart Sync Fixed &bull; Optimised</p>
+
+  <div class="fund-grid" id="fundGrid">
+    <div class="fund-box" data-amc="HDFC"  onclick="selectAMC('HDFC', this)">HDFC</div>
+    <div class="fund-box" data-amc="ICICI" onclick="selectAMC('ICICI', this)">ICICI</div>
+    <div class="fund-box" data-amc="KOTAK" onclick="selectAMC('KOTAK', this)">KOTAK</div>
+    <div class="fund-box" data-amc="ABSL"  onclick="selectAMC('ABSL', this)">ABSL</div>
+  </div>
+
+  <select id="fundSelect" class="dropdown"></select>
+
+  <div class="custom-inputs">
+    <div class="c-input-box">
+      <span class="c-label">Profit Delta</span>
+      <input type="number" id="profitDeltaIn" class="c-num" style="color:var(--accent2);" value="15">
+    </div>
+    <div class="c-input-box">
+      <span class="c-label">Scout Buy</span>
+      <input type="number" id="buyDeltaIn" class="c-num" style="color:var(--accent);" value="-15">
+    </div>
+  </div>
+
+  <div class="toggle-container">
+    <input type="checkbox" id="flexiLockToggle" class="toggle-check" checked>
+    <label for="flexiLockToggle" style="cursor:pointer;">Enable "Flexicap Lock" Rule (220 days)</label>
+  </div>
+
+  <div class="setup-btns">
+    <button class="setup-btn setup-btn-sim"  onclick="initGame('random')">Simulator</button>
+    <button class="setup-btn setup-btn-wave" onclick="initGame('wave')">Wave Sim</button>
+    <button class="setup-btn setup-btn-live" onclick="initLive()">Live Chart</button>
+  </div>
+</div>
+
+<!-- ── LIVE COCKPIT MODAL ────────────────────────────────── -->
+<div id="liveModal" class="modal-overlay">
+  <div class="modal-close">
+    <div style="display:flex;gap:10px;align-items:center;">
+      <span class="modal-title" style="color:var(--accent2);">LIVE COCKPIT</span>
+      <button class="reset-zoom" onclick="resetLiveZoom()">RESET ZOOM</button>
+    </div>
+    <span class="modal-close-btn" onclick="closeLive()">[ X ] CLOSE</span>
+  </div>
+
+  <div id="liveAlertBanner"></div>
+
+  <div class="indicator-row">
+    <div class="ind-box">
+      <span class="label-sm" id="liveNavDate">NAV</span>
+      <div id="liveNav" class="ind-val" style="font-size:0.95rem;">--</div>
+    </div>
+    <div class="ind-box">
+      <span class="label-sm">Daily RSI</span>
+      <div id="liveDRsi" class="ind-val" style="font-size:0.95rem;">--</div>
+    </div>
+    <div class="ind-box">
+      <span class="label-sm">Weekly RSI</span>
+      <div id="liveWRsi" class="ind-val" style="font-size:0.95rem;">--</div>
+    </div>
+    <div class="ind-box">
+      <span class="label-sm">Regime</span>
+      <div id="liveRegimeBlock" class="ind-val" style="font-size:0.85rem;">--</div>
+    </div>
+  </div>
+
+  <div class="tf-row" id="liveTfRow">
+    <button class="tf-btn" onclick="updateLiveChart(10,  this)">2W</button>
+    <button class="tf-btn" onclick="updateLiveChart(21,  this)">1M</button>
+    <button class="tf-btn" onclick="updateLiveChart(63,  this)">3M</button>
+    <button class="tf-btn" onclick="updateLiveChart(125, this)">6M</button>
+    <button class="tf-btn" onclick="updateLiveChart(250, this)">1Y</button>
+  </div>
+
+  <div style="flex-grow:1;padding:6px 8px 8px;display:flex;flex-direction:column;min-height:0;">
+    <div class="chart-split">
+      <div class="chart-main-pane">
+        <div class="canvas-box"><canvas id="liveChartCanvas"></canvas></div>
+      </div>
+      <div class="chart-delta-pane">
+        <div class="delta-label">RSI DELTA · Daily &minus; Weekly</div>
+        <div class="canvas-box-bottom"><canvas id="liveDeltaCanvas"></canvas></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── TRADE LOG MODAL ───────────────────────────────────── -->
+<div id="logModal" class="modal-overlay">
+  <div class="modal-close">
+    <span class="modal-title" style="color:var(--text);">Trade History</span>
+    <span class="modal-close-btn" onclick="closeLog()">[ X ] CLOSE</span>
+  </div>
+  <div style="flex-grow:1;overflow-y:auto;padding:12px;">
+    <table class="log-table">
+      <thead>
+        <tr>
+          <th>Day</th><th>Action</th><th>NAV</th><th>Tax</th>
+        </tr>
+      </thead>
+      <tbody id="logBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ── REVIEW / AUDIT MODAL ─────────────────────────────── -->
+<div id="reviewModal" class="modal-overlay">
+  <div class="modal-close">
+    <span class="modal-title" style="color:var(--gold);">Process Audit</span>
+    <span class="modal-close-btn" onclick="location.reload()">[ RESTART ]</span>
+  </div>
+  <div class="review-container">
+    <div class="score-card" style="border-color:var(--gold);">
+      <div class="score-title">Total Process Score</div>
+      <div id="totalScore" class="score-val" style="color:var(--gold);">0</div>
+    </div>
+    <div class="report-grid">
+      <div class="report-item"><div class="rep-label">Entry · The Hunter</div>  <div id="scoreEntry"  class="rep-score">--</div></div>
+      <div class="report-item"><div class="rep-label">Exit · The Defender</div> <div id="scoreExit"   class="rep-score">--</div></div>
+      <div class="report-item"><div class="rep-label">Profit · The Sniper</div> <div id="scoreProfit" class="rep-score">--</div></div>
+      <div class="report-item"><div class="rep-label">Final Net Worth</div>     <div id="revNW2"      class="rep-score">--</div></div>
+    </div>
+    <p class="section-title">Behavioral Feedback</p>
+    <div id="feedbackContainer"></div>
+  </div>
+</div>
+
+<!-- ── GAME UI ───────────────────────────────────────────── -->
+<div id="gameUI" style="display:none;height:100vh;flex-direction:column;">
+  <header class="app-header">
+    <div class="logo">LIE DETECTOR <span>V2</span></div>
+    <div class="hdr-btns">
+      <button class="btn-log"    onclick="showLog()">LOG</button>
+      <button class="btn-review" onclick="endAndReview()">END &amp; REVIEW</button>
+    </div>
+  </header>
+
+  <div class="networth-header">
+    <div class="nw-col">
+      <span class="nw-lbl">Net Worth</span>
+      <span class="nw-val" id="nwVal" style="color:var(--accent);">₹1,00,000</span>
+    </div>
+    <div class="nw-divider"></div>
+    <div class="nw-col">
+      <span class="nw-lbl">Max DD</span>
+      <span class="nw-val" id="ddVal" style="color:var(--red);">0.0%</span>
+    </div>
+    <div class="nw-divider"></div>
+    <div class="nw-col">
+      <span class="nw-lbl">Cash</span>
+      <span class="nw-val" id="cashVal">₹1,00,000</span>
+    </div>
+  </div>
+
+  <div id="alertBanner"></div>
+
+  <main class="main-sim">
+    <div class="chart-container">
+      <div class="chart-header">
+        <span class="label-sm" id="simDay">Day 0</span>
+        <span class="chart-nav"  id="simNav">NAV: —</span>
+      </div>
+      <div class="chart-split">
+        <div class="chart-main-pane">
+          <div class="canvas-box"><canvas id="mainChart"></canvas></div>
+        </div>
+        <div class="chart-delta-pane">
+          <div class="delta-label">RSI DELTA · Daily &minus; Weekly</div>
+          <div class="canvas-box-bottom"><canvas id="deltaChart"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="indicator-row">
+      <div class="ind-box"><span class="label-sm">Daily RSI</span> <div id="dRsi"        class="ind-val">--</div></div>
+      <div class="ind-box"><span class="label-sm">Weekly RSI</span><div id="wRsi"        class="ind-val">--</div></div>
+      <div class="ind-box"><span class="label-sm">Regime</span>    <div id="regimeBlock" class="ind-val">--</div></div>
+    </div>
+
+    <div class="psy-box">
+      <span class="label-sm">Psychology Logic</span>
+      <div id="psyMsg" class="psy-logic">Analyzing institutional flow…</div>
+    </div>
+  </main>
+
+  <footer class="action-bar">
+    <button class="btn btn-buy"    id="btnBuy10"  onclick="trade('BUY10')">Buy 10%</button>
+    <button class="btn btn-hold"                  onclick="nextDay()">Hold</button>
+    <button class="btn btn-buy"    id="btnBuy25"  onclick="trade('BUY25')">Buy 25%</button>
+    <button class="btn btn-buy"    id="btnBuy50"  onclick="trade('BUY50')">Buy 50%</button>
+
+    <button class="btn btn-profit" id="btnProfit" onclick="trade('SELL_PROFIT')">Profit</button>
+    <button class="btn btn-sell"   id="btnTsl"    onclick="trade('SELL_TSL')">TSL</button>
+    <button class="btn btn-sell"   id="btnRegime" onclick="trade('SELL_REGIME')">Regime</button>
+    <button class="btn btn-sell"   id="btnAll"    onclick="trade('SELLALL')">Sell All</button>
+  </footer>
+</div>
+
+<!-- App entry point (ES Module) -->
+<script type="module" src="js/app.js"></script>
+
+</body>
+</html>
