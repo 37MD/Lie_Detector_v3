@@ -699,16 +699,6 @@ let simHoverIdx = null, liveHoverIdx = null;
 // ─────────────────────────────────────────────
 //  MATH HELPERS
 // ─────────────────────────────────────────────
-
-// NEW DATE FORMATTER FOR LIVE HUD
-function formatShortDate(dateStr) {
-  if (!dateStr) return '';
-  const parts = dateStr.split('-');
-  if (parts.length !== 3) return dateStr;
-  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  return `${parts[0]} ${months[parseInt(parts[1], 10) - 1]}`;
-}
-
 function calculateRSI(prices, period = 14) {
   if (prices.length <= 2) return 50;
   const p = Math.min(period, prices.length - 1);
@@ -949,11 +939,7 @@ function updateLiveChart(days, btnEl) {
     const reg = wmaRegimes[i];
     const regColor = reg === 'A' ? '#00e8a2' : (reg === 'B' ? '#f59e0b' : '#f04060');
     const wmaText = wmaSlice[i] ? wmaSlice[i].toFixed(2) : '--';
-    
-    // NEW DATE MODIFICATION IN HUD
-    const shortDt = formatShortDate(dataSlice[i].date);
-    const html = `<span style="color:var(--gold);font-weight:700;">[${shortDt}]</span> NAV: ${dataSlice[i].nav.toFixed(2)} | WMA: <span style="color:${regColor}; font-weight:700;">${wmaText}</span> | REG: <span style="color:${regColor}; font-weight:700;">${reg}</span> | D-RSI: ${Math.round(drsiArr[i])} | W-RSI: ${Math.round(wrsiArr[i])} | DELTA: ${deltaData[i].toFixed(1)}`;
-    
+    const html = `NAV: ${dataSlice[i].nav.toFixed(2)} | WMA: <span style="color:${regColor}; font-weight:700;">${wmaText}</span> | REG: <span style="color:${regColor}; font-weight:700;">${reg}</span> | D-RSI: ${Math.round(drsiArr[i])} | W-RSI: ${Math.round(wrsiArr[i])} | DELTA: ${deltaData[i].toFixed(1)}`;
     hm.innerHTML = html; hd.innerHTML = html;
   };
 
@@ -1004,8 +990,7 @@ function updateLiveChart(days, btnEl) {
       onHover: (event, activeElements) => { if (liveChart) syncPair(activeElements, liveDeltaChart, liveChart, true); updateLocalLiveHud(activeElements); },
       plugins: { legend: { display: false }, tooltip: { enabled: false } },
       scales: {
-        // NEW DATE MODIFICATION: HIDE X AXIS DATES
-        x: { display: false, offset: true }, 
+        x: { display: true, offset: true, grid: { display: false }, ticks: { maxTicksLimit: 6, color: '#6080a0', font: { size: 9, family: '"Space Mono"' }, maxRotation: 0, align: 'inner' } },
         
         /* ── V2.06: HIDDEN AXIS TO MAINTAIN SYNC WITH MAIN CHART ── */
         y: { 
