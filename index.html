@@ -99,7 +99,7 @@
   }
   .dropdown:focus { outline: none; border-color: var(--accent); }
 
-  /* ── V2.09: 3-TIER INPUT BOXES ── */
+  /* ── 3-TIER INPUT BOXES ── */
   .custom-inputs { display: flex; gap: 8px; width: 100%; max-width: 350px; margin-bottom: 0.75rem; }
   .c-input-box {
     flex: 1; background: var(--surface2); padding: 8px 6px;
@@ -196,7 +196,7 @@
   .alert-danger { background: var(--red); color: #fff; }
   .alert-buy { background: var(--accent); color: #021a0f; }
   .alert-profit { background: var(--accent2); color: #1a0a00; }
-  .alert-mega { font-size: 0.85rem !important; padding: 11px 12px !important; letter-spacing: 0.1em;}
+  .alert-mega { font-size: 0.85rem !important; padding: 11px 12px !important; letter-spacing: 0.1em; }
   @keyframes pulseAlert { 0%, 100% { opacity: 1; } 50% { opacity: 0.72; } }
 
   /* ── MAIN SIM AREA ── */
@@ -1201,6 +1201,8 @@ function updateDisplay() {
   const regimeUpgrade = prevRegime && ((prevRegime === 'C' && (currentRegime === 'B' || currentRegime === 'A')) || (prevRegime === 'B' && currentRegime === 'A'));
 
   const deltaData = [], deltaColors = [], deltaPhases = [], wmaRegimes = [], drsiArrHud = [], wrsiArrHud = [];
+  
+  // V2.10 BUG FIX: DECLARE THE INDICES FOR SIMULATOR
   const escapeIndices = [], collapseIndices = [];
   
   for (let i = 0; i < chartData.length; i++) {
@@ -1435,7 +1437,6 @@ function endAndReview() {
     const d      = dr - wr;
     const dayT   = tradeLog.find(t => t.day === (i - simStartIdx));
     
-    // Updated Punishments for missing thrusts or holding collapses
     if (d >= escapeDeltaLevel && (!dayT || !dayT.action.includes('BUY'))) scoreEntry -= 5;
     if (d <= collapseDeltaLevel && (!dayT || (!dayT.action.includes('SELL') && !dayT.action.includes('TSL')))) scoreExit -= 10;
     if (d >= profitDeltaLevel && d < escapeDeltaLevel && (!dayT || !dayT.action.includes('PROFIT'))) scoreProfit -= 2;
