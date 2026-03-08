@@ -99,7 +99,7 @@
   }
   .dropdown:focus { outline: none; border-color: var(--accent); }
 
-  /* ── 3-TIER INPUT BOXES ── */
+  /* ── 3-TIER INPUTS ── */
   .custom-inputs { display: flex; gap: 8px; width: 100%; max-width: 350px; margin-bottom: 0.75rem; }
   .c-input-box {
     flex: 1; background: var(--surface2); padding: 8px 6px;
@@ -695,9 +695,12 @@ let chart = null, deltaChart = null, liveChart = null, liveDeltaChart = null;
 let cash = 100000, tranches = [], tradeLog = [];
 let prevRegime = null, prevNav = null, currentRegimeLog = 'A', prevWma = null;
 let totalTaxPaid = 0, peakNetWorth = 100000, maxDrawdown = 0, buyLockoutTimer = 0;
+
+// V2.11: DYNAMIC INPUT VARIABLES
 let escapeDeltaLevel = 20, profitDeltaLevel = 15, collapseDeltaLevel = -20;
 let simHoverIdx = null, liveHoverIdx = null;
 
+// SHORT DATE FORMATTER [DD MMM]
 function formatShortDate(dateStr) {
   if (!dateStr) return '';
   const parts = dateStr.split('-');
@@ -741,6 +744,7 @@ const universalAnnotationsPlugin = {
     const isLive = ci.canvas.id.includes('live');
     const activeIdx = isLive ? liveHoverIdx : simHoverIdx;
     
+    // CROSSHAIR
     if (activeIdx !== null && meta.data[activeIdx]) {
       const ax = meta.data[activeIdx].x;
       ctx.save();
@@ -750,11 +754,13 @@ const universalAnnotationsPlugin = {
       ctx.restore();
     }
 
+    // VERTICAL LINES FOR ESCAPE / COLLAPSE (WORKS ON LIVE & SIM NOW)
     const signals = ci.config.options.verticalSignals;
     if (signals) {
         ctx.save();
         ctx.lineWidth = 1.5;
         ctx.setLineDash([]);
+        
         if (signals.escape && signals.escape.length > 0) {
             ctx.strokeStyle = 'rgba(0, 232, 162, 0.85)';
             signals.escape.forEach(idx => {
@@ -764,6 +770,7 @@ const universalAnnotationsPlugin = {
                 }
             });
         }
+        
         if (signals.collapse && signals.collapse.length > 0) {
             ctx.strokeStyle = 'rgba(240, 64, 96, 0.85)';
             signals.collapse.forEach(idx => {
@@ -884,9 +891,10 @@ async function initLive() {
   if (!globalLiveData.length) return;
   document.getElementById('setupScreen').style.display = 'none';
   document.getElementById('liveModal').style.display   = 'flex';
+  
   const btns = document.getElementById('liveTfRow').children;
   for (const b of btns) b.classList.remove('active');
-  btns[4].classList.add('active');
+  btns[4].classList.add('active'); // 1Y DEFAULT
   updateLiveChart(250);
 }
 
@@ -959,6 +967,7 @@ function updateLiveChart(days, btnEl) {
     if (d >= escapeDeltaLevel && prevD < escapeDeltaLevel) escapeIndices.push(i);
     if (d <= collapseDeltaLevel && prevD > collapseDeltaLevel) collapseIndices.push(i);
     
+    // 4-STATE COLOR ENGINE
     if (d >= escapeDeltaLevel) {
         deltaColors.push('rgba(0, 232, 162, 1)'); 
         deltaPhases.push('IGNITION');
@@ -977,6 +986,7 @@ function updateLiveChart(days, btnEl) {
     drsiArr.push(dr); wrsiArr.push(wr);
   }
 
+  // 3-DAY CONFIRMATION RULE
   let isBullConfirmed = false, isBearConfirmed = false;
   const len = deltaData.length;
   if (len >= 4) {
@@ -1026,8 +1036,10 @@ function updateLiveChart(days, btnEl) {
     const reg = wmaRegimes[i];
     const regColor = reg === 'A' ? '#00e8a2' : (reg === 'B' ? '#f59e0b' : '#f04060');
     const wmaText = wmaSlice[i] ? wmaSlice[i].toFixed(2) : '--';
+    
     const shortDt = formatShortDate(dataSlice[i].date);
     const html = `<span style="color:var(--gold);font-weight:700;">[${shortDt}]</span> NAV: ${dataSlice[i].nav.toFixed(2)} | WMA: <span style="color:${regColor}; font-weight:700;">${wmaText}</span> | REG: <span style="color:${regColor}; font-weight:700;">${reg}</span> | D-RSI: ${Math.round(drsiArr[i])} | W-RSI: ${Math.round(wrsiArr[i])} | DELTA: ${deltaData[i].toFixed(1)} [${deltaPhases[i]}]`;
+    
     hm.innerHTML = html; hd.innerHTML = html;
   };
 
@@ -1064,7 +1076,9 @@ function updateLiveChart(days, btnEl) {
       datasets: [
         { type: 'bar',  data: deltaData, backgroundColor: deltaColors, barPercentage: 1.0, categoryPercentage: 1.0 },
         { type: 'line', data: Array(dataSlice.length).fill(escapeDeltaLevel), borderColor: '#00e8a2', borderDash: [2,2], pointRadius: 0, borderWidth: 1 },
+        { type: 'line', data: Array(dataSlice.length).fill(profitDeltaLevel), borderColor: '#f59e0b', borderDash: [2,2], pointRadius: 0, borderWidth: 1 },
         { type: 'line', data: Array(dataSlice.length).fill(collapseDeltaLevel), borderColor: '#f04060', borderDash: [2,2], pointRadius: 0, borderWidth: 1 },
+        // ZERO LINE
         { type: 'line', data: Array(dataSlice.length).fill(0), borderColor: 'rgba(255,255,255,0.3)', borderDash: [4,4], pointRadius: 0, borderWidth: 1 }
       ]
     },
@@ -1076,7 +1090,7 @@ function updateLiveChart(days, btnEl) {
       onHover: (event, activeElements) => { if (liveChart) syncPair(activeElements, liveDeltaChart, liveChart, true); updateLocalLiveHud(activeElements); },
       plugins: { legend: { display: false }, tooltip: { enabled: false } },
       scales: {
-        x: { display: false, offset: true },
+        x: { display: false, offset: true }, // Clutter-free X Axis
         y: { position: 'right', grid: { color: 'rgba(26,42,69,0.6)' }, border: { dash: [2,4] }, min: -35, max: 35, ticks: { display: false }, afterFit: (scale) => { scale.width = 46; } }
       }
     }
@@ -1201,8 +1215,6 @@ function updateDisplay() {
   const regimeUpgrade = prevRegime && ((prevRegime === 'C' && (currentRegime === 'B' || currentRegime === 'A')) || (prevRegime === 'B' && currentRegime === 'A'));
 
   const deltaData = [], deltaColors = [], deltaPhases = [], wmaRegimes = [], drsiArrHud = [], wrsiArrHud = [];
-  
-  // V2.10 BUG FIX: DECLARE THE INDICES FOR SIMULATOR
   const escapeIndices = [], collapseIndices = [];
   
   for (let i = 0; i < chartData.length; i++) {
@@ -1213,6 +1225,7 @@ function updateDisplay() {
     const d = dr - wr;
     deltaData.push(d);
     
+    // TRACK THE SIGNALS IN SIMULATOR FOR VERTICAL LINES!
     const prevD = i > 0 ? deltaData[i-1] : 0;
     if (d >= escapeDeltaLevel && prevD < escapeDeltaLevel) escapeIndices.push(i);
     if (d <= collapseDeltaLevel && prevD > collapseDeltaLevel) collapseIndices.push(i);
@@ -1281,6 +1294,7 @@ function updateDisplay() {
   banner.textContent = alertText; banner.className = alertClass;
   banner.style.display = alertText ? 'block' : 'none';
 
+  // AUTO-RESET PENALTY ON GREEN LIGHT
   if (alertClass.includes('alert-buy')) {
       buyLockoutTimer = 0;
   }
@@ -1345,7 +1359,9 @@ function updateDisplay() {
       datasets: [
         { type: 'bar',  data: deltaData, backgroundColor: deltaColors, barPercentage: 1.0, categoryPercentage: 1.0 },
         { type: 'line', data: Array(chartData.length).fill(escapeDeltaLevel), borderColor: '#00e8a2', borderDash: [2,2], pointRadius: 0, borderWidth: 1 },
+        { type: 'line', data: Array(chartData.length).fill(profitDeltaLevel), borderColor: '#f59e0b', borderDash: [2,2], pointRadius: 0, borderWidth: 1 },
         { type: 'line', data: Array(chartData.length).fill(collapseDeltaLevel), borderColor: '#f04060', borderDash: [2,2], pointRadius: 0, borderWidth: 1 },
+        // ZERO LINE
         { type: 'line', data: Array(chartData.length).fill(0), borderColor: 'rgba(255,255,255,0.3)', borderDash: [4,4], pointRadius: 0, borderWidth: 1 }
       ]
     },
@@ -1437,6 +1453,7 @@ function endAndReview() {
     const d      = dr - wr;
     const dayT   = tradeLog.find(t => t.day === (i - simStartIdx));
     
+    // UPDATED SCORING LOGIC FOR ESCAPE/COLLAPSE
     if (d >= escapeDeltaLevel && (!dayT || !dayT.action.includes('BUY'))) scoreEntry -= 5;
     if (d <= collapseDeltaLevel && (!dayT || (!dayT.action.includes('SELL') && !dayT.action.includes('TSL')))) scoreExit -= 10;
     if (d >= profitDeltaLevel && d < escapeDeltaLevel && (!dayT || !dayT.action.includes('PROFIT'))) scoreProfit -= 2;
