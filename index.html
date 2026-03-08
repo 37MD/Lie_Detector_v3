@@ -101,12 +101,12 @@
 
   .custom-inputs { display: flex; gap: 8px; width: 100%; max-width: 350px; margin-bottom: 0.75rem; }
   .c-input-box {
-    flex: 1; background: var(--surface2); padding: 8px 10px;
+    flex: 1; background: var(--surface2); padding: 8px 6px;
     border-radius: var(--radius); border: 1.5px solid var(--border);
-    transition: border-color 0.15s;
+    transition: border-color 0.15s; text-align: center;
   }
   .c-input-box:focus-within { border-color: var(--accent); }
-  .c-label { font-size: 0.55rem; color: var(--muted); display: block; margin-bottom: 3px; letter-spacing: 0.1em; text-transform: uppercase;}
+  .c-label { font-size: 0.55rem; color: var(--muted); display: block; margin-bottom: 3px; letter-spacing: 0.05em; text-transform: uppercase;}
   .c-num {
     width: 100%; background: transparent; border: none;
     font-weight: 700; font-size: 1rem; font-family: var(--mono);
@@ -410,11 +410,15 @@
 
   <div class="custom-inputs">
     <div class="c-input-box">
-      <span class="c-label">Escape Velocity (+)</span>
+      <span class="c-label">Escape (+)</span>
       <input type="number" id="escapeDeltaIn" class="c-num" style="color: var(--accent);" value="20">
     </div>
     <div class="c-input-box">
-      <span class="c-label">Collapse Limit (-)</span>
+      <span class="c-label">Profit (+)</span>
+      <input type="number" id="profitDeltaIn" class="c-num" style="color: var(--accent2);" value="15">
+    </div>
+    <div class="c-input-box">
+      <span class="c-label">Collapse (-)</span>
       <input type="number" id="collapseDeltaIn" class="c-num" style="color: var(--red);" value="-20">
     </div>
   </div>
@@ -576,7 +580,7 @@
 
 <script>
 // ─────────────────────────────────────────────
-//  DATA
+//  DATA 
 // ─────────────────────────────────────────────
 const amcFunds = {
   'HDFC': [
@@ -639,7 +643,6 @@ const amcFunds = {
   ]
 };
 
-// ── LOCAL STORAGE SAVING ──
 function saveFundSelection() {
   const activeBtn = document.querySelector('#fundGrid .fund-box.active');
   const sel = document.getElementById('fundSelect');
@@ -691,15 +694,9 @@ let chart = null, deltaChart = null, liveChart = null, liveDeltaChart = null;
 let cash = 100000, tranches = [], tradeLog = [];
 let prevRegime = null, prevNav = null, currentRegimeLog = 'A', prevWma = null;
 let totalTaxPaid = 0, peakNetWorth = 100000, maxDrawdown = 0, buyLockoutTimer = 0;
-
-// V2.08: REWIRED THRESHOLDS
-let escapeDeltaLevel = 20, collapseDeltaLevel = -20;
-
+let escapeDeltaLevel = 20, profitDeltaLevel = 15, collapseDeltaLevel = -20;
 let simHoverIdx = null, liveHoverIdx = null;
 
-// ─────────────────────────────────────────────
-//  MATH HELPERS
-// ─────────────────────────────────────────────
 function calculateRSI(prices, period = 14) {
   if (prices.length <= 2) return 50;
   const p = Math.min(period, prices.length - 1);
@@ -726,6 +723,9 @@ function calculateWMA(prices, period = 20) {
   return sum / weightSum;
 }
 
+// ─────────────────────────────────────────────
+//  V2.09: UNIVERSAL ANNOTATIONS + VERTICAL LINES
+// ─────────────────────────────────────────────
 const universalAnnotationsPlugin = {
   id: 'universalAnnotations',
   afterDatasetsDraw(ci) {
@@ -734,6 +734,8 @@ const universalAnnotationsPlugin = {
     if (!meta.data || meta.data.length === 0) return;
     const isLive = ci.canvas.id.includes('live');
     const activeIdx = isLive ? liveHoverIdx : simHoverIdx;
+    
+    // Crosshair rendering
     if (activeIdx !== null && meta.data[activeIdx]) {
       const ax = meta.data[activeIdx].x;
       ctx.save();
@@ -742,6 +744,38 @@ const universalAnnotationsPlugin = {
       ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(148,163,184,0.6)'; ctx.stroke();
       ctx.restore();
     }
+
+    // Vertical Thrust / Collapse Lines (Only rendered on Live Charts)
+    const signals = ci.config.options.verticalSignals;
+    if (signals && isLive) {
+        ctx.save();
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([]);
+        
+        // Escape Velocity (Green)
+        if (signals.escape && signals.escape.length > 0) {
+            ctx.strokeStyle = 'rgba(0, 232, 162, 0.85)';
+            signals.escape.forEach(idx => {
+                if(meta.data[idx] && meta.data[idx].x !== undefined) {
+                    const x = meta.data[idx].x;
+                    ctx.beginPath(); ctx.moveTo(x, ci.scales.y.top); ctx.lineTo(x, ci.scales.y.bottom); ctx.stroke();
+                }
+            });
+        }
+        
+        // Structural Collapse (Red)
+        if (signals.collapse && signals.collapse.length > 0) {
+            ctx.strokeStyle = 'rgba(240, 64, 96, 0.85)';
+            signals.collapse.forEach(idx => {
+                if(meta.data[idx] && meta.data[idx].x !== undefined) {
+                    const x = meta.data[idx].x;
+                    ctx.beginPath(); ctx.moveTo(x, ci.scales.y.top); ctx.lineTo(x, ci.scales.y.bottom); ctx.stroke();
+                }
+            });
+        }
+        ctx.restore();
+    }
+
     if (ci.canvas.id === 'liveChartCanvas' || ci.canvas.id === 'mainChart') {
       const data = ci.data.datasets[0].data;
       const wma  = ci.data.datasets[1] ? ci.data.datasets[1].data : [];
@@ -834,13 +868,15 @@ async function fetchFundData() {
   }
 }
 
-// ── LIVE ENGINE ──
+// ─────────────────────────────────────────────
+//  LIVE ENGINE
+// ─────────────────────────────────────────────
 async function initLive() {
   saveFundSelection(); 
   document.getElementById('liveFundName').textContent = getBriefFundName();
   
-  // V2.08: FETCH NEW INPUTS
   escapeDeltaLevel   = parseFloat(document.getElementById('escapeDeltaIn').value) || 20;
+  profitDeltaLevel   = parseFloat(document.getElementById('profitDeltaIn').value) || 15;
   collapseDeltaLevel = parseFloat(document.getElementById('collapseDeltaIn').value) || -20;
   
   document.getElementById('ovTxt').textContent = 'FETCHING LIVE...';
@@ -908,7 +944,6 @@ function updateLiveChart(days, btnEl) {
   const prevNavVal = latestPrices.length > 1 ? latestPrices[latestPrices.length - 2] : null;
   const prevWmaVal = calculateWMA(latestPrices.slice(0, -1), 20);
   
-  // V2.08: REWIRED LIVE ALERT LOGIC (MOMENTUM EXTREMES PRIORITY 1)
   const banner = document.getElementById('liveAlertBanner');
   let alertText = '', alertClass = '';
   
@@ -928,10 +963,17 @@ function updateLiveChart(days, btnEl) {
       else if (prevWmaVal && prevNavVal && prevNavVal < prevWmaVal && lastNav > lastWma) { alertText = '🟢 BUY SIGNAL: WMA RECLAIM'; alertClass = 'alert-buy'; }
   }
   
+  // V2.09: Restored Take Profit Zone (Between 15 and 20)
+  if (!alertText && lastDelta >= profitDeltaLevel && lastDelta < escapeDeltaLevel) { 
+      alertText = `🟠 TAKE PROFIT: OVERHEATED (Delta > ${profitDeltaLevel})`; alertClass = 'alert-profit'; 
+  }
+  
   banner.textContent = alertText; banner.className = alertClass;
   banner.style.display = alertText ? 'block' : 'none';
 
   const deltaData = [], deltaColors = [], wmaRegimes = [], drsiArr = [], wrsiArr = [];
+  const escapeIndices = [], collapseIndices = [];
+  
   for (let i = 0; i < dataSlice.length; i++) {
     const ei = globalLiveData.length - dataSlice.length + i;
     const sp = globalLiveData.slice(0, ei + 1).map(h => h.nav);
@@ -939,6 +981,12 @@ function updateLiveChart(days, btnEl) {
     const wr = calculateRSI(sp.filter((_, j) => j % 5 === 0), 14);
     const d = dr - wr;
     deltaData.push(d);
+    
+    // V2.09: Log crossovers for vertical lines
+    const prevD = i > 0 ? deltaData[i-1] : 0;
+    if (d >= escapeDeltaLevel && prevD < escapeDeltaLevel) escapeIndices.push(i);
+    if (d <= collapseDeltaLevel && prevD > collapseDeltaLevel) collapseIndices.push(i);
+    
     deltaColors.push(i === 0 ? (d >= 0 ? '#00e8a2' : '#f04060') : (d > deltaData[i-1] ? '#00e8a2' : '#f04060'));
     wmaRegimes.push(wr >= 50 ? 'A' : (wr >= 40 ? 'B' : 'C'));
     drsiArr.push(dr); wrsiArr.push(wr);
@@ -957,6 +1005,7 @@ function updateLiveChart(days, btnEl) {
 
   if (liveChart) liveChart.destroy();
   if (liveDeltaChart) liveDeltaChart.destroy();
+  
   liveChart = new Chart(document.getElementById('liveChartCanvas').getContext('2d'), {
     type: 'line', plugins: [universalAnnotationsPlugin],
     data: {
@@ -968,18 +1017,14 @@ function updateLiveChart(days, btnEl) {
     },
     options: {
       responsive: true, maintainAspectRatio: false,
+      verticalSignals: { escape: escapeIndices, collapse: collapseIndices },
       layout: { padding: { top: 15, bottom: 4, left: 8, right: 8 } },
       interaction: { mode: 'index', intersect: false },
       onHover: (event, activeElements) => { if (liveDeltaChart) syncPair(activeElements, liveChart, liveDeltaChart, true); updateLocalLiveHud(activeElements); },
       plugins: { legend: { display: false }, tooltip: { enabled: false }, zoom: { zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' }, pan: { enabled: true, mode: 'x' } } },
       scales: { 
         x: { display: false, offset: true }, 
-        y: { 
-          position: 'right',
-          grid: { color: '#1a2a45' }, 
-          ticks: { display: true, color: '#6080a0', font: { size: 9, family: '"Space Mono"' }, maxTicksLimit: 6 },
-          afterFit: (scale) => { scale.width = 46; } 
-        } 
+        y: { position: 'right', grid: { color: '#1a2a45' }, ticks: { display: true, color: '#6080a0', font: { size: 9, family: '"Space Mono"' }, maxTicksLimit: 6 }, afterFit: (scale) => { scale.width = 46; } } 
       }
     }
   });
@@ -990,27 +1035,20 @@ function updateLiveChart(days, btnEl) {
       labels: dataSlice.map(d => d.date),
       datasets: [
         { type: 'bar',  data: deltaData, backgroundColor: deltaColors, barPercentage: 1.0, categoryPercentage: 1.0 },
-        // V2.08: TOP LINE IS NOW GREEN (ESCAPE VELOCITY), BOTTOM IS RED (COLLAPSE)
         { type: 'line', data: Array(dataSlice.length).fill(escapeDeltaLevel), borderColor: '#00e8a2', borderDash: [2,2], pointRadius: 0, borderWidth: 1 },
         { type: 'line', data: Array(dataSlice.length).fill(collapseDeltaLevel), borderColor: '#f04060', borderDash: [2,2], pointRadius: 0, borderWidth: 1 }
       ]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
+      verticalSignals: { escape: escapeIndices, collapse: collapseIndices },
       layout: { padding: { top: 4, bottom: 4, left: 8, right: 8 } },
       interaction: { mode: 'index', intersect: false },
       onHover: (event, activeElements) => { if (liveChart) syncPair(activeElements, liveDeltaChart, liveChart, true); updateLocalLiveHud(activeElements); },
       plugins: { legend: { display: false }, tooltip: { enabled: false } },
       scales: {
         x: { display: true, offset: true, grid: { display: false }, ticks: { maxTicksLimit: 6, color: '#6080a0', font: { size: 9, family: '"Space Mono"' }, maxRotation: 0, align: 'inner' } },
-        y: { 
-          position: 'right',
-          grid: { color: 'rgba(26,42,69,0.6)' }, 
-          border: { dash: [2,4] }, 
-          min: -35, max: 35, 
-          ticks: { display: false },
-          afterFit: (scale) => { scale.width = 46; }
-        }
+        y: { position: 'right', grid: { color: 'rgba(26,42,69,0.6)' }, border: { dash: [2,4] }, min: -35, max: 35, ticks: { display: false }, afterFit: (scale) => { scale.width = 46; } }
       }
     }
   });
@@ -1024,8 +1062,8 @@ async function initGame(mode) {
   saveFundSelection(); 
   document.getElementById('simFundName').textContent = getBriefFundName();
   
-  // V2.08: FETCH NEW INPUTS
   escapeDeltaLevel   = parseFloat(document.getElementById('escapeDeltaIn').value) || 20;
+  profitDeltaLevel   = parseFloat(document.getElementById('profitDeltaIn').value) || 15;
   collapseDeltaLevel = parseFloat(document.getElementById('collapseDeltaIn').value) || -20;
   
   document.getElementById('ovTxt').textContent = 'SYNCING SIMULATION...';
@@ -1078,7 +1116,6 @@ function updateDisplay() {
   rBlock.className = 'ind-val ' + (currentRegime === 'A' ? 'reg-A' : (currentRegime === 'B' ? 'reg-B' : 'reg-C'));
   rBlock.textContent = `Regime ${currentRegime}`;
 
-  // V2.08: REWIRED PSYCHOLOGY ENGINE FOR ESCAPE VELOCITY
   let lines = [];
   if (delta >= escapeDeltaLevel) {
       lines = ['🚀 Escape Velocity Achieved.', 'Institutional momentum thrust.', 'Do not sell early.', 'Ride the parabolic wave.'];
@@ -1134,7 +1171,6 @@ function updateDisplay() {
   const regimeDowngrade = prevRegime && ((prevRegime === 'A' && (currentRegime === 'B' || currentRegime === 'C')) || (prevRegime === 'B' && currentRegime === 'C'));
   const regimeUpgrade = prevRegime && ((prevRegime === 'C' && (currentRegime === 'B' || currentRegime === 'A')) || (prevRegime === 'B' && currentRegime === 'A'));
 
-  // V2.08: REWIRED SIM ALERT LOGIC (MOMENTUM EXTREMES PRIORITY 1)
   const banner = document.getElementById('alertBanner');
   let alertText = '', alertClass = '';
   if (currentIdx > simStartIdx) {
@@ -1157,9 +1193,19 @@ function updateDisplay() {
         else if (dRsi < 40) { alertText = '🟢 BUY SIGNAL: OVERSOLD (RSI < 40)'; alertClass = 'alert-buy'; }
         else if (prevWma !== null && prevNav !== null && prevNav < prevWma && currentNav > currentWma) { alertText = '🟢 BUY SIGNAL: WMA RECLAIM'; alertClass = 'alert-buy'; }
     }
+    
+    // V2.09: Restored Take Profit Zone in Simulator
+    if (!alertText && delta >= profitDeltaLevel && delta < escapeDeltaLevel) { 
+        alertText = `🟠 TAKE PROFIT: OVERHEATED (Delta > ${profitDeltaLevel})`; alertClass = 'alert-profit'; 
+    }
   }
   banner.textContent = alertText; banner.className = alertClass;
   banner.style.display = alertText ? 'block' : 'none';
+  
+  // V2.09: SMART COOLING PERIOD RESET (Overrides penalty if market flashes green)
+  if (alertClass.includes('alert-buy')) {
+      buyLockoutTimer = 0;
+  }
 
   prevRegime = currentRegime; prevNav = currentNav; prevWma = currentWma;
 
@@ -1229,7 +1275,6 @@ function updateDisplay() {
       labels: chartData.map((_, i) => i),
       datasets: [
         { type: 'bar',  data: deltaData, backgroundColor: deltaColors, barPercentage: 1.0, categoryPercentage: 1.0 },
-        // V2.08: TOP LINE IS NOW GREEN (ESCAPE VELOCITY), BOTTOM IS RED (COLLAPSE)
         { type: 'line', data: Array(chartData.length).fill(escapeDeltaLevel), borderColor: '#00e8a2', borderDash: [2,2], pointRadius: 0, borderWidth: 1 },
         { type: 'line', data: Array(chartData.length).fill(collapseDeltaLevel), borderColor: '#f04060', borderDash: [2,2], pointRadius: 0, borderWidth: 1 }
       ]
@@ -1307,7 +1352,6 @@ function showLog() {
 }
 function closeLog() { document.getElementById('logModal').style.display = 'none'; }
 
-// V2.08: REMOVED SCORE PENALTIES FOR IGNORING EXHAUSTION/DIPS (BECAUSE THEY ARE NOW THRUST/COLLAPSE)
 function endAndReview() { 
   let scoreEntry = 0, scoreExit = 0, scoreProfit = 0;
   tradeLog.forEach(t => {
