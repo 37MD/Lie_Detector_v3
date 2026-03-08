@@ -456,8 +456,8 @@
     <button class="tf-btn" onclick="updateLiveChart(10, this)">2W</button>
     <button class="tf-btn" onclick="updateLiveChart(21, this)">1M</button>
     <button class="tf-btn" onclick="updateLiveChart(63, this)">3M</button>
-    <button class="tf-btn active" onclick="updateLiveChart(125, this)">6M</button>
-    <button class="tf-btn" onclick="updateLiveChart(250, this)">1Y</button>
+    <button class="tf-btn" onclick="updateLiveChart(125, this)">6M</button>
+    <button class="tf-btn active" onclick="updateLiveChart(250, this)">1Y</button>
   </div>
   <div style="flex-grow:1;padding:6px 8px 8px;display:flex;flex-direction:column;min-height:0;">
     <div class="chart-split">
@@ -699,6 +699,14 @@ let simHoverIdx = null, liveHoverIdx = null;
 // ─────────────────────────────────────────────
 //  MATH HELPERS
 // ─────────────────────────────────────────────
+function formatShortDate(dateStr) {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  if (parts.length !== 3) return dateStr;
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  return `${parts[0]} ${months[parseInt(parts[1], 10) - 1]}`;
+}
+
 function calculateRSI(prices, period = 14) {
   if (prices.length <= 2) return 50;
   const p = Math.min(period, prices.length - 1);
@@ -846,8 +854,8 @@ async function initLive() {
   document.getElementById('liveModal').style.display   = 'flex';
   const btns = document.getElementById('liveTfRow').children;
   for (const b of btns) b.classList.remove('active');
-  btns[3].classList.add('active');
-  updateLiveChart(125);
+  btns[4].classList.add('active');
+  updateLiveChart(250);
 }
 
 function updateLiveChart(days, btnEl) {
@@ -939,7 +947,8 @@ function updateLiveChart(days, btnEl) {
     const reg = wmaRegimes[i];
     const regColor = reg === 'A' ? '#00e8a2' : (reg === 'B' ? '#f59e0b' : '#f04060');
     const wmaText = wmaSlice[i] ? wmaSlice[i].toFixed(2) : '--';
-    const html = `NAV: ${dataSlice[i].nav.toFixed(2)} | WMA: <span style="color:${regColor}; font-weight:700;">${wmaText}</span> | REG: <span style="color:${regColor}; font-weight:700;">${reg}</span> | D-RSI: ${Math.round(drsiArr[i])} | W-RSI: ${Math.round(wrsiArr[i])} | DELTA: ${deltaData[i].toFixed(1)}`;
+    const shortDt = formatShortDate(dataSlice[i].date);
+    const html = `<span style="color:var(--gold);font-weight:700;">[${shortDt}]</span> NAV: ${dataSlice[i].nav.toFixed(2)} | WMA: <span style="color:${regColor}; font-weight:700;">${wmaText}</span> | REG: <span style="color:${regColor}; font-weight:700;">${reg}</span> | D-RSI: ${Math.round(drsiArr[i])} | W-RSI: ${Math.round(wrsiArr[i])} | DELTA: ${deltaData[i].toFixed(1)}`;
     hm.innerHTML = html; hd.innerHTML = html;
   };
 
@@ -990,7 +999,7 @@ function updateLiveChart(days, btnEl) {
       onHover: (event, activeElements) => { if (liveChart) syncPair(activeElements, liveDeltaChart, liveChart, true); updateLocalLiveHud(activeElements); },
       plugins: { legend: { display: false }, tooltip: { enabled: false } },
       scales: {
-        x: { display: true, offset: true, grid: { display: false }, ticks: { maxTicksLimit: 6, color: '#6080a0', font: { size: 9, family: '"Space Mono"' }, maxRotation: 0, align: 'inner' } },
+        x: { display: false, offset: true }, 
         
         /* ── V2.06: HIDDEN AXIS TO MAINTAIN SYNC WITH MAIN CHART ── */
         y: { 
