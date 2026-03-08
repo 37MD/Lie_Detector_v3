@@ -99,7 +99,7 @@
   }
   .dropdown:focus { outline: none; border-color: var(--accent); }
 
-  /* ── 3-TIER INPUT BOXES ── */
+  /* ── V2.09: 3-TIER INPUT BOXES ── */
   .custom-inputs { display: flex; gap: 8px; width: 100%; max-width: 350px; margin-bottom: 0.75rem; }
   .c-input-box {
     flex: 1; background: var(--surface2); padding: 8px 6px;
@@ -196,7 +196,7 @@
   .alert-danger { background: var(--red); color: #fff; }
   .alert-buy { background: var(--accent); color: #021a0f; }
   .alert-profit { background: var(--accent2); color: #1a0a00; }
-  .alert-mega { font-size: 0.85rem !important; padding: 11px 12px !important; }
+  .alert-mega { font-size: 0.85rem !important; padding: 11px 12px !important; letter-spacing: 0.1em;}
   @keyframes pulseAlert { 0%, 100% { opacity: 1; } 50% { opacity: 0.72; } }
 
   /* ── MAIN SIM AREA ── */
@@ -750,13 +750,11 @@ const universalAnnotationsPlugin = {
       ctx.restore();
     }
 
-    // DRAW VERTICAL LINES FOR ESCAPE / COLLAPSE (LIVE CHART ONLY)
     const signals = ci.config.options.verticalSignals;
-    if (signals && isLive) {
+    if (signals) {
         ctx.save();
         ctx.lineWidth = 1.5;
         ctx.setLineDash([]);
-        
         if (signals.escape && signals.escape.length > 0) {
             ctx.strokeStyle = 'rgba(0, 232, 162, 0.85)';
             signals.escape.forEach(idx => {
@@ -766,7 +764,6 @@ const universalAnnotationsPlugin = {
                 }
             });
         }
-        
         if (signals.collapse && signals.collapse.length > 0) {
             ctx.strokeStyle = 'rgba(240, 64, 96, 0.85)';
             signals.collapse.forEach(idx => {
@@ -887,8 +884,6 @@ async function initLive() {
   if (!globalLiveData.length) return;
   document.getElementById('setupScreen').style.display = 'none';
   document.getElementById('liveModal').style.display   = 'flex';
-  
-  // DEFAULT 1 YEAR
   const btns = document.getElementById('liveTfRow').children;
   for (const b of btns) b.classList.remove('active');
   btns[4].classList.add('active');
@@ -952,7 +947,6 @@ function updateLiveChart(days, btnEl) {
   const deltaData = [], deltaColors = [], deltaPhases = [], wmaRegimes = [], drsiArr = [], wrsiArr = [];
   const escapeIndices = [], collapseIndices = [];
   
-  // CORE 4-STATE COLOR ENGINE & ARRAYS
   for (let i = 0; i < dataSlice.length; i++) {
     const ei = globalLiveData.length - dataSlice.length + i;
     const sp = globalLiveData.slice(0, ei + 1).map(h => h.nav);
@@ -961,12 +955,10 @@ function updateLiveChart(days, btnEl) {
     const d = dr - wr;
     deltaData.push(d);
     
-    // Vertical Line Indexing
     const prevD = i > 0 ? deltaData[i-1] : 0;
     if (d >= escapeDeltaLevel && prevD < escapeDeltaLevel) escapeIndices.push(i);
     if (d <= collapseDeltaLevel && prevD > collapseDeltaLevel) collapseIndices.push(i);
     
-    // 4-State Color Logic
     if (d >= escapeDeltaLevel) {
         deltaColors.push('rgba(0, 232, 162, 1)'); 
         deltaPhases.push('IGNITION');
@@ -985,7 +977,6 @@ function updateLiveChart(days, btnEl) {
     drsiArr.push(dr); wrsiArr.push(wr);
   }
 
-  // 3-DAY CONFIRMATION RULE
   let isBullConfirmed = false, isBearConfirmed = false;
   const len = deltaData.length;
   if (len >= 4) {
@@ -998,7 +989,6 @@ function updateLiveChart(days, btnEl) {
       }
   }
 
-  // ALERT BANNER HIERARCHY
   const banner = document.getElementById('liveAlertBanner');
   let alertText = '', alertClass = '';
   
@@ -1036,11 +1026,8 @@ function updateLiveChart(days, btnEl) {
     const reg = wmaRegimes[i];
     const regColor = reg === 'A' ? '#00e8a2' : (reg === 'B' ? '#f59e0b' : '#f04060');
     const wmaText = wmaSlice[i] ? wmaSlice[i].toFixed(2) : '--';
-    
-    // FORMATTED DATE + PHASE TRANSLATION IN HUD
     const shortDt = formatShortDate(dataSlice[i].date);
     const html = `<span style="color:var(--gold);font-weight:700;">[${shortDt}]</span> NAV: ${dataSlice[i].nav.toFixed(2)} | WMA: <span style="color:${regColor}; font-weight:700;">${wmaText}</span> | REG: <span style="color:${regColor}; font-weight:700;">${reg}</span> | D-RSI: ${Math.round(drsiArr[i])} | W-RSI: ${Math.round(wrsiArr[i])} | DELTA: ${deltaData[i].toFixed(1)} [${deltaPhases[i]}]`;
-    
     hm.innerHTML = html; hd.innerHTML = html;
   };
 
@@ -1076,7 +1063,8 @@ function updateLiveChart(days, btnEl) {
       labels: dataSlice.map(d => d.date),
       datasets: [
         { type: 'bar',  data: deltaData, backgroundColor: deltaColors, barPercentage: 1.0, categoryPercentage: 1.0 },
-        // THE DASHED ZERO LINE
+        { type: 'line', data: Array(dataSlice.length).fill(escapeDeltaLevel), borderColor: '#00e8a2', borderDash: [2,2], pointRadius: 0, borderWidth: 1 },
+        { type: 'line', data: Array(dataSlice.length).fill(collapseDeltaLevel), borderColor: '#f04060', borderDash: [2,2], pointRadius: 0, borderWidth: 1 },
         { type: 'line', data: Array(dataSlice.length).fill(0), borderColor: 'rgba(255,255,255,0.3)', borderDash: [4,4], pointRadius: 0, borderWidth: 1 }
       ]
     },
@@ -1213,6 +1201,8 @@ function updateDisplay() {
   const regimeUpgrade = prevRegime && ((prevRegime === 'C' && (currentRegime === 'B' || currentRegime === 'A')) || (prevRegime === 'B' && currentRegime === 'A'));
 
   const deltaData = [], deltaColors = [], deltaPhases = [], wmaRegimes = [], drsiArrHud = [], wrsiArrHud = [];
+  const escapeIndices = [], collapseIndices = [];
+  
   for (let i = 0; i < chartData.length; i++) {
     const ei = currentIdx - (chartData.length - 1) + i;
     const sp = fullHistory.slice(0, ei + 1).map(h => h.nav);
@@ -1221,7 +1211,10 @@ function updateDisplay() {
     const d = dr - wr;
     deltaData.push(d);
     
-    // 4-State Color Logic
+    const prevD = i > 0 ? deltaData[i-1] : 0;
+    if (d >= escapeDeltaLevel && prevD < escapeDeltaLevel) escapeIndices.push(i);
+    if (d <= collapseDeltaLevel && prevD > collapseDeltaLevel) collapseIndices.push(i);
+    
     if (d >= escapeDeltaLevel) {
         deltaColors.push('rgba(0, 232, 162, 1)'); 
         deltaPhases.push('IGNITION');
@@ -1240,7 +1233,6 @@ function updateDisplay() {
     drsiArrHud.push(dr); wrsiArrHud.push(wr);
   }
 
-  // 3-DAY CONFIRMATION RULE
   let isBullConfirmed = false, isBearConfirmed = false;
   const len = deltaData.length;
   if (len >= 4) {
@@ -1287,7 +1279,6 @@ function updateDisplay() {
   banner.textContent = alertText; banner.className = alertClass;
   banner.style.display = alertText ? 'block' : 'none';
 
-  // AUTO-RESET PENALTY IF MARKET FLASHES GREEN
   if (alertClass.includes('alert-buy')) {
       buyLockoutTimer = 0;
   }
@@ -1337,6 +1328,7 @@ function updateDisplay() {
     },
     options: {
       responsive: true, maintainAspectRatio: false,
+      verticalSignals: { escape: escapeIndices, collapse: collapseIndices },
       layout: { padding: { top: 15, bottom: 4, left: 8, right: 8 } },
       interaction: { mode: 'index', intersect: false },
       onHover: (event, activeElements) => { if (deltaChart) syncPair(activeElements, chart, deltaChart, false); updateLocalSimHud(activeElements); },
@@ -1350,12 +1342,14 @@ function updateDisplay() {
       labels: chartData.map((_, i) => i),
       datasets: [
         { type: 'bar',  data: deltaData, backgroundColor: deltaColors, barPercentage: 1.0, categoryPercentage: 1.0 },
-        // THE DASHED ZERO LINE
+        { type: 'line', data: Array(chartData.length).fill(escapeDeltaLevel), borderColor: '#00e8a2', borderDash: [2,2], pointRadius: 0, borderWidth: 1 },
+        { type: 'line', data: Array(chartData.length).fill(collapseDeltaLevel), borderColor: '#f04060', borderDash: [2,2], pointRadius: 0, borderWidth: 1 },
         { type: 'line', data: Array(chartData.length).fill(0), borderColor: 'rgba(255,255,255,0.3)', borderDash: [4,4], pointRadius: 0, borderWidth: 1 }
       ]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
+      verticalSignals: { escape: escapeIndices, collapse: collapseIndices },
       layout: { padding: { top: 4, bottom: 4, left: 8, right: 8 } },
       interaction: { mode: 'index', intersect: false },
       onHover: (event, activeElements) => { if (chart) syncPair(activeElements, deltaChart, chart, false); updateLocalSimHud(activeElements); },
@@ -1434,6 +1428,18 @@ function endAndReview() {
     if (t.action.includes('TSL') || t.action.includes('REGIME')) scoreExit += 30;
     if (t.action.includes('PROFIT')) scoreProfit += 5;
   });
+  for (let i = simStartIdx; i <= currentIdx; i++) {
+    const sp     = fullHistory.slice(0, i + 1).map(h => h.nav);
+    const dr     = calculateRSI(sp, 14);
+    const wr     = calculateRSI(sp.filter((_, j) => j % 5 === 0), 14);
+    const d      = dr - wr;
+    const dayT   = tradeLog.find(t => t.day === (i - simStartIdx));
+    
+    // Updated Punishments for missing thrusts or holding collapses
+    if (d >= escapeDeltaLevel && (!dayT || !dayT.action.includes('BUY'))) scoreEntry -= 5;
+    if (d <= collapseDeltaLevel && (!dayT || (!dayT.action.includes('SELL') && !dayT.action.includes('TSL')))) scoreExit -= 10;
+    if (d >= profitDeltaLevel && d < escapeDeltaLevel && (!dayT || !dayT.action.includes('PROFIT'))) scoreProfit -= 2;
+  }
   
   const totalScore  = scoreEntry + scoreExit + scoreProfit;
   const totalUnits  = tranches.reduce((s, t) => s + t.units, 0);
