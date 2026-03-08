@@ -181,10 +181,7 @@
   }
   .nw-col { display: flex; flex-direction: column; align-items: center; gap: 1px; }
   .nw-lbl { font-size: 0.55rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
-  
-  /* UPDATED V2.07: INCREASED FONT SIZE, REMOVED BOLD */
   .nw-val { font-size: 1.25rem; font-weight: 400; }
-  
   .nw-divider { width: 1px; background: var(--border); align-self: stretch; }
 
   /* ── ALERT BANNER ── */
@@ -265,7 +262,6 @@
       max-width: 95%; 
       line-height: 1.2;
     }
-    /* V2.07: Added slight padding reduction for mobile ind-val to further prevent folding */
     .ind-val {
       font-size: 0.95rem !important;
       padding: 2px 4px !important;
@@ -279,7 +275,7 @@
   }
   .ind-box {
     display: flex; flex-direction: column; align-items: center; justify-content: center;
-    padding: 8px 2px; /* reduced padding from 4px to 2px for extra room */
+    padding: 8px 2px;
     border-right: 1px solid var(--border);
   }
   .ind-box:last-child { border-right: none; }
@@ -964,7 +960,17 @@ function updateLiveChart(days, btnEl) {
       interaction: { mode: 'index', intersect: false },
       onHover: (event, activeElements) => { if (liveDeltaChart) syncPair(activeElements, liveChart, liveDeltaChart, true); updateLocalLiveHud(activeElements); },
       plugins: { legend: { display: false }, tooltip: { enabled: false }, zoom: { zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' }, pan: { enabled: true, mode: 'x' } } },
-      scales: { x: { display: false, offset: true }, y: { grid: { color: '#1a2a45' }, ticks: { display: false } } }
+      scales: { 
+        x: { display: false, offset: true }, 
+        
+        /* ── V2.06: ADDED NAV PRICE AXIS TO LIVE MAIN CHART ── */
+        y: { 
+          position: 'right',
+          grid: { color: '#1a2a45' }, 
+          ticks: { display: true, color: '#6080a0', font: { size: 9, family: '"Space Mono"' }, maxTicksLimit: 6 },
+          afterFit: (scale) => { scale.width = 46; } /* Locks width to keep cursors synced */
+        } 
+      }
     }
   });
   liveDeltaChart = new Chart(document.getElementById('liveDeltaCanvas').getContext('2d'), {
@@ -985,7 +991,16 @@ function updateLiveChart(days, btnEl) {
       plugins: { legend: { display: false }, tooltip: { enabled: false } },
       scales: {
         x: { display: true, offset: true, grid: { display: false }, ticks: { maxTicksLimit: 6, color: '#6080a0', font: { size: 9, family: '"Space Mono"' }, maxRotation: 0, align: 'inner' } },
-        y: { grid: { color: 'rgba(26,42,69,0.6)' }, border: { dash: [2,4] }, min: -35, max: 35, ticks: { display: false } }
+        
+        /* ── V2.06: HIDDEN AXIS TO MAINTAIN SYNC WITH MAIN CHART ── */
+        y: { 
+          position: 'right',
+          grid: { color: 'rgba(26,42,69,0.6)' }, 
+          border: { dash: [2,4] }, 
+          min: -35, max: 35, 
+          ticks: { display: false },
+          afterFit: (scale) => { scale.width = 46; } /* Identical width lock */
+        }
       }
     }
   });
