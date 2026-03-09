@@ -186,7 +186,7 @@
   .alert-danger { background: var(--red); color: #fff; }
   .alert-buy { background: var(--accent); color: #021a0f; }
   .alert-profit { background: var(--accent2); color: #1a0a00; }
-  .alert-mega { font-size: 0.85rem !important; padding: 11px 12px !important; letter-spacing: 0.05em; }
+  .alert-mega { font-size: 1rem !important; padding: 11px 12px !important; }
   @keyframes pulseAlert { 0%, 100% { opacity: 1; } 50% { opacity: 0.72; } }
 
   /* ── MAIN SIM AREA ── */
@@ -620,6 +620,7 @@ const amcFunds = {
   ]
 };
 
+// ── V2.06 LOCAL STORAGE SAVING ──
 function saveFundSelection() {
   const activeBtn = document.querySelector('#fundGrid .fund-box.active');
   const sel = document.getElementById('fundSelect');
@@ -675,6 +676,9 @@ let profitDeltaLevel = 15, buyDeltaLevel = -15;
 
 let simHoverIdx = null, liveHoverIdx = null;
 
+// ─────────────────────────────────────────────
+//  MATH HELPERS
+// ─────────────────────────────────────────────
 function formatShortDate(dateStr) {
   if (!dateStr) return '';
   const parts = dateStr.split('-');
@@ -735,29 +739,37 @@ const universalAnnotationsPlugin = {
       const startX = meta.data[0].x;
       const endX   = meta.data[data.length - 1].x;
       
-      // ── ALL SWING LOWS GATHERED FOR DEEP SCANNING ──
-      let swingLows = [];
+      // ── NEW RATCHETING SWING LOW FINDER ──
+      let sLows = [];
+      let sHighs = [];
       for (let i = data.length - 3; i >= 2; i--) {
         if (data[i] <= data[i-1] && data[i] < data[i-2] && data[i] <= data[i+1] && data[i] < data[i+2]) {
-          if (swingLows.length === 0 || (swingLows[swingLows.length-1].idx - i) > 4) {
-            swingLows.push({ idx: i, val: data[i] });
-          }
+          if (sLows.length === 0 || (sLows[sLows.length-1].idx - i) > 4) sLows.push({ idx: i, val: data[i] });
+        }
+        if (data[i] >= data[i-1] && data[i] > data[i-2] && data[i] >= data[i+1] && data[i] > data[i+2]) {
+          if (sHighs.length === 0 || (sHighs[sHighs.length-1].idx - i) > 4) sHighs.push({ idx: i, val: data[i] });
         }
       }
       
-      if (swingLows.length > 0) {
+      if (sLows.length > 0) {
         ctx.lineWidth = 1; ctx.setLineDash([3, 3]); ctx.font = '9px "Space Mono"';
-        
-        // ── 1. FIND THE TARGET LOW (MIN OF RECENT 2) ──
-        let targetLow = swingLows[0];
-        if (swingLows.length > 1 && swingLows[1].val < swingLows[0].val) {
-            targetLow = swingLows[1];
-        }
-        
         const lastVal = data[data.length - 1];
+        
+        let reclaimed = false;
+        // Break of Structure: Price moves above the last 2 swing highs
+        if (sHighs.length >= 2 && lastVal > sHighs[0].val && lastVal > sHighs[1].val) {
+            reclaimed = true;
+        }
+
+        let targetLow = sLows[0];
+        // If not reclaimed, strictly hold the minimum of the last 2 lows
+        if (!reclaimed && sLows.length > 1 && sLows[1].val < sLows[0].val) {
+            targetLow = sLows[1];
+        }
+
         const isBreached = lastVal < targetLow.val;
         
-        // ── 2. DRAW THE PRIMARY (OR BREACHED) TSL ──
+        // ── DRAW PRIMARY TSL ──
         const yPos1 = ci.scales.y.getPixelForValue(targetLow.val);
         ctx.beginPath();
         ctx.strokeStyle = isBreached ? '#f04060' : '#f59e0b';
@@ -768,21 +780,19 @@ const universalAnnotationsPlugin = {
         const lbl1 = isBreached ? `TSL BREACHED: ₹${targetLow.val.toFixed(2)}` : `TSL: ₹${targetLow.val.toFixed(2)}`;
         ctx.fillText(lbl1, startX + 5, yPos1 - 5);
 
-        // ── 3. IF BREACHED, DEEP SCAN FOR UNTESTED SUPPORT ──
+        // ── DRAW UNTESTED SAFETY NET IF BREACHED ──
         if (isBreached) {
           let untestedLow = null;
-          for (let i = 0; i < swingLows.length; i++) {
-            // Find the first historical low that is actually below current crashing price
-            if (swingLows[i].val < lastVal) {
-              untestedLow = swingLows[i];
+          for (let i = 0; i < sLows.length; i++) {
+            if (sLows[i].val < lastVal) {
+              untestedLow = sLows[i];
               break;
             }
           }
-          // ── 4. DRAW THE NEW UNTESTED SAFETY NET ──
           if (untestedLow) {
             const yPos2 = ci.scales.y.getPixelForValue(untestedLow.val);
             ctx.beginPath();
-            ctx.strokeStyle = '#f59e0b'; 
+            ctx.strokeStyle = 'rgba(245, 158, 11, 0.6)'; 
             ctx.fillStyle   = ctx.strokeStyle;
             ctx.moveTo(startX, yPos2); ctx.lineTo(endX, yPos2); ctx.stroke();
             ctx.fillText(`NEW TSL: ₹${untestedLow.val.toFixed(2)}`, startX + 5, yPos2 - 5);
@@ -915,21 +925,29 @@ function updateLiveChart(days, btnEl) {
     }
   }
 
-  // ── UPDATED ALERT BANNER TSL LOGIC (LIVE) ──
+  // ── UPDATED TSL ALERT LOGIC (LIVE) ──
   let tslVal = 0;
   let sLows = [];
-  for (let i = globalLiveData.length - 3; i >= 2; i--) {
-    let d = globalLiveData;
-    if (d[i].nav <= d[i-1].nav && d[i].nav < d[i-2].nav && d[i].nav <= d[i+1].nav && d[i].nav < d[i+2].nav) {
-      if (sLows.length === 0 || (sLows[sLows.length-1].idx - i) > 4) {
-        sLows.push({idx: i, val: d[i].nav});
-      }
+  let sHighs = [];
+  for (let i = latestPrices.length - 3; i >= 2; i--) {
+    let d = latestPrices;
+    if (d[i] <= d[i-1] && d[i] < d[i-2] && d[i] <= d[i+1] && d[i] < d[i+2]) {
+      if (sLows.length === 0 || (sLows[sLows.length-1].idx - i) > 4) sLows.push({idx: i, val: d[i]});
+    }
+    if (d[i] >= d[i-1] && d[i] > d[i-2] && d[i] >= d[i+1] && d[i] > d[i+2]) {
+      if (sHighs.length === 0 || (sHighs[sHighs.length-1].idx - i) > 4) sHighs.push({idx: i, val: d[i]});
     }
   }
+  
+  let reclaimed = false;
+  if (sHighs.length >= 2 && lastNav > sHighs[0].val && lastNav > sHighs[1].val) {
+      reclaimed = true;
+  }
+  
   if (sLows.length > 0) {
-    let targetLow = sLows[0];
-    if (sLows.length > 1 && sLows[1].val < sLows[0].val) targetLow = sLows[1];
-    tslVal = targetLow.val;
+      let targetLow = sLows[0];
+      if (!reclaimed && sLows.length > 1 && sLows[1].val < sLows[0].val) targetLow = sLows[1];
+      tslVal = targetLow.val;
   }
   const tslHit = tslVal > 0 && lastNav < tslVal;
 
@@ -939,8 +957,6 @@ function updateLiveChart(days, btnEl) {
   
   const banner = document.getElementById('liveAlertBanner');
   let alertText = '', alertClass = '';
-  
-  // ── NEW FREE FALL EXPLICIT WARNING ──
   if (tslHit) { alertText = '🚨 TSL BREACHED: CONSIDER RISK (FREE FALL MARKET)'; alertClass = 'alert-danger alert-mega'; }
   else if (lastRegime === 'C') { alertText = '⚠️ REGIME C BREAKDOWN'; alertClass = 'alert-danger'; }
   else if (ncAlert) { alertText = '🚨 DANGER: NC BREAKDOWN'; alertClass = 'alert-danger'; }
@@ -1110,7 +1126,7 @@ function updateDisplay() {
     : currentRegime === 'B'
     ? ['Regime B Fatigue.', 'Smart money pausing.', 'Market chopping sideways.', 'Halt buying.', 'Manage with TSL.']
     : ['Trust Cycle Broken.', 'Institutional distribution.', 'Do not catch falling knife.', 'Preserve capital.', 'Stay in cash.'];
-    
+
   const totalUnits = tranches.reduce((s, t) => s + t.units, 0);
   const currentNW = cash + totalUnits * currentNav;
   if (currentNW > peakNetWorth) peakNetWorth = currentNW;
@@ -1137,18 +1153,24 @@ function updateDisplay() {
   const chartData = visible.slice(-80);
   let tslVal = 0;
   let sLows = [];
-  for (let i = chartData.length - 3; i >= 2; i--) {
-    let d = chartData;
-    if (d[i].nav <= d[i-1].nav && d[i].nav < d[i-2].nav && d[i].nav <= d[i+1].nav && d[i].nav < d[i+2].nav) {
-      if (sLows.length === 0 || (sLows[sLows.length-1].idx - i) > 4) {
-        sLows.push({idx: i, val: d[i].nav});
+  let sHighs = [];
+  const d = chartData.map(x=>x.nav);
+  for (let i = d.length - 3; i >= 2; i--) {
+      if (d[i] <= d[i-1] && d[i] < d[i-2] && d[i] <= d[i+1] && d[i] < d[i+2]) {
+          if (sLows.length === 0 || (sLows[sLows.length-1].idx - i) > 4) sLows.push({idx: i, val: d[i]});
       }
-    }
+      if (d[i] >= d[i-1] && d[i] > d[i-2] && d[i] >= d[i+1] && d[i] > d[i+2]) {
+          if (sHighs.length === 0 || (sHighs[sHighs.length-1].idx - i) > 4) sHighs.push({idx: i, val: d[i]});
+      }
+  }
+  let reclaimed = false;
+  if (sHighs.length >= 2 && currentNav > sHighs[0].val && currentNav > sHighs[1].val) {
+      reclaimed = true;
   }
   if (sLows.length > 0) {
-    let targetLow = sLows[0];
-    if (sLows.length > 1 && sLows[1].val < sLows[0].val) targetLow = sLows[1];
-    tslVal = targetLow.val;
+      let targetLow = sLows[0];
+      if (!reclaimed && sLows.length > 1 && sLows[1].val < sLows[0].val) targetLow = sLows[1];
+      tslVal = targetLow.val;
   }
   const tslHit = tslVal > 0 && currentNav < tslVal;
 
@@ -1157,12 +1179,10 @@ function updateDisplay() {
 
   const banner = document.getElementById('alertBanner');
   let alertText = '', alertClass = '';
-  
   if (currentIdx > simStartIdx) {
     if (tslHit) { 
         alertText = '🚨 TSL BREACHED: CONSIDER RISK (FREE FALL MARKET)'; 
         alertClass = 'alert-danger alert-mega'; 
-        // OVERRIDE PSYCHOLOGY MESSAGE
         lines = [
            'TSL Breached earlier.',
            'Consider your Risk.',
@@ -1187,7 +1207,6 @@ function updateDisplay() {
     }
     if (!alertText && delta > profitDeltaLevel) { alertText = `🟠 TAKE PROFIT: OVERHEATED (Delta > ${profitDeltaLevel})`; alertClass = 'alert-profit'; }
   }
-  
   document.getElementById('psyMsg').innerHTML = lines.map((l, i) => `<div class="psy-line">(${i+1}) ${l}</div>`).join('');
   banner.textContent = alertText; banner.className = alertClass;
   banner.style.display = alertText ? 'block' : 'none';
