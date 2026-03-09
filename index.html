@@ -360,22 +360,25 @@
   }
   .reset-zoom:hover { border-color: var(--muted); color: var(--text); }
 
-  /* ── REVIEW ── */
-  .review-container { padding: 18px; overflow-y: auto; flex-grow: 1; }
-  .score-card { background: var(--surface2); border: 1px solid var(--border); padding: 15px; border-radius: var(--radius); margin-bottom: 14px; }
-  .score-title { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 6px; font-weight: 400;}
-  .score-val { font-size: 2.4rem; font-weight: 700; }
-  .report-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 18px; }
-  .report-item { background: rgba(255,255,255,0.02); padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--border); }
-  .rep-label { font-size: 0.60rem; color: var(--muted); letter-spacing: 0.06em; font-weight: 400;}
-  .rep-score { font-size: 1.1rem; font-weight: 700; margin-top: 5px; }
+  /* ── NEW REVIEW UI ── */
+  .review-container { padding: 14px; overflow-y: auto; flex-grow: 1; }
+  .score-card { background: var(--surface2); border: 1px solid var(--border); padding: 15px; border-radius: var(--radius); margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center;}
+  .score-title { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 400;}
+  .score-val { font-size: 2.2rem; font-weight: 700; }
+  
+  .audit-section { background: var(--surface2); border: 1px solid var(--border); padding: 12px; border-radius: var(--radius); margin-bottom: 12px; }
+  .audit-header { display: flex; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 8px; }
+  .audit-title { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+  .audit-score { font-size: 0.85rem; font-weight: 700; }
+  .audit-expected { font-size: 0.62rem; color: var(--muted2); font-style: italic; margin-bottom: 8px; line-height: 1.4; }
+  .audit-stat-row { display: flex; justify-content: space-between; font-size: 0.65rem; margin-bottom: 5px; color: var(--text); }
+  .audit-stat-val { font-weight: 700; font-family: var(--mono); }
   .pos-score { color: var(--accent); }
   .neg-score { color: var(--red); }
-  .feedback-box { padding: 10px 12px; border-left: 2px solid; margin-bottom: 10px; background: rgba(0,0,0,0.2); font-size: 0.75rem; border-radius: 0 var(--radius-sm) var(--radius-sm) 0; line-height: 1.5; font-weight: 400;}
-  .fb-good { border-color: var(--accent); }
-  .fb-bad { border-color: var(--red); }
-  .fb-warn { border-color: var(--accent2); }
-  .section-title { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 10px; border-bottom: 1px solid var(--border); padding-bottom: 6px; font-weight: 400;}
+  .neu-score { color: var(--text); }
+  
+  .remarks-box { padding: 12px; border-left: 3px solid; background: rgba(0,0,0,0.2); font-size: 0.70rem; line-height: 1.5; font-weight: 400; margin-bottom: 10px; border-radius: 0 var(--radius-sm) var(--radius-sm) 0;}
+  .section-title { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 10px; border-bottom: 1px solid var(--border); padding-bottom: 6px; font-weight: 400; margin-top: 20px;}
 </style>
 </head>
 <body>
@@ -476,16 +479,19 @@
   </div>
   <div class="review-container">
     <div class="score-card" style="border-color:var(--gold);">
-      <div class="score-title">Total Process Score</div>
-      <div class="score-val" id="totalScore" style="color:var(--gold);">0</div>
+      <div>
+        <div class="score-title">Final Net Worth</div>
+        <div class="score-val pos-score" id="revNW2">--</div>
+      </div>
+      <div style="text-align:right;">
+        <div class="score-title">Total Score</div>
+        <div class="score-val" id="totalScore" style="color:var(--gold);">0</div>
+      </div>
     </div>
-    <div class="report-grid">
-      <div class="report-item"><div class="rep-label">Entry · The Hunter</div><div class="rep-score" id="scoreEntry">--</div></div>
-      <div class="report-item"><div class="rep-label">Exit · The Defender</div><div class="rep-score" id="scoreExit">--</div></div>
-      <div class="report-item"><div class="rep-label">Profit · The Sniper</div><div class="rep-score" id="scoreProfit">--</div></div>
-      <div class="report-item"><div class="rep-label">Final Net Worth</div><div class="rep-score" id="revNW2">--</div></div>
-    </div>
-    <p class="section-title">Behavioral Feedback</p>
+    
+    <div id="auditContent"></div>
+    
+    <p class="section-title">Overall Behavioral Remarks</p>
     <div id="feedbackContainer"></div>
   </div>
 </div>
@@ -620,7 +626,6 @@ const amcFunds = {
   ]
 };
 
-// ── V2.06 LOCAL STORAGE SAVING (NOW INCLUDING DELTAS) ──
 function saveFundSelection() {
   const activeBtn = document.querySelector('#fundGrid .fund-box.active');
   const sel = document.getElementById('fundSelect');
@@ -647,7 +652,6 @@ function selectAMC(amc, el, isInit = false) {
   if (!isInit) saveFundSelection();
 }
 
-// ── V2.06 LOCAL STORAGE LOADING ──
 window.addEventListener('DOMContentLoaded', () => {
   const savedAMC = localStorage.getItem('ld_v3_amc') || 'ICICI';
   const savedFund = localStorage.getItem('ld_v3_fund');
@@ -683,7 +687,7 @@ let fullHistory = [], globalLiveData = [];
 let currentIdx = 0, simStartIdx = 0;
 let chart = null, deltaChart = null, liveChart = null, liveDeltaChart = null;
 let cash = 100000, tranches = [], tradeLog = [];
-let prevRegime = null, prevNav = null, currentRegimeLog = 'A', prevWma = null;
+let prevRegime = null, prevNav = null, currentRegimeLog = 'A';
 let totalTaxPaid = 0, peakNetWorth = 100000, maxDrawdown = 0;
 let profitDeltaLevel = 15, buyDeltaLevel = -15;
 
@@ -1126,7 +1130,7 @@ async function initGame(mode) {
   if (simStartIdx < minRequired) simStartIdx = minRequired;
   currentIdx = simStartIdx;
   tradeLog = []; cash = 100000; tranches = [];
-  prevRegime = null; prevNav = null; prevWma = null;
+  prevRegime = null; prevNav = null;
   totalTaxPaid = 0; peakNetWorth = 100000; maxDrawdown = 0;
   simHoverIdx = null;
   document.getElementById('setupScreen').style.display = 'none';
@@ -1137,7 +1141,6 @@ async function initGame(mode) {
 function updateDisplay() {
   const visible = fullHistory.slice(0, currentIdx + 1);
   const currentNav = visible[visible.length - 1].nav;
-  const currentWma = calculateWMA(visible.map(v => v.nav), 20);
   const prices = visible.map(v => v.nav);
   const dRsi = calculateRSI(prices, 14);
   const wRsi = calculateRSI(prices.filter((_, i) => i % 5 === 0), 14);
@@ -1158,13 +1161,6 @@ function updateDisplay() {
   const rBlock = document.getElementById('regimeBlock');
   rBlock.className = 'ind-val ' + (currentRegime === 'A' ? 'reg-A' : (currentRegime === 'B' ? 'reg-B' : 'reg-C'));
   rBlock.textContent = `Regime ${currentRegime}`;
-
-  let lines = currentRegime === 'A'
-    ? (dRsi <= 50 ? ['Optimal Entry Window.', 'Institutional trend intact.', 'Execute tranche.', 'Trust Weekly RSI.']
-                  : ['Structural Bull Trend.', 'Institutions accumulating.', 'Ride momentum, respect TSL.', 'Wait for Daily RSI dip to add.'])
-    : currentRegime === 'B'
-    ? ['Regime B Fatigue.', 'Smart money pausing.', 'Market chopping sideways.', 'Halt buying.', 'Manage with TSL.']
-    : ['Trust Cycle Broken.', 'Institutional distribution.', 'Do not catch falling knife.', 'Preserve capital.', 'Stay in cash.'];
 
   const totalUnits = tranches.reduce((s, t) => s + t.units, 0);
   const currentNW = cash + totalUnits * currentNav;
@@ -1214,6 +1210,13 @@ function updateDisplay() {
 
   const regimeDowngrade = prevRegime && ((prevRegime === 'A' && (currentRegime === 'B' || currentRegime === 'C')) || (prevRegime === 'B' && currentRegime === 'C'));
   const regimeUpgrade = prevRegime && ((prevRegime === 'C' && (currentRegime === 'B' || currentRegime === 'A')) || (prevRegime === 'B' && currentRegime === 'A'));
+
+  let lines = currentRegime === 'A'
+    ? (dRsi <= 50 ? ['Optimal Entry Window.', 'Institutional trend intact.', 'Execute tranche.', 'Trust Weekly RSI.']
+                  : ['Structural Bull Trend.', 'Institutions accumulating.', 'Ride momentum, respect TSL.', 'Wait for Daily RSI dip to add.'])
+    : currentRegime === 'B'
+    ? ['Regime B Fatigue.', 'Smart money pausing.', 'Market chopping sideways.', 'Halt buying.', 'Manage with TSL.']
+    : ['Trust Cycle Broken.', 'Institutional distribution.', 'Do not catch falling knife.', 'Preserve capital.', 'Stay in cash.'];
 
   const banner = document.getElementById('alertBanner');
   let alertText = '', alertClass = '';
@@ -1267,16 +1270,7 @@ function updateDisplay() {
   banner.textContent = alertText; banner.className = alertClass;
   banner.style.display = alertText ? 'block' : 'none';
 
-  prevRegime = currentRegime; prevNav = currentNav; prevWma = currentWma;
-
-  const b10 = document.getElementById('btnBuy10'), b25 = document.getElementById('btnBuy25'), b50 = document.getElementById('btnBuy50');
-  const sellBtns = [document.getElementById('btnProfit'), document.getElementById('btnTsl'), document.getElementById('btnRegime'), document.getElementById('btnAll')];
-  
-  b10.disabled = false; b10.textContent = 'BUY 10%';
-  b25.disabled = false; b25.textContent = 'BUY 25%';
-  b50.disabled = false; b50.textContent = 'BUY 50%';
-  sellBtns.forEach(btn => { btn.disabled = false; });
-  document.getElementById('btnAll').textContent = 'SELL ALL';
+  prevRegime = currentRegime; prevNav = currentNav;
 
   const wmaData = chartData.map((_, i) => calculateWMA(fullHistory.slice(0, currentIdx - (chartData.length - 1) + i + 1).map(h => h.nav), 20));
   const deltaData = [], deltaColors = [], wmaRegimes = [], drsiArrHud = [], wrsiArrHud = [];
@@ -1412,41 +1406,150 @@ function showLog() {
   document.getElementById('logModal').style.display = 'flex'; 
 }
 function closeLog() { document.getElementById('logModal').style.display = 'none'; }
+
+// ── NEW BEHAVIORAL DIAGNOSTICS ENGINE ──
 function endAndReview() { 
   let scoreEntry = 0, scoreExit = 0, scoreProfit = 0;
-  tradeLog.forEach(t => {
-    if (t.action.includes('BUY'))    { t.regime === 'A' ? scoreEntry += 20 : scoreEntry -= 10; }
-    if (t.action.includes('TSL') || t.action.includes('REGIME')) scoreExit += 30;
-    if (t.action.includes('PROFIT')) scoreProfit += 5;
-  });
+  let goodBuys = 0, badBuys = 0, missedBuys = 0;
+  let successfulExits = 0, daysTslBreachHeld = 0, daysRegimeCHeld = 0;
+  let profitExits = 0, missedProfits = 0;
+
+  let runningUnits = 0;
+
   for (let i = simStartIdx; i <= currentIdx; i++) {
     const sp     = fullHistory.slice(0, i + 1).map(h => h.nav);
+    const currNav = sp[sp.length - 1];
     const dr     = calculateRSI(sp, 14);
     const wr     = calculateRSI(sp.filter((_, j) => j % 5 === 0), 14);
     const regime = wr >= 50 ? 'A' : wr >= 40 ? 'B' : 'C';
     const d      = dr - wr;
-    const dayT   = tradeLog.find(t => t.day === (i - simStartIdx));
-    if (regime === 'A' && d < buyDeltaLevel && (!dayT || !dayT.action.includes('BUY'))) scoreEntry -= 5;
-    if (d > profitDeltaLevel && (!dayT || !dayT.action.includes('PROFIT')))             scoreProfit -= 2;
+    
+    // PC Check
+    let pcAlert = false;
+    if (sp.length >= 56) {
+      const box = sp.slice(-6, -1);
+      const boxMax = Math.max(...box), boxMin = Math.min(...box);
+      const preBox = sp.slice(-56, -6);
+      const preMax = Math.max(...preBox);
+      const boxWma = calculateWMA(sp.slice(0, -1), 20);
+      if ((boxMax - boxMin) / boxMin <= 0.02 && (boxWma ? Math.abs(boxMin - boxWma) / boxWma <= 0.04 : false) && preMax > boxMax * 1.02) {
+        if (currNav > boxMax) pcAlert = true;
+      }
+    }
+
+    // TSL Check
+    const chartData = sp.slice(-80);
+    let tslVal = 0, sLows = [], sHighs = [];
+    for (let k = chartData.length - 3; k >= 2; k--) {
+      if (chartData[k] <= chartData[k-1] && chartData[k] < chartData[k-2] && chartData[k] <= chartData[k+1] && chartData[k] < chartData[k+2]) {
+        if (sLows.length === 0 || (sLows[sLows.length-1].idx - k) > 4) sLows.push({idx: k, val: chartData[k]});
+      }
+      if (chartData[k] >= chartData[k-1] && chartData[k] > chartData[k-2] && chartData[k] >= chartData[k+1] && chartData[k] > chartData[k+2]) {
+        if (sHighs.length === 0 || (sHighs[sHighs.length-1].idx - k) > 4) sHighs.push({idx: k, val: chartData[k]});
+      }
+    }
+    let reclaimed = false;
+    if (sHighs.length >= 2 && currNav > sHighs[0].val && currNav > sHighs[1].val) reclaimed = true;
+    if (sLows.length > 0) {
+      let targetLow = sLows[0];
+      if (!reclaimed && sLows.length > 1 && sLows[1].val < sLows[0].val) targetLow = sLows[1];
+      tslVal = targetLow.val;
+    }
+    const tslHit = tslVal > 0 && currNav < tslVal;
+
+    // Day Trades
+    const dayT = tradeLog.filter(t => t.day === (i - simStartIdx));
+    let hasBuy = false;
+    let hasProfit = false;
+
+    dayT.forEach(t => {
+      if (t.action.includes('BUY')) {
+        hasBuy = true;
+        runningUnits += t.units;
+        if (regime === 'A') {
+          if (dr <= 50 || pcAlert || d < buyDeltaLevel) { scoreEntry += 20; goodBuys++; } 
+          else { /* Neutral */ }
+        } else if (regime === 'C') {
+          if (pcAlert) { goodBuys++; } 
+          else { scoreEntry -= 20; badBuys++; }
+        } else if (regime === 'B') {
+          scoreEntry -= 10; badBuys++;
+        }
+      } else if (t.action.includes('SELL')) {
+        runningUnits -= t.units;
+        if (t.action.includes('TSL') || t.action.includes('REGIME')) { scoreExit += 30; successfulExits++; }
+        if (t.action.includes('PROFIT')) { scoreProfit += 5; profitExits++; hasProfit = true; }
+      }
+    });
+
+    if (runningUnits > 0.001) {
+      if (tslHit) { daysTslBreachHeld++; scoreExit -= 10; }
+      if (regime === 'C') { daysRegimeCHeld++; scoreExit -= 20; }
+    }
+
+    if (regime === 'A' && (dr < 40 || d < buyDeltaLevel) && !hasBuy) { missedBuys++; scoreEntry -= 5; }
+    if (d > profitDeltaLevel && !hasProfit && runningUnits > 0.001) { missedProfits++; scoreProfit -= 2; }
   }
+
   const totalScore  = scoreEntry + scoreExit + scoreProfit;
   const totalUnits  = tranches.reduce((s, t) => s + t.units, 0);
   const finalNW     = cash + totalUnits * fullHistory[currentIdx].nav;
 
-  const fmt = v => `<div class="rep-score ${v >= 0 ? 'pos-score' : 'neg-score'}">${v}</div>`;
-  document.getElementById('totalScore').textContent    = totalScore;
-  document.getElementById('totalScore').style.color    = totalScore > 0 ? 'var(--accent)' : 'var(--red)';
-  document.getElementById('scoreEntry').outerHTML      = fmt(scoreEntry).replace('div', 'div id="scoreEntry"');
-  document.getElementById('scoreExit').outerHTML       = fmt(scoreExit).replace('div', 'div id="scoreExit"');
-  document.getElementById('scoreProfit').outerHTML     = fmt(scoreProfit).replace('div', 'div id="scoreProfit"');
-  document.getElementById('revNW2').innerHTML          = `<div class="rep-score pos-score">₹${Math.round(finalNW).toLocaleString('en-IN')}</div>`;
+  document.getElementById('totalScore').textContent = totalScore;
+  document.getElementById('totalScore').style.color = totalScore > 0 ? 'var(--accent)' : 'var(--red)';
+  document.getElementById('revNW2').textContent = `₹${Math.round(finalNW).toLocaleString('en-IN')}`;
 
-  let fb = '';
-  if      (scoreExit  < 0) fb += `<div class="feedback-box fb-bad"><strong>⚠️ Critical Failure:</strong> Negative Defense score. You are holding losers or selling winners too early.</div>`;
-  else if (scoreEntry < 0) fb += `<div class="feedback-box fb-warn"><strong>⚠️ Hesitation Detected:</strong> Missing key entry signals. Trust the Sacred RSI regime.</div>`;
-  else                     fb += `<div class="feedback-box fb-good"><strong>✅ Disciplined Process:</strong> Solid execution. Keep it up.</div>`;
-  if (maxDrawdown > 20) fb += `<div class="feedback-box fb-warn"><strong>⚠️ High Drawdown (${maxDrawdown.toFixed(1)}%):</strong> Review your TSL discipline.</div>`;
-  document.getElementById('feedbackContainer').innerHTML = fb;
+  const fmtScore = (v) => `<span class="audit-score ${v >= 0 ? 'pos-score' : 'neg-score'}">${v > 0 ? '+'+v : v}</span>`;
+
+  document.getElementById('auditContent').innerHTML = `
+    <div class="audit-section">
+      <div class="audit-header">
+        <span class="audit-title" style="color:var(--accent);">Entry · The Hunter</span>
+        ${fmtScore(scoreEntry)}
+      </div>
+      <div class="audit-expected">Action Expected: Buy Regime A dips (RSI &lt; 50), Slingshots, and PC Breakouts.</div>
+      <div class="audit-stat-row"><span>Good Buys (Structure/Dip)</span><span class="audit-stat-val pos-score">${goodBuys}</span></div>
+      <div class="audit-stat-row"><span>Bad Buys (Knives)</span><span class="audit-stat-val neg-score">${badBuys}</span></div>
+      <div class="audit-stat-row"><span>Missed Opportunities</span><span class="audit-stat-val neg-score">${missedBuys}</span></div>
+    </div>
+    <div class="audit-section">
+      <div class="audit-header">
+        <span class="audit-title" style="color:var(--red);">Exit · The Defender</span>
+        ${fmtScore(scoreExit)}
+      </div>
+      <div class="audit-expected">Action Expected: Instantly execute TSL Sell on breach. Liquidate entirely on Regime C crash.</div>
+      <div class="audit-stat-row"><span>Successful Exits</span><span class="audit-stat-val pos-score">${successfulExits}</span></div>
+      <div class="audit-stat-row"><span>Days held in TSL Breach</span><span class="audit-stat-val neg-score">${daysTslBreachHeld} (-${daysTslBreachHeld * 10})</span></div>
+      <div class="audit-stat-row"><span>Days held in Regime C</span><span class="audit-stat-val neg-score">${daysRegimeCHeld} (-${daysRegimeCHeld * 20})</span></div>
+    </div>
+    <div class="audit-section">
+      <div class="audit-header">
+        <span class="audit-title" style="color:var(--accent2);">Profit · The Sniper</span>
+        ${fmtScore(scoreProfit)}
+      </div>
+      <div class="audit-expected">Action Expected: Pull out profits when Overheated (Delta &gt; Limit).</div>
+      <div class="audit-stat-row"><span>Profit Exits Executed</span><span class="audit-stat-val pos-score">${profitExits}</span></div>
+      <div class="audit-stat-row"><span>Days Ignored Overheated</span><span class="audit-stat-val neg-score">${missedProfits} (-${missedProfits * 2})</span></div>
+    </div>
+  `;
+
+  let remarks = "";
+  if (daysRegimeCHeld > 2 || daysTslBreachHeld > 2) {
+      remarks += `<div class="remarks-box" style="border-color: var(--red);">🚨 <strong>Critical Risk Failure:</strong> You held a position for ${daysRegimeCHeld + daysTslBreachHeld} days while Danger alerts were flashing. In a live market, this hesitation leads to catastrophic ruin. You must respect the broken floor.</div>`;
+  } else if (scoreExit > 0 && maxDrawdown < 15) {
+      remarks += `<div class="remarks-box" style="border-color: var(--accent);">🟢 <strong>Excellent Defense:</strong> You respected the structural stops and kept drawdowns low.</div>`;
+  }
+  if (badBuys >= 2) {
+      remarks += `<div class="remarks-box" style="border-color: var(--accent2);">⚠️ <strong>Reckless Hunting:</strong> You caught falling knives ${badBuys} times by buying in negative regimes without a PC Breakout. Wait for structure.</div>`;
+  }
+  if (missedBuys >= 2) {
+      remarks += `<div class="remarks-box" style="border-color: var(--accent2);">⚠️ <strong>Hesitation Detected:</strong> You missed ${missedBuys} high-probability entry setups. Trust the engine when it flashes green.</div>`;
+  }
+  if (remarks === "") {
+      remarks = `<div class="remarks-box" style="border-color: var(--accent);">✅ <strong>Disciplined Process:</strong> Solid, mechanical execution. You followed the algorithmic rules beautifully.</div>`;
+  }
+
+  document.getElementById('feedbackContainer').innerHTML = remarks;
   document.getElementById('reviewModal').style.display = 'flex'; 
 }
 
