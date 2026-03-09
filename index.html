@@ -642,6 +642,7 @@ function selectAMC(amc, el, isInit = false) {
   if (!isInit) saveFundSelection();
 }
 
+// ── V2.06 LOCAL STORAGE LOADING ──
 window.addEventListener('DOMContentLoaded', () => {
   const savedAMC = localStorage.getItem('ld_v3_amc') || 'ICICI';
   const savedFund = localStorage.getItem('ld_v3_fund');
@@ -676,6 +677,9 @@ let profitDeltaLevel = 15, buyDeltaLevel = -15;
 
 let simHoverIdx = null, liveHoverIdx = null;
 
+// ─────────────────────────────────────────────
+//  MATH HELPERS
+// ─────────────────────────────────────────────
 function formatShortDate(dateStr) {
   if (!dateStr) return '';
   const parts = dateStr.split('-');
@@ -745,8 +749,7 @@ const universalAnnotationsPlugin = {
         }
       }
       
-      // ── UPDATED TSL DRAWING LOGIC ──
-      // ONLY DRAW 1 LINE (TSL 1) AT THE 2ND SWING LOW
+      // ── UPDATED TSL DRAWING LOGIC: ONLY TSL 1 SHIFTED TO 2ND SWING LOW ──
       if (swingLows.length > 0) {
         ctx.lineWidth = 1; ctx.setLineDash([3, 3]); ctx.font = '9px "Space Mono"';
         const targetLow = swingLows.length > 1 ? swingLows[1] : swingLows[0]; // USE 2ND IF FOUND
@@ -837,7 +840,7 @@ async function initLive() {
   document.getElementById('liveModal').style.display   = 'flex';
   const btns = document.getElementById('liveTfRow').children;
   for (const b of btns) b.classList.remove('active');
-  btns[4].classList.add('active'); 
+  btns[4].classList.add('active'); // 1Y DEFAULT
   updateLiveChart(250);
 }
 
@@ -921,6 +924,8 @@ function updateLiveChart(days, btnEl) {
   banner.style.display = alertText ? 'block' : 'none';
 
   const deltaData = [], deltaColors = [], wmaRegimes = [], drsiArr = [], wrsiArr = [];
+  
+  // ── 4-STATE COLOR ENGINE ──
   for (let i = 0; i < dataSlice.length; i++) {
     const ei = globalLiveData.length - dataSlice.length + i;
     const sp = globalLiveData.slice(0, ei + 1).map(h => h.nav);
@@ -928,7 +933,12 @@ function updateLiveChart(days, btnEl) {
     const wr = calculateRSI(sp.filter((_, j) => j % 5 === 0), 14);
     const d = dr - wr;
     deltaData.push(d);
-    deltaColors.push(i === 0 ? (d >= 0 ? '#00e8a2' : '#f04060') : (d > deltaData[i-1] ? '#00e8a2' : '#f04060'));
+    
+    if (d >= 20) deltaColors.push('rgba(0, 232, 162, 1)'); 
+    else if (d <= -20) deltaColors.push('rgba(240, 64, 96, 1)');
+    else if (d > 0) deltaColors.push('rgba(0, 232, 162, 0.25)');
+    else deltaColors.push('rgba(240, 64, 96, 0.25)');
+
     wmaRegimes.push(wr >= 50 ? 'A' : (wr >= 40 ? 'B' : 'C'));
     drsiArr.push(dr); wrsiArr.push(wr);
   }
@@ -980,7 +990,9 @@ function updateLiveChart(days, btnEl) {
       datasets: [
         { type: 'bar',  data: deltaData, backgroundColor: deltaColors, barPercentage: 1.0, categoryPercentage: 1.0 },
         { type: 'line', data: Array(dataSlice.length).fill(profitDeltaLevel), borderColor: '#f04060', borderDash: [2,2], pointRadius: 0, borderWidth: 1 },
-        { type: 'line', data: Array(dataSlice.length).fill(buyDeltaLevel), borderColor: '#00e8a2', borderDash: [2,2], pointRadius: 0, borderWidth: 1 }
+        { type: 'line', data: Array(dataSlice.length).fill(buyDeltaLevel), borderColor: '#00e8a2', borderDash: [2,2], pointRadius: 0, borderWidth: 1 },
+        // ── DASHED ZERO LINE ──
+        { type: 'line', data: Array(dataSlice.length).fill(0), borderColor: 'rgba(255,255,255,0.3)', borderDash: [4,4], pointRadius: 0, borderWidth: 1 }
       ]
     },
     options: {
@@ -1140,6 +1152,7 @@ function updateDisplay() {
 
   prevRegime = currentRegime; prevNav = currentNav; prevWma = currentWma;
 
+  // ── ALL BUTTON LOCKING REMOVED ──
   const b10 = document.getElementById('btnBuy10'), b25 = document.getElementById('btnBuy25'), b50 = document.getElementById('btnBuy50');
   const sellBtns = [document.getElementById('btnProfit'), document.getElementById('btnTsl'), document.getElementById('btnRegime'), document.getElementById('btnAll')];
   
@@ -1156,8 +1169,15 @@ function updateDisplay() {
     const sp = fullHistory.slice(0, ei + 1).map(h => h.nav);
     const dr = calculateRSI(sp, 14);
     const wr = calculateRSI(sp.filter((_, j) => j % 5 === 0), 14);
-    deltaData.push(dr - wr);
-    deltaColors.push(i === 0 ? (dr - wr >= 0 ? '#00e8a2' : '#f04060') : (dr - wr > deltaData[i-1] ? '#00e8a2' : '#f04060'));
+    const d = dr - wr;
+    deltaData.push(d);
+    
+    // NEW 4-STATE COLOR ENGINE
+    if (d >= 20) deltaColors.push('rgba(0, 232, 162, 1)'); 
+    else if (d <= -20) deltaColors.push('rgba(240, 64, 96, 1)');
+    else if (d > 0) deltaColors.push('rgba(0, 232, 162, 0.25)');
+    else deltaColors.push('rgba(240, 64, 96, 0.25)');
+    
     wmaRegimes.push(wr >= 50 ? 'A' : (wr >= 40 ? 'B' : 'C'));
     drsiArrHud.push(dr); wrsiArrHud.push(wr);
   }
@@ -1201,7 +1221,9 @@ function updateDisplay() {
       datasets: [
         { type: 'bar',  data: deltaData, backgroundColor: deltaColors, barPercentage: 1.0, categoryPercentage: 1.0 },
         { type: 'line', data: Array(chartData.length).fill(profitDeltaLevel), borderColor: '#f04060', borderDash: [2,2], pointRadius: 0, borderWidth: 1 },
-        { type: 'line', data: Array(chartData.length).fill(buyDeltaLevel), borderColor: '#00e8a2', borderDash: [2,2], pointRadius: 0, borderWidth: 1 }
+        { type: 'line', data: Array(chartData.length).fill(buyDeltaLevel), borderColor: '#00e8a2', borderDash: [2,2], pointRadius: 0, borderWidth: 1 },
+        // ── DASHED ZERO LINE ──
+        { type: 'line', data: Array(chartData.length).fill(0), borderColor: 'rgba(255,255,255,0.3)', borderDash: [4,4], pointRadius: 0, borderWidth: 1 }
       ]
     },
     options: {
