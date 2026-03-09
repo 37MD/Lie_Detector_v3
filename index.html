@@ -61,7 +61,7 @@
     animation: spin 0.7s linear infinite;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
-  #ovTxt { color: var(--accent); font-size: 0.65rem; margin-top: 12px; letter-spacing: 0.12em; opacity: 0.8; }
+  #ovTxt { color: var(--accent); font-size: 0.65rem; margin-top: 12px; letter-spacing: 0.12em; opacity: 0.8; transition: color 0.2s;}
 
   /* ── SETUP SCREEN ── */
   #setupScreen {
@@ -186,7 +186,7 @@
   .alert-danger { background: var(--red); color: #fff; }
   .alert-buy { background: var(--accent); color: #021a0f; }
   .alert-profit { background: var(--accent2); color: #1a0a00; }
-  .alert-mega { font-size: 0.85rem !important; padding: 11px 12px !important; letter-spacing: 0.05em;}
+  .alert-mega { font-size: 0.82rem !important; padding: 11px 12px !important; letter-spacing: 0.03em;}
   @keyframes pulseAlert { 0%, 100% { opacity: 1; } 50% { opacity: 0.72; } }
 
   /* ── MAIN SIM AREA ── */
@@ -844,6 +844,8 @@ function syncPair(activeElements, sourceChart, targetChart, isLive) {
 
 async function fetchFundData() {
   const code = document.getElementById('fundSelect').value;
+  document.getElementById('ovTxt').textContent = 'FETCHING DATA...';
+  document.getElementById('ovTxt').style.color = 'var(--accent)';
   document.getElementById('ov').style.display = 'flex';
   const url = code.startsWith('SM') ? `https://npsnav.in/api/historical/${code}` : `https://api.mfapi.in/mf/${code}`;
   try {
@@ -853,7 +855,9 @@ async function fetchFundData() {
     if (!data || !data.data) return [];
     return data.data.map(d => ({ nav: parseFloat(d.nav), date: d.date })).reverse();
   } catch(e) {
-    document.getElementById('ov').style.display = 'none';
+    document.getElementById('ovTxt').textContent = 'NETWORK ERROR: API BLOCKED';
+    document.getElementById('ovTxt').style.color = 'var(--red)';
+    setTimeout(() => { document.getElementById('ov').style.display = 'none'; }, 2000);
     return [];
   }
 }
@@ -864,7 +868,6 @@ async function initLive() {
   document.getElementById('liveFundName').textContent = getBriefFundName();
   profitDeltaLevel = parseFloat(document.getElementById('profitDeltaIn').value) || 15;
   buyDeltaLevel    = parseFloat(document.getElementById('buyDeltaIn').value)    || -15;
-  document.getElementById('ovTxt').textContent = 'FETCHING LIVE...';
   globalLiveData = await fetchFundData();
   if (!globalLiveData.length) return;
   document.getElementById('setupScreen').style.display = 'none';
@@ -906,7 +909,6 @@ function updateLiveChart(days, btnEl) {
   rEl.textContent = `Regime ${lastRegime}`;
   rEl.className = 'ind-val ' + (lastRegime === 'A' ? 'reg-A' : (lastRegime === 'B' ? 'reg-B' : 'reg-C'));
 
-  // Calculate Previous Regime for Live Alerts
   let prevRegimeLive = null;
   if (latestPrices.length > 20) {
     const prevPrices = latestPrices.slice(0, -1);
@@ -1093,9 +1095,9 @@ async function initGame(mode) {
   document.getElementById('simFundName').textContent = getBriefFundName();
   profitDeltaLevel = parseFloat(document.getElementById('profitDeltaIn').value) || 15;
   buyDeltaLevel    = parseFloat(document.getElementById('buyDeltaIn').value)    || -15;
-  document.getElementById('ovTxt').textContent = 'SYNCING SIMULATION...';
   fullHistory = await fetchFundData();
-  if (!fullHistory.length) { document.getElementById('ov').style.display = 'none'; return; }
+  if (!fullHistory.length) return;
+  
   const minRequired = 20;
   if (mode === 'wave') {
     const waveIdx = fullHistory.findIndex(item => {
