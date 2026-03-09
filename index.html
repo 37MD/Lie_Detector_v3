@@ -99,7 +99,7 @@
   }
   .dropdown:focus { outline: none; border-color: var(--accent); }
 
-  .custom-inputs { display: flex; gap: 8px; width: 100%; max-width: 350px; margin-bottom: 0.75rem; }
+  .custom-inputs { display: flex; gap: 8px; width: 100%; max-width: 350px; margin-bottom: 1.25rem; }
   .c-input-box {
     flex: 1; background: var(--surface2); padding: 8px 10px;
     border-radius: var(--radius); border: 1.5px solid var(--border);
@@ -112,15 +112,6 @@
     font-weight: 700; font-size: 1rem; font-family: var(--mono);
     outline: none; text-align: center; color: inherit;
   }
-
-  .toggle-container {
-    margin-bottom: 1rem; display: flex; align-items: center; gap: 10px;
-    font-size: 0.70rem; color: var(--muted2);
-    background: var(--surface2); padding: 9px 12px;
-    border-radius: var(--radius); border: 1.5px solid var(--border);
-    width: 100%; max-width: 350px;
-  }
-  .toggle-check { accent-color: var(--accent); transform: scale(1.2); cursor: pointer; }
 
   .setup-btns { display: flex; gap: 8px; width: 100%; max-width: 350px; }
   .setup-btn {
@@ -248,6 +239,9 @@
     background: rgba(7, 9, 15, 0.85);
     padding: 2px 4px;
     border-radius: 2px;
+  }
+  .chart-hud.delta {
+    top: 25px; 
   }
 
   @media (max-width: 600px) {
@@ -416,11 +410,6 @@
     </div>
   </div>
 
-  <div class="toggle-container">
-    <input type="checkbox" id="flexiLockToggle" class="toggle-check" checked>
-    <label for="flexiLockToggle" style="cursor:pointer;">Enable "Flexicap Lock" Rule (220 days)</label>
-  </div>
-
   <div class="setup-btns">
     <button class="setup-btn setup-btn-sim" onclick="initGame('random')">Simulator</button>
     <button class="setup-btn setup-btn-wave" onclick="initGame('wave')">Wave Sim</button>
@@ -464,6 +453,7 @@
       </div>
       <div class="chart-delta-pane">
         <div class="delta-label">RSI DELTA · Daily − Weekly</div>
+        <div class="chart-hud delta" id="liveHudDelta"></div>
         <div class="canvas-box-bottom"><canvas id="liveDeltaCanvas"></canvas></div>
       </div>
     </div>
@@ -539,6 +529,7 @@
         </div>
         <div class="chart-delta-pane">
           <div class="delta-label">RSI DELTA · Daily − Weekly</div>
+          <div class="chart-hud delta" id="simHudDelta"></div>
           <div class="canvas-box-bottom"><canvas id="deltaChart"></canvas></div>
         </div>
       </div>
@@ -684,7 +675,7 @@ let currentIdx = 0, simStartIdx = 0;
 let chart = null, deltaChart = null, liveChart = null, liveDeltaChart = null;
 let cash = 100000, tranches = [], tradeLog = [];
 let prevRegime = null, prevNav = null, currentRegimeLog = 'A', prevWma = null;
-let totalTaxPaid = 0, peakNetWorth = 100000, maxDrawdown = 0, buyLockoutTimer = 0;
+let totalTaxPaid = 0, peakNetWorth = 100000, maxDrawdown = 0;
 let profitDeltaLevel = 15, buyDeltaLevel = -15;
 
 let simHoverIdx = null, liveHoverIdx = null;
@@ -732,7 +723,6 @@ const universalAnnotationsPlugin = {
     const isLive = ci.canvas.id.includes('live');
     const activeIdx = isLive ? liveHoverIdx : simHoverIdx;
     
-    // Crosshair rendering
     if (activeIdx !== null && meta.data[activeIdx]) {
       const ax = meta.data[activeIdx].x;
       ctx.save();
@@ -904,6 +894,7 @@ function updateLiveChart(days, btnEl) {
 
   const prevNavVal = latestPrices.length > 1 ? latestPrices[latestPrices.length - 2] : null;
   const prevWmaVal = calculateWMA(latestPrices.slice(0, -1), 20);
+  const lastWmaVal = wmaSlice.length > 0 ? wmaSlice[wmaSlice.length - 1] : 0;
   
   const banner = document.getElementById('liveAlertBanner');
   let alertText = '', alertClass = '';
@@ -914,8 +905,7 @@ function updateLiveChart(days, btnEl) {
     if (pcAlert) { alertText = '🟢 BUY SIGNAL: PC BREAKOUT'; alertClass = 'alert-buy'; }
     else if (lastDRsi < 40) { alertText = '🟢 BUY SIGNAL: OVERSOLD (RSI < 40)'; alertClass = 'alert-buy'; }
     else if (lastDelta < buyDeltaLevel) { alertText = `🟢 BUY SIGNAL: SLINGSHOT (Delta < ${buyDeltaLevel})`; alertClass = 'alert-buy'; }
-    // Define wmaSlice bound check for alert
-    else if (prevWmaVal && prevNavVal && prevNavVal < prevWmaVal && lastNav > (wmaSlice.length > 0 ? wmaSlice[wmaSlice.length - 1] : 0)) { alertText = '🟢 BUY SIGNAL: WMA RECLAIM'; alertClass = 'alert-buy'; }
+    else if (prevWmaVal && prevNavVal && prevNavVal < prevWmaVal && lastNav > lastWmaVal) { alertText = '🟢 BUY SIGNAL: WMA RECLAIM'; alertClass = 'alert-buy'; }
   }
   if (!alertText && lastDelta > profitDeltaLevel) { alertText = `🟠 TAKE PROFIT: OVERHEATED (Delta > ${profitDeltaLevel})`; alertClass = 'alert-profit'; }
   banner.textContent = alertText; banner.className = alertClass;
@@ -929,7 +919,13 @@ function updateLiveChart(days, btnEl) {
     const wr = calculateRSI(sp.filter((_, j) => j % 5 === 0), 14);
     const d = dr - wr;
     deltaData.push(d);
-    deltaColors.push(i === 0 ? (d >= 0 ? '#00e8a2' : '#f04060') : (d > deltaData[i-1] ? '#00e8a2' : '#f04060'));
+    
+    // NEW 4-STATE COLOR ENGINE
+    if (d >= 20) deltaColors.push('rgba(0, 232, 162, 1)'); 
+    else if (d <= -20) deltaColors.push('rgba(240, 64, 96, 1)');
+    else if (d > 0) deltaColors.push('rgba(0, 232, 162, 0.25)');
+    else deltaColors.push('rgba(240, 64, 96, 0.25)');
+
     wmaRegimes.push(wr >= 50 ? 'A' : (wr >= 40 ? 'B' : 'C'));
     drsiArr.push(dr); wrsiArr.push(wr);
   }
@@ -982,7 +978,9 @@ function updateLiveChart(days, btnEl) {
       datasets: [
         { type: 'bar',  data: deltaData, backgroundColor: deltaColors, barPercentage: 1.0, categoryPercentage: 1.0 },
         { type: 'line', data: Array(dataSlice.length).fill(profitDeltaLevel), borderColor: '#f04060', borderDash: [2,2], pointRadius: 0, borderWidth: 1 },
-        { type: 'line', data: Array(dataSlice.length).fill(buyDeltaLevel), borderColor: '#00e8a2', borderDash: [2,2], pointRadius: 0, borderWidth: 1 }
+        { type: 'line', data: Array(dataSlice.length).fill(buyDeltaLevel), borderColor: '#00e8a2', borderDash: [2,2], pointRadius: 0, borderWidth: 1 },
+        // THE DASHED ZERO LINE
+        { type: 'line', data: Array(dataSlice.length).fill(0), borderColor: 'rgba(255,255,255,0.3)', borderDash: [4,4], pointRadius: 0, borderWidth: 1 }
       ]
     },
     options: {
@@ -1033,7 +1031,7 @@ async function initGame(mode) {
   currentIdx = simStartIdx;
   tradeLog = []; cash = 100000; tranches = [];
   prevRegime = null; prevNav = null; prevWma = null;
-  totalTaxPaid = 0; peakNetWorth = 100000; maxDrawdown = 0; buyLockoutTimer = 0;
+  totalTaxPaid = 0; peakNetWorth = 100000; maxDrawdown = 0;
   simHoverIdx = null;
   document.getElementById('setupScreen').style.display = 'none';
   document.getElementById('gameUI').style.display = 'flex';
@@ -1081,11 +1079,6 @@ function updateDisplay() {
   document.getElementById('cashVal').textContent = `₹${Math.round(cash).toLocaleString('en-IN')}`;
   document.getElementById('nwVal').textContent = `₹${Math.round(currentNW).toLocaleString('en-IN')}`;
   document.getElementById('ddVal').textContent = `-${currentDD.toFixed(1)}%`;
-
-  const isFlexi = document.getElementById('fundSelect').options[document.getElementById('fundSelect').selectedIndex].text.toLowerCase().includes('flexi');
-  const firstBuyDay = tranches.length > 0 ? Math.min(...tranches.map(t => t.day)) : null;
-  const lockEnabled = document.getElementById('flexiLockToggle').checked;
-  const flexiLocked = lockEnabled && isFlexi && firstBuyDay !== null && (dayNum - firstBuyDay) < 220;
 
   let pcAlert = false, ncAlert = false;
   if (prices.length >= 56) {
@@ -1141,29 +1134,30 @@ function updateDisplay() {
 
   const b10 = document.getElementById('btnBuy10'), b25 = document.getElementById('btnBuy25'), b50 = document.getElementById('btnBuy50');
   const sellBtns = [document.getElementById('btnProfit'), document.getElementById('btnTsl'), document.getElementById('btnRegime'), document.getElementById('btnAll')];
-  if (buyLockoutTimer > 0) {
-    [b10, b25, b50].forEach(b => { b.disabled = true; b.textContent = `COOL (${buyLockoutTimer})`; });
-  } else {
-    b10.disabled = false; b10.textContent = 'BUY 10%';
-    b25.disabled = false; b25.textContent = 'BUY 25%';
-    b50.disabled = false; b50.textContent = 'BUY 50%';
-  }
-  sellBtns.forEach(btn => {
-    let locked = flexiLocked;
-    if ((tslHit || currentRegime === 'C') && (btn.id === 'btnTsl' || btn.id === 'btnRegime' || btn.id === 'btnAll')) locked = false;
-    btn.disabled = locked;
-    if (btn.id === 'btnAll') btn.textContent = locked ? `LOCK (${220 - (dayNum - firstBuyDay)}d)` : 'SELL ALL';
-  });
+  
+  b10.disabled = false; b10.textContent = 'BUY 10%';
+  b25.disabled = false; b25.textContent = 'BUY 25%';
+  b50.disabled = false; b50.textContent = 'BUY 50%';
+  sellBtns.forEach(btn => { btn.disabled = false; });
+  document.getElementById('btnAll').textContent = 'SELL ALL';
 
   const wmaData = chartData.map((_, i) => calculateWMA(fullHistory.slice(0, currentIdx - (chartData.length - 1) + i + 1).map(h => h.nav), 20));
   const deltaData = [], deltaColors = [], wmaRegimes = [], drsiArrHud = [], wrsiArrHud = [];
+  
   for (let i = 0; i < chartData.length; i++) {
     const ei = currentIdx - (chartData.length - 1) + i;
     const sp = fullHistory.slice(0, ei + 1).map(h => h.nav);
     const dr = calculateRSI(sp, 14);
     const wr = calculateRSI(sp.filter((_, j) => j % 5 === 0), 14);
-    deltaData.push(dr - wr);
-    deltaColors.push(i === 0 ? (dr - wr >= 0 ? '#00e8a2' : '#f04060') : (dr - wr > deltaData[i-1] ? '#00e8a2' : '#f04060'));
+    const d = dr - wr;
+    deltaData.push(d);
+    
+    // NEW 4-STATE COLOR ENGINE
+    if (d >= 20) deltaColors.push('rgba(0, 232, 162, 1)'); 
+    else if (d <= -20) deltaColors.push('rgba(240, 64, 96, 1)');
+    else if (d > 0) deltaColors.push('rgba(0, 232, 162, 0.25)');
+    else deltaColors.push('rgba(240, 64, 96, 0.25)');
+    
     wmaRegimes.push(wr >= 50 ? 'A' : (wr >= 40 ? 'B' : 'C'));
     drsiArrHud.push(dr); wrsiArrHud.push(wr);
   }
@@ -1176,8 +1170,9 @@ function updateDisplay() {
     const reg = wmaRegimes[i];
     const regColor = reg === 'A' ? '#00e8a2' : (reg === 'B' ? '#f59e0b' : '#f04060');
     const wmaText = wmaData[i] ? wmaData[i].toFixed(2) : '--';
-    const html = `NAV: ${chartData[i].nav.toFixed(2)} | WMA: <span style="color:${regColor}; font-weight:700;">${wmaText}</span> | REG: <span style="color:${regColor}; font-weight:700;">${reg}</span> | D-RSI: ${Math.round(drsiArrHud[i])} | W-RSI: ${Math.round(wrsiArrHud[i])} | DELTA: ${(drsiArrHud[i] - wrsiArrHud[i]).toFixed(1)}`;
-    hm.innerHTML = html; 
+    const shortDt = formatShortDate(chartData[i].date);
+    const html = `<span style="color:var(--gold);font-weight:700;">[${shortDt}]</span> NAV: ${chartData[i].nav.toFixed(2)} | WMA: <span style="color:${regColor}; font-weight:700;">${wmaText}</span> | REG: <span style="color:${regColor}; font-weight:700;">${reg}</span> | D-RSI: ${Math.round(drsiArrHud[i])} | W-RSI: ${Math.round(wrsiArrHud[i])} | DELTA: ${(drsiArrHud[i] - wrsiArrHud[i]).toFixed(1)}`;
+    hm.innerHTML = html;
   };
 
   if (chart) chart.destroy();
@@ -1207,7 +1202,9 @@ function updateDisplay() {
       datasets: [
         { type: 'bar',  data: deltaData, backgroundColor: deltaColors, barPercentage: 1.0, categoryPercentage: 1.0 },
         { type: 'line', data: Array(chartData.length).fill(profitDeltaLevel), borderColor: '#f04060', borderDash: [2,2], pointRadius: 0, borderWidth: 1 },
-        { type: 'line', data: Array(chartData.length).fill(buyDeltaLevel), borderColor: '#00e8a2', borderDash: [2,2], pointRadius: 0, borderWidth: 1 }
+        { type: 'line', data: Array(chartData.length).fill(buyDeltaLevel), borderColor: '#00e8a2', borderDash: [2,2], pointRadius: 0, borderWidth: 1 },
+        // THE DASHED ZERO LINE
+        { type: 'line', data: Array(chartData.length).fill(0), borderColor: 'rgba(255,255,255,0.3)', borderDash: [4,4], pointRadius: 0, borderWidth: 1 }
       ]
     },
     options: {
@@ -1239,10 +1236,10 @@ function trade(action) {
   } else if (action === 'SELL_TSL') { 
     const totalUnits = tranches.reduce((s, t) => s + t.units, 0);
     const r = currentRegimeLog === 'A' ? 0.5 : 1.0; 
-    executeSell(totalUnits * r, nav, dayNum, `SELL TSL (${r*100}%)`); buyLockoutTimer = 5; 
+    executeSell(totalUnits * r, nav, dayNum, `SELL TSL (${r*100}%)`); 
   } else if (action === 'SELL_REGIME') { 
     const totalUnits = tranches.reduce((s, t) => s + t.units, 0);
-    executeSell(totalUnits, nav, dayNum, 'SELL REGIME'); buyLockoutTimer = 5; 
+    executeSell(totalUnits, nav, dayNum, 'SELL REGIME'); 
   }
   document.getElementById('alertBanner').style.display = 'none';
   nextDay();
