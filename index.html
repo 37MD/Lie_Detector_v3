@@ -399,11 +399,11 @@
   <div class="custom-inputs">
     <div class="c-input-box">
       <span class="c-label">Profit Delta</span>
-      <input type="number" id="profitDeltaIn" class="c-num" style="color: var(--accent2);" value="15">
+      <input type="number" id="profitDeltaIn" class="c-num" style="color: var(--accent2);" value="15" onchange="saveFundSelection()">
     </div>
     <div class="c-input-box">
       <span class="c-label">Scout Buy</span>
-      <input type="number" id="buyDeltaIn" class="c-num" style="color: var(--accent);" value="-15">
+      <input type="number" id="buyDeltaIn" class="c-num" style="color: var(--accent);" value="-15" onchange="saveFundSelection()">
     </div>
   </div>
 
@@ -620,13 +620,19 @@ const amcFunds = {
   ]
 };
 
+// ── V2.06 LOCAL STORAGE SAVING (NOW INCLUDING DELTAS) ──
 function saveFundSelection() {
   const activeBtn = document.querySelector('#fundGrid .fund-box.active');
   const sel = document.getElementById('fundSelect');
+  const profitIn = document.getElementById('profitDeltaIn');
+  const buyIn = document.getElementById('buyDeltaIn');
+  
   if (activeBtn && sel && sel.value) {
     localStorage.setItem('ld_v3_amc', activeBtn.textContent.trim());
     localStorage.setItem('ld_v3_fund', sel.value);
   }
+  if (profitIn) localStorage.setItem('ld_v3_profit_delta', profitIn.value);
+  if (buyIn) localStorage.setItem('ld_v3_buy_delta', buyIn.value);
 }
 
 function selectAMC(amc, el, isInit = false) {
@@ -641,18 +647,26 @@ function selectAMC(amc, el, isInit = false) {
   if (!isInit) saveFundSelection();
 }
 
+// ── V2.06 LOCAL STORAGE LOADING ──
 window.addEventListener('DOMContentLoaded', () => {
   const savedAMC = localStorage.getItem('ld_v3_amc') || 'ICICI';
   const savedFund = localStorage.getItem('ld_v3_fund');
+  const savedProfit = localStorage.getItem('ld_v3_profit_delta');
+  const savedBuy = localStorage.getItem('ld_v3_buy_delta');
+
   const boxes = Array.from(document.querySelectorAll('.fund-box'));
   let targetBox = boxes.find(b => b.textContent.trim() === savedAMC);
   if (!targetBox) targetBox = boxes[1]; 
   selectAMC(savedAMC, targetBox, true);
+  
   const sel = document.getElementById('fundSelect');
   if (savedFund) {
     sel.value = savedFund;
     if (sel.selectedIndex === -1) sel.selectedIndex = 0; 
   }
+  
+  if (savedProfit !== null) document.getElementById('profitDeltaIn').value = savedProfit;
+  if (savedBuy !== null) document.getElementById('buyDeltaIn').value = savedBuy;
 });
 
 function getBriefFundName() {
@@ -855,7 +869,7 @@ async function fetchFundData() {
     if (!data || !data.data) return [];
     return data.data.map(d => ({ nav: parseFloat(d.nav), date: d.date })).reverse();
   } catch(e) {
-    document.getElementById('ovTxt').textContent = 'NETWORK ERROR: API BLOCKED';
+    document.getElementById('ovTxt').textContent = 'NETWORK ERROR: API TIMEOUT';
     document.getElementById('ovTxt').style.color = 'var(--red)';
     setTimeout(() => { document.getElementById('ov').style.display = 'none'; }, 2000);
     return [];
