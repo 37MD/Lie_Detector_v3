@@ -113,7 +113,16 @@
     outline: none; text-align: center; color: inherit;
   }
 
-  .setup-btns { display: flex; gap: 8px; width: 100%; max-width: 350px; margin-top: 1rem; }
+  .toggle-container {
+    margin-bottom: 1rem; display: flex; align-items: center; gap: 10px;
+    font-size: 0.70rem; color: var(--muted2);
+    background: var(--surface2); padding: 9px 12px;
+    border-radius: var(--radius); border: 1.5px solid var(--border);
+    width: 100%; max-width: 350px;
+  }
+  .toggle-check { accent-color: var(--accent); transform: scale(1.2); cursor: pointer; }
+
+  .setup-btns { display: flex; gap: 8px; width: 100%; max-width: 350px; }
   .setup-btn {
     flex: 1; font-size: 0.68rem; font-weight: 400; font-family: var(--mono);
     padding: 12px 4px; border-radius: var(--radius); cursor: pointer;
@@ -620,7 +629,6 @@ const amcFunds = {
   ]
 };
 
-// ── V2.06 LOCAL STORAGE SAVING ──
 function saveFundSelection() {
   const activeBtn = document.querySelector('#fundGrid .fund-box.active');
   const sel = document.getElementById('fundSelect');
@@ -642,7 +650,6 @@ function selectAMC(amc, el, isInit = false) {
   if (!isInit) saveFundSelection();
 }
 
-// ── V2.06 LOCAL STORAGE LOADING ──
 window.addEventListener('DOMContentLoaded', () => {
   const savedAMC = localStorage.getItem('ld_v3_amc') || 'ICICI';
   const savedFund = localStorage.getItem('ld_v3_fund');
@@ -680,6 +687,7 @@ let simHoverIdx = null, liveHoverIdx = null;
 // ─────────────────────────────────────────────
 //  MATH HELPERS
 // ─────────────────────────────────────────────
+
 function formatShortDate(dateStr) {
   if (!dateStr) return '';
   const parts = dateStr.split('-');
@@ -739,9 +747,12 @@ const universalAnnotationsPlugin = {
       ctx.save();
       const startX = meta.data[0].x;
       const endX   = meta.data[data.length - 1].x;
+      
+      // ── NEW RATCHETING SWING LOW FINDER ──
       let swingLows = [];
       for (let i = data.length - 3; i >= 2; i--) {
-        if (data[i] < data[i-1] && data[i] < data[i-2] && data[i] <= data[i+1] && data[i] <= data[i+2]) {
+        // Strict V-shape detection
+        if (data[i] <= data[i-1] && data[i] < data[i-2] && data[i] <= data[i+1] && data[i] < data[i+2]) {
           if (swingLows.length === 0 || (swingLows[swingLows.length-1].idx - i) > 4) {
             swingLows.push({ idx: i, val: data[i] });
           }
@@ -749,18 +760,30 @@ const universalAnnotationsPlugin = {
         }
       }
       
-      // ── UPDATED TSL DRAWING LOGIC: ONLY TSL 1 SHIFTED TO 2ND SWING LOW ──
       if (swingLows.length > 0) {
         ctx.lineWidth = 1; ctx.setLineDash([3, 3]); ctx.font = '9px "Space Mono"';
-        const targetLow = swingLows.length > 1 ? swingLows[1] : swingLows[0]; // USE 2ND IF FOUND
+        
+        // ── TRUE LOWER SWING LOW SELECTION ──
+        // Takes the absolute minimum of the two recent swing lows, providing deepest structural support
+        let targetLow = swingLows[0];
+        if (swingLows.length > 1 && swingLows[1].val < swingLows[0].val) {
+            targetLow = swingLows[1];
+        }
+        
+        const lastVal = data[data.length - 1];
+        const isBreached = lastVal < targetLow.val;
         
         const yPos = ci.scales.y.getPixelForValue(targetLow.val);
         ctx.beginPath();
-        ctx.strokeStyle = '#f04060';
+        // Turns Red if current price plunges below it
+        ctx.strokeStyle = isBreached ? '#f04060' : '#f59e0b';
         ctx.fillStyle   = ctx.strokeStyle;
         ctx.moveTo(startX, yPos); ctx.lineTo(endX, yPos); ctx.stroke();
         ctx.textAlign = 'left';
-        ctx.fillText(`TSL 1: ₹${targetLow.val.toFixed(2)}`, startX + 5, yPos - 5);
+        
+        // Explicity labels it breached so it's not confusing why it's above the price
+        const lbl = isBreached ? `TSL BREACHED: ₹${targetLow.val.toFixed(2)}` : `TSL: ₹${targetLow.val.toFixed(2)}`;
+        ctx.fillText(lbl, startX + 5, yPos - 5);
       }
       
       if (wma.length > 0) {
@@ -888,20 +911,22 @@ function updateLiveChart(days, btnEl) {
     }
   }
 
-  // ── UPDATED TSL ALERT LOGIC (LIVE) ──
+  // ── UPDATED ALERT BANNER TSL LOGIC ──
   let tslVal = 0;
-  let tslLowsFound = 0;
-  let tslLastIdx = -1;
+  let sLows = [];
   for (let i = globalLiveData.length - 3; i >= 2; i--) {
-    if (globalLiveData[i].nav < globalLiveData[i-1].nav && globalLiveData[i].nav < globalLiveData[i-2].nav &&
-        globalLiveData[i].nav <= globalLiveData[i+1].nav && globalLiveData[i].nav <= globalLiveData[i+2].nav) {
-      if (tslLastIdx === -1 || (tslLastIdx - i) > 4) {
-        tslVal = globalLiveData[i].nav; 
-        tslLowsFound++;
-        tslLastIdx = i;
+    let d = globalLiveData;
+    if (d[i].nav <= d[i-1].nav && d[i].nav < d[i-2].nav && d[i].nav <= d[i+1].nav && d[i].nav < d[i+2].nav) {
+      if (sLows.length === 0 || (sLows[sLows.length-1].idx - i) > 4) {
+        sLows.push({idx: i, val: d[i].nav});
       }
-      if (tslLowsFound === 2) break; // LOCK ONTO 2ND SWING LOW
+      if (sLows.length === 2) break;
     }
+  }
+  if (sLows.length === 2) {
+     tslVal = Math.min(sLows[0].val, sLows[1].val);
+  } else if (sLows.length === 1) {
+     tslVal = sLows[0].val;
   }
 
   const prevNavVal = latestPrices.length > 1 ? latestPrices[latestPrices.length - 2] : null;
@@ -924,8 +949,6 @@ function updateLiveChart(days, btnEl) {
   banner.style.display = alertText ? 'block' : 'none';
 
   const deltaData = [], deltaColors = [], wmaRegimes = [], drsiArr = [], wrsiArr = [];
-  
-  // ── 4-STATE COLOR ENGINE ──
   for (let i = 0; i < dataSlice.length; i++) {
     const ei = globalLiveData.length - dataSlice.length + i;
     const sp = globalLiveData.slice(0, ei + 1).map(h => h.nav);
@@ -933,12 +956,7 @@ function updateLiveChart(days, btnEl) {
     const wr = calculateRSI(sp.filter((_, j) => j % 5 === 0), 14);
     const d = dr - wr;
     deltaData.push(d);
-    
-    if (d >= 20) deltaColors.push('rgba(0, 232, 162, 1)'); 
-    else if (d <= -20) deltaColors.push('rgba(240, 64, 96, 1)');
-    else if (d > 0) deltaColors.push('rgba(0, 232, 162, 0.25)');
-    else deltaColors.push('rgba(240, 64, 96, 0.25)');
-
+    deltaColors.push(i === 0 ? (d >= 0 ? '#00e8a2' : '#f04060') : (d > deltaData[i-1] ? '#00e8a2' : '#f04060'));
     wmaRegimes.push(wr >= 50 ? 'A' : (wr >= 40 ? 'B' : 'C'));
     drsiArr.push(dr); wrsiArr.push(wr);
   }
@@ -990,9 +1008,7 @@ function updateLiveChart(days, btnEl) {
       datasets: [
         { type: 'bar',  data: deltaData, backgroundColor: deltaColors, barPercentage: 1.0, categoryPercentage: 1.0 },
         { type: 'line', data: Array(dataSlice.length).fill(profitDeltaLevel), borderColor: '#f04060', borderDash: [2,2], pointRadius: 0, borderWidth: 1 },
-        { type: 'line', data: Array(dataSlice.length).fill(buyDeltaLevel), borderColor: '#00e8a2', borderDash: [2,2], pointRadius: 0, borderWidth: 1 },
-        // ── DASHED ZERO LINE ──
-        { type: 'line', data: Array(dataSlice.length).fill(0), borderColor: 'rgba(255,255,255,0.3)', borderDash: [4,4], pointRadius: 0, borderWidth: 1 }
+        { type: 'line', data: Array(dataSlice.length).fill(buyDeltaLevel), borderColor: '#00e8a2', borderDash: [2,2], pointRadius: 0, borderWidth: 1 }
       ]
     },
     options: {
@@ -1108,18 +1124,20 @@ function updateDisplay() {
   // ── UPDATED TSL ALERT LOGIC (SIM) ──
   const chartData = visible.slice(-80);
   let tsl1 = null;
-  let tslLowsFound = 0;
-  let tslLastIdx = -1;
+  let sLows = [];
   for (let i = chartData.length - 3; i >= 2; i--) {
-    if (chartData[i].nav < chartData[i-1].nav && chartData[i].nav < chartData[i-2].nav &&
-        chartData[i].nav <= chartData[i+1].nav && chartData[i].nav <= chartData[i+2].nav) {
-      if (tslLastIdx === -1 || (tslLastIdx - i) > 4) {
-        tsl1 = chartData[i].nav; 
-        tslLowsFound++;
-        tslLastIdx = i;
+    let d = chartData;
+    if (d[i].nav <= d[i-1].nav && d[i].nav < d[i-2].nav && d[i].nav <= d[i+1].nav && d[i].nav < d[i+2].nav) {
+      if (sLows.length === 0 || (sLows[sLows.length-1].idx - i) > 4) {
+        sLows.push({idx: i, val: d[i].nav});
       }
-      if (tslLowsFound === 2) break; // LOCK ONTO 2ND SWING LOW
+      if (sLows.length === 2) break;
     }
+  }
+  if (sLows.length === 2) {
+     tsl1 = Math.min(sLows[0].val, sLows[1].val);
+  } else if (sLows.length === 1) {
+     tsl1 = sLows[0].val;
   }
   const tslHit = tsl1 && prevNav !== null && prevNav >= tsl1 && currentNav < tsl1;
 
@@ -1152,7 +1170,6 @@ function updateDisplay() {
 
   prevRegime = currentRegime; prevNav = currentNav; prevWma = currentWma;
 
-  // ── ALL BUTTON LOCKING REMOVED ──
   const b10 = document.getElementById('btnBuy10'), b25 = document.getElementById('btnBuy25'), b50 = document.getElementById('btnBuy50');
   const sellBtns = [document.getElementById('btnProfit'), document.getElementById('btnTsl'), document.getElementById('btnRegime'), document.getElementById('btnAll')];
   
@@ -1171,13 +1188,7 @@ function updateDisplay() {
     const wr = calculateRSI(sp.filter((_, j) => j % 5 === 0), 14);
     const d = dr - wr;
     deltaData.push(d);
-    
-    // NEW 4-STATE COLOR ENGINE
-    if (d >= 20) deltaColors.push('rgba(0, 232, 162, 1)'); 
-    else if (d <= -20) deltaColors.push('rgba(240, 64, 96, 1)');
-    else if (d > 0) deltaColors.push('rgba(0, 232, 162, 0.25)');
-    else deltaColors.push('rgba(240, 64, 96, 0.25)');
-    
+    deltaColors.push(i === 0 ? (d >= 0 ? '#00e8a2' : '#f04060') : (d > deltaData[i-1] ? '#00e8a2' : '#f04060'));
     wmaRegimes.push(wr >= 50 ? 'A' : (wr >= 40 ? 'B' : 'C'));
     drsiArrHud.push(dr); wrsiArrHud.push(wr);
   }
@@ -1221,9 +1232,7 @@ function updateDisplay() {
       datasets: [
         { type: 'bar',  data: deltaData, backgroundColor: deltaColors, barPercentage: 1.0, categoryPercentage: 1.0 },
         { type: 'line', data: Array(chartData.length).fill(profitDeltaLevel), borderColor: '#f04060', borderDash: [2,2], pointRadius: 0, borderWidth: 1 },
-        { type: 'line', data: Array(chartData.length).fill(buyDeltaLevel), borderColor: '#00e8a2', borderDash: [2,2], pointRadius: 0, borderWidth: 1 },
-        // ── DASHED ZERO LINE ──
-        { type: 'line', data: Array(chartData.length).fill(0), borderColor: 'rgba(255,255,255,0.3)', borderDash: [4,4], pointRadius: 0, borderWidth: 1 }
+        { type: 'line', data: Array(chartData.length).fill(buyDeltaLevel), borderColor: '#00e8a2', borderDash: [2,2], pointRadius: 0, borderWidth: 1 }
       ]
     },
     options: {
