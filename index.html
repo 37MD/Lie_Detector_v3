@@ -113,16 +113,7 @@
     outline: none; text-align: center; color: inherit;
   }
 
-  .toggle-container {
-    margin-bottom: 1rem; display: flex; align-items: center; gap: 10px;
-    font-size: 0.70rem; color: var(--muted2);
-    background: var(--surface2); padding: 9px 12px;
-    border-radius: var(--radius); border: 1.5px solid var(--border);
-    width: 100%; max-width: 350px;
-  }
-  .toggle-check { accent-color: var(--accent); transform: scale(1.2); cursor: pointer; }
-
-  .setup-btns { display: flex; gap: 8px; width: 100%; max-width: 350px; }
+  .setup-btns { display: flex; gap: 8px; width: 100%; max-width: 350px; margin-top: 1rem; }
   .setup-btn {
     flex: 1; font-size: 0.68rem; font-weight: 400; font-family: var(--mono);
     padding: 12px 4px; border-radius: var(--radius); cursor: pointer;
@@ -272,7 +263,6 @@
   }
   .ind-box {
     display: flex; flex-direction: column; align-items: center; justify-content: center;
-    /* REDUCED PADDING TO SAVE SPACE */
     padding: 4px 2px;
     border-right: 1px solid var(--border);
   }
@@ -288,13 +278,7 @@
   .reg-C { color: var(--red); background: var(--red-dim); border: 1px solid rgba(240,64,96,0.3); }
 
   /* ── PSY BOX ── */
-  .psy-box { 
-    /* REDUCED TOP PADDING TO BRING TEXT UP */
-    padding: 4px 14px 10px 14px; 
-    background: var(--surface); 
-    flex-grow: 1; 
-    overflow-y: auto; 
-  }
+  .psy-box { padding: 4px 14px 10px 14px; background: var(--surface); flex-grow: 1; overflow-y: auto; }
   .psy-logic {
     font-size: 0.70rem; color: var(--text); line-height: 1.6; font-weight: 400;
     border-left: 2px solid var(--accent); padding-left: 10px; margin-top: 6px;
@@ -421,11 +405,6 @@
       <span class="c-label">Scout Buy</span>
       <input type="number" id="buyDeltaIn" class="c-num" style="color: var(--accent);" value="-15">
     </div>
-  </div>
-
-  <div class="toggle-container">
-    <input type="checkbox" id="flexiLockToggle" class="toggle-check" checked>
-    <label for="flexiLockToggle" style="cursor:pointer;">Enable "Flexicap Lock" Rule (220 days)</label>
   </div>
 
   <div class="setup-btns">
@@ -641,6 +620,7 @@ const amcFunds = {
   ]
 };
 
+// ── V2.06 LOCAL STORAGE SAVING ──
 function saveFundSelection() {
   const activeBtn = document.querySelector('#fundGrid .fund-box.active');
   const sel = document.getElementById('fundSelect');
@@ -764,18 +744,22 @@ const universalAnnotationsPlugin = {
           if (swingLows.length === 2) break;
         }
       }
+      
+      // ── UPDATED TSL DRAWING LOGIC ──
+      // ONLY DRAW 1 LINE (TSL 1) AT THE 2ND SWING LOW
       if (swingLows.length > 0) {
         ctx.lineWidth = 1; ctx.setLineDash([3, 3]); ctx.font = '9px "Space Mono"';
-        swingLows.forEach((low, i) => {
-          const yPos = ci.scales.y.getPixelForValue(low.val);
-          ctx.beginPath();
-          ctx.strokeStyle = i === 0 ? '#f04060' : '#f59e0b';
-          ctx.fillStyle   = ctx.strokeStyle;
-          ctx.moveTo(startX, yPos); ctx.lineTo(endX, yPos); ctx.stroke();
-          ctx.textAlign = 'left';
-          ctx.fillText(`TSL ${i+1}: ₹${low.val.toFixed(2)}`, startX + 5, yPos - 5);
-        });
+        const targetLow = swingLows.length > 1 ? swingLows[1] : swingLows[0]; // USE 2ND IF FOUND
+        
+        const yPos = ci.scales.y.getPixelForValue(targetLow.val);
+        ctx.beginPath();
+        ctx.strokeStyle = '#f04060';
+        ctx.fillStyle   = ctx.strokeStyle;
+        ctx.moveTo(startX, yPos); ctx.lineTo(endX, yPos); ctx.stroke();
+        ctx.textAlign = 'left';
+        ctx.fillText(`TSL 1: ₹${targetLow.val.toFixed(2)}`, startX + 5, yPos - 5);
       }
+      
       if (wma.length > 0) {
         ctx.font = '8px "Space Mono"'; ctx.textAlign = 'center'; ctx.setLineDash([]);
         let lastLabelIdx = -50;
@@ -853,7 +837,7 @@ async function initLive() {
   document.getElementById('liveModal').style.display   = 'flex';
   const btns = document.getElementById('liveTfRow').children;
   for (const b of btns) b.classList.remove('active');
-  btns[4].classList.add('active'); // 1Y DEFAULT
+  btns[4].classList.add('active'); 
   updateLiveChart(250);
 }
 
@@ -901,10 +885,19 @@ function updateLiveChart(days, btnEl) {
     }
   }
 
+  // ── UPDATED TSL ALERT LOGIC (LIVE) ──
   let tslVal = 0;
+  let tslLowsFound = 0;
+  let tslLastIdx = -1;
   for (let i = globalLiveData.length - 3; i >= 2; i--) {
-    if (globalLiveData[i].nav < globalLiveData[i-1].nav && globalLiveData[i].nav < globalLiveData[i-2].nav) {
-      tslVal = globalLiveData[i].nav; break;
+    if (globalLiveData[i].nav < globalLiveData[i-1].nav && globalLiveData[i].nav < globalLiveData[i-2].nav &&
+        globalLiveData[i].nav <= globalLiveData[i+1].nav && globalLiveData[i].nav <= globalLiveData[i+2].nav) {
+      if (tslLastIdx === -1 || (tslLastIdx - i) > 4) {
+        tslVal = globalLiveData[i].nav; 
+        tslLowsFound++;
+        tslLastIdx = i;
+      }
+      if (tslLowsFound === 2) break; // LOCK ONTO 2ND SWING LOW
     }
   }
 
@@ -1100,12 +1093,20 @@ function updateDisplay() {
     }
   }
 
+  // ── UPDATED TSL ALERT LOGIC (SIM) ──
   const chartData = visible.slice(-80);
   let tsl1 = null;
+  let tslLowsFound = 0;
+  let tslLastIdx = -1;
   for (let i = chartData.length - 3; i >= 2; i--) {
     if (chartData[i].nav < chartData[i-1].nav && chartData[i].nav < chartData[i-2].nav &&
         chartData[i].nav <= chartData[i+1].nav && chartData[i].nav <= chartData[i+2].nav) {
-      tsl1 = chartData[i].nav; break;
+      if (tslLastIdx === -1 || (tslLastIdx - i) > 4) {
+        tsl1 = chartData[i].nav; 
+        tslLowsFound++;
+        tslLastIdx = i;
+      }
+      if (tslLowsFound === 2) break; // LOCK ONTO 2ND SWING LOW
     }
   }
   const tslHit = tsl1 && prevNav !== null && prevNav >= tsl1 && currentNav < tsl1;
@@ -1138,6 +1139,15 @@ function updateDisplay() {
   banner.style.display = alertText ? 'block' : 'none';
 
   prevRegime = currentRegime; prevNav = currentNav; prevWma = currentWma;
+
+  const b10 = document.getElementById('btnBuy10'), b25 = document.getElementById('btnBuy25'), b50 = document.getElementById('btnBuy50');
+  const sellBtns = [document.getElementById('btnProfit'), document.getElementById('btnTsl'), document.getElementById('btnRegime'), document.getElementById('btnAll')];
+  
+  b10.disabled = false; b10.textContent = 'BUY 10%';
+  b25.disabled = false; b25.textContent = 'BUY 25%';
+  b50.disabled = false; b50.textContent = 'BUY 50%';
+  sellBtns.forEach(btn => { btn.disabled = false; });
+  document.getElementById('btnAll').textContent = 'SELL ALL';
 
   const wmaData = chartData.map((_, i) => calculateWMA(fullHistory.slice(0, currentIdx - (chartData.length - 1) + i + 1).map(h => h.nav), 20));
   const deltaData = [], deltaColors = [], wmaRegimes = [], drsiArrHud = [], wrsiArrHud = [];
