@@ -249,10 +249,6 @@
     padding: 2px 4px;
     border-radius: 2px;
   }
-  /* ADJUSTED DELTA HUD POSITION TO AVOID OVERLAP */
-  .chart-hud.delta {
-    top: 18px; 
-  }
 
   @media (max-width: 600px) {
     .chart-hud {
@@ -468,7 +464,6 @@
       </div>
       <div class="chart-delta-pane">
         <div class="delta-label">RSI DELTA · Daily − Weekly</div>
-        <div class="chart-hud delta" id="liveHudDelta"></div>
         <div class="canvas-box-bottom"><canvas id="liveDeltaCanvas"></canvas></div>
       </div>
     </div>
@@ -544,7 +539,6 @@
         </div>
         <div class="chart-delta-pane">
           <div class="delta-label">RSI DELTA · Daily − Weekly</div>
-          <div class="chart-hud delta" id="simHudDelta"></div>
           <div class="canvas-box-bottom"><canvas id="deltaChart"></canvas></div>
         </div>
       </div>
@@ -577,7 +571,7 @@
 
 <script>
 // ─────────────────────────────────────────────
-//  DATA (Cleaned tags)
+//  DATA 
 // ─────────────────────────────────────────────
 const amcFunds = {
   'HDFC': [
@@ -640,7 +634,6 @@ const amcFunds = {
   ]
 };
 
-// ── V2.06 LOCAL STORAGE SAVING ──
 function saveFundSelection() {
   const activeBtn = document.querySelector('#fundGrid .fund-box.active');
   const sel = document.getElementById('fundSelect');
@@ -662,7 +655,6 @@ function selectAMC(amc, el, isInit = false) {
   if (!isInit) saveFundSelection();
 }
 
-// ── V2.06 LOCAL STORAGE LOADING ──
 window.addEventListener('DOMContentLoaded', () => {
   const savedAMC = localStorage.getItem('ld_v3_amc') || 'ICICI';
   const savedFund = localStorage.getItem('ld_v3_fund');
@@ -697,11 +689,6 @@ let profitDeltaLevel = 15, buyDeltaLevel = -15;
 
 let simHoverIdx = null, liveHoverIdx = null;
 
-// ─────────────────────────────────────────────
-//  MATH HELPERS
-// ─────────────────────────────────────────────
-
-// DATE FORMATTER FOR HUD
 function formatShortDate(dateStr) {
   if (!dateStr) return '';
   const parts = dateStr.split('-');
@@ -744,6 +731,8 @@ const universalAnnotationsPlugin = {
     if (!meta.data || meta.data.length === 0) return;
     const isLive = ci.canvas.id.includes('live');
     const activeIdx = isLive ? liveHoverIdx : simHoverIdx;
+    
+    // Crosshair rendering
     if (activeIdx !== null && meta.data[activeIdx]) {
       const ax = meta.data[activeIdx].x;
       ctx.save();
@@ -752,6 +741,7 @@ const universalAnnotationsPlugin = {
       ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(148,163,184,0.6)'; ctx.stroke();
       ctx.restore();
     }
+
     if (ci.canvas.id === 'liveChartCanvas' || ci.canvas.id === 'mainChart') {
       const data = ci.data.datasets[0].data;
       const wma  = ci.data.datasets[1] ? ci.data.datasets[1].data : [];
@@ -857,7 +847,7 @@ async function initLive() {
   document.getElementById('liveModal').style.display   = 'flex';
   const btns = document.getElementById('liveTfRow').children;
   for (const b of btns) b.classList.remove('active');
-  btns[4].classList.add('active'); // SET DEFAULT TO 1 YEAR
+  btns[4].classList.add('active'); // SET DEFAULT TO 1Y
   updateLiveChart(250);
 }
 
@@ -914,8 +904,6 @@ function updateLiveChart(days, btnEl) {
 
   const prevNavVal = latestPrices.length > 1 ? latestPrices[latestPrices.length - 2] : null;
   const prevWmaVal = calculateWMA(latestPrices.slice(0, -1), 20);
-  // SILENT FIX FOR LIVE CHART ALERT
-  const lastWmaVal = wmaSlice.length > 0 ? wmaSlice[wmaSlice.length - 1] : 0;
   
   const banner = document.getElementById('liveAlertBanner');
   let alertText = '', alertClass = '';
@@ -926,7 +914,8 @@ function updateLiveChart(days, btnEl) {
     if (pcAlert) { alertText = '🟢 BUY SIGNAL: PC BREAKOUT'; alertClass = 'alert-buy'; }
     else if (lastDRsi < 40) { alertText = '🟢 BUY SIGNAL: OVERSOLD (RSI < 40)'; alertClass = 'alert-buy'; }
     else if (lastDelta < buyDeltaLevel) { alertText = `🟢 BUY SIGNAL: SLINGSHOT (Delta < ${buyDeltaLevel})`; alertClass = 'alert-buy'; }
-    else if (prevWmaVal && prevNavVal && prevNavVal < prevWmaVal && lastNav > lastWmaVal) { alertText = '🟢 BUY SIGNAL: WMA RECLAIM'; alertClass = 'alert-buy'; }
+    // Define wmaSlice bound check for alert
+    else if (prevWmaVal && prevNavVal && prevNavVal < prevWmaVal && lastNav > (wmaSlice.length > 0 ? wmaSlice[wmaSlice.length - 1] : 0)) { alertText = '🟢 BUY SIGNAL: WMA RECLAIM'; alertClass = 'alert-buy'; }
   }
   if (!alertText && lastDelta > profitDeltaLevel) { alertText = `🟠 TAKE PROFIT: OVERHEATED (Delta > ${profitDeltaLevel})`; alertClass = 'alert-profit'; }
   banner.textContent = alertText; banner.className = alertClass;
@@ -946,16 +935,16 @@ function updateLiveChart(days, btnEl) {
   }
 
   const updateLocalLiveHud = (activeElements) => {
-    const hm = document.getElementById('liveHudMain'), hd = document.getElementById('liveHudDelta');
-    if (!activeElements || !activeElements.length) { hm.innerHTML = ""; hd.innerHTML = ""; return; }
+    const hm = document.getElementById('liveHudMain');
+    // ONLY UPDATING MAIN HUD
+    if (!activeElements || !activeElements.length) { hm.innerHTML = ""; return; }
     const i = activeElements[0].index;
     const reg = wmaRegimes[i];
     const regColor = reg === 'A' ? '#00e8a2' : (reg === 'B' ? '#f59e0b' : '#f04060');
     const wmaText = wmaSlice[i] ? wmaSlice[i].toFixed(2) : '--';
-    // HUD DATE FORMATTED
     const shortDt = formatShortDate(dataSlice[i].date);
     const html = `<span style="color:var(--gold);font-weight:700;">[${shortDt}]</span> NAV: ${dataSlice[i].nav.toFixed(2)} | WMA: <span style="color:${regColor}; font-weight:700;">${wmaText}</span> | REG: <span style="color:${regColor}; font-weight:700;">${reg}</span> | D-RSI: ${Math.round(drsiArr[i])} | W-RSI: ${Math.round(wrsiArr[i])} | DELTA: ${deltaData[i].toFixed(1)}`;
-    hm.innerHTML = html; hd.innerHTML = html;
+    hm.innerHTML = html;
   };
 
   if (liveChart) liveChart.destroy();
@@ -971,8 +960,7 @@ function updateLiveChart(days, btnEl) {
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      // INCREASED PADDING TO CLEAR THE 2-LINE HUD
-      layout: { padding: { top: 40, bottom: 4, left: 8, right: 8 } },
+      layout: { padding: { top: 32, bottom: 4, left: 8, right: 8 } },
       interaction: { mode: 'index', intersect: false },
       onHover: (event, activeElements) => { if (liveDeltaChart) syncPair(activeElements, liveChart, liveDeltaChart, true); updateLocalLiveHud(activeElements); },
       plugins: { legend: { display: false }, tooltip: { enabled: false }, zoom: { zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' }, pan: { enabled: true, mode: 'x' } } },
@@ -999,13 +987,11 @@ function updateLiveChart(days, btnEl) {
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      // INCREASED PADDING TO CLEAR THE 2-LINE HUD
-      layout: { padding: { top: 28, bottom: 4, left: 8, right: 8 } },
+      layout: { padding: { top: 4, bottom: 4, left: 8, right: 8 } },
       interaction: { mode: 'index', intersect: false },
       onHover: (event, activeElements) => { if (liveChart) syncPair(activeElements, liveDeltaChart, liveChart, true); updateLocalLiveHud(activeElements); },
       plugins: { legend: { display: false }, tooltip: { enabled: false } },
       scales: {
-        // DISABLED BOTTOM X-AXIS DATES
         x: { display: false, offset: true }, 
         y: { 
           position: 'right',
@@ -1183,18 +1169,15 @@ function updateDisplay() {
   }
 
   const updateLocalSimHud = (activeElements) => {
-    const hm = document.getElementById('simHudMain'), hd = document.getElementById('simHudDelta');
-    if (!activeElements || !activeElements.length) { hm.innerHTML = ""; hd.innerHTML = ""; return; }
+    const hm = document.getElementById('simHudMain');
+    // ONLY UPDATING MAIN HUD
+    if (!activeElements || !activeElements.length) { hm.innerHTML = ""; return; }
     const i = activeElements[0].index;
     const reg = wmaRegimes[i];
     const regColor = reg === 'A' ? '#00e8a2' : (reg === 'B' ? '#f59e0b' : '#f04060');
     const wmaText = wmaData[i] ? wmaData[i].toFixed(2) : '--';
-    
-    // FORMATTED DATE ADDED TO SIM HUD TOO
-    const shortDt = formatShortDate(chartData[i].date);
-    const html = `<span style="color:var(--gold);font-weight:700;">[${shortDt}]</span> NAV: ${chartData[i].nav.toFixed(2)} | WMA: <span style="color:${regColor}; font-weight:700;">${wmaText}</span> | REG: <span style="color:${regColor}; font-weight:700;">${reg}</span> | D-RSI: ${Math.round(drsiArrHud[i])} | W-RSI: ${Math.round(wrsiArrHud[i])} | DELTA: ${(drsiArrHud[i] - wrsiArrHud[i]).toFixed(1)}`;
-    
-    hm.innerHTML = html; hd.innerHTML = html;
+    const html = `NAV: ${chartData[i].nav.toFixed(2)} | WMA: <span style="color:${regColor}; font-weight:700;">${wmaText}</span> | REG: <span style="color:${regColor}; font-weight:700;">${reg}</span> | D-RSI: ${Math.round(drsiArrHud[i])} | W-RSI: ${Math.round(wrsiArrHud[i])} | DELTA: ${(drsiArrHud[i] - wrsiArrHud[i]).toFixed(1)}`;
+    hm.innerHTML = html; 
   };
 
   if (chart) chart.destroy();
@@ -1210,8 +1193,7 @@ function updateDisplay() {
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      // INCREASED PADDING TO CLEAR HUD
-      layout: { padding: { top: 40, bottom: 4, left: 8, right: 8 } },
+      layout: { padding: { top: 32, bottom: 4, left: 8, right: 8 } },
       interaction: { mode: 'index', intersect: false },
       onHover: (event, activeElements) => { if (deltaChart) syncPair(activeElements, chart, deltaChart, false); updateLocalSimHud(activeElements); },
       plugins: { legend: { display: false }, tooltip: { enabled: false } },
@@ -1230,8 +1212,7 @@ function updateDisplay() {
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      // INCREASED PADDING TO CLEAR HUD
-      layout: { padding: { top: 28, bottom: 4, left: 8, right: 8 } },
+      layout: { padding: { top: 4, bottom: 4, left: 8, right: 8 } },
       interaction: { mode: 'index', intersect: false },
       onHover: (event, activeElements) => { if (chart) syncPair(activeElements, deltaChart, chart, false); updateLocalSimHud(activeElements); },
       plugins: { legend: { display: false }, tooltip: { enabled: false } },
