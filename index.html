@@ -113,16 +113,7 @@
     outline: none; text-align: center; color: inherit;
   }
 
-  .toggle-container {
-    margin-bottom: 1rem; display: flex; align-items: center; gap: 10px;
-    font-size: 0.70rem; color: var(--muted2);
-    background: var(--surface2); padding: 9px 12px;
-    border-radius: var(--radius); border: 1.5px solid var(--border);
-    width: 100%; max-width: 350px;
-  }
-  .toggle-check { accent-color: var(--accent); transform: scale(1.2); cursor: pointer; }
-
-  .setup-btns { display: flex; gap: 8px; width: 100%; max-width: 350px; }
+  .setup-btns { display: flex; gap: 8px; width: 100%; max-width: 350px; margin-top: 1rem; }
   .setup-btn {
     flex: 1; font-size: 0.68rem; font-weight: 400; font-family: var(--mono);
     padding: 12px 4px; border-radius: var(--radius); cursor: pointer;
@@ -195,7 +186,7 @@
   .alert-danger { background: var(--red); color: #fff; }
   .alert-buy { background: var(--accent); color: #021a0f; }
   .alert-profit { background: var(--accent2); color: #1a0a00; }
-  .alert-mega { font-size: 1rem !important; padding: 11px 12px !important; }
+  .alert-mega { font-size: 0.85rem !important; padding: 11px 12px !important; letter-spacing: 0.05em; }
   @keyframes pulseAlert { 0%, 100% { opacity: 1; } 50% { opacity: 0.72; } }
 
   /* ── MAIN SIM AREA ── */
@@ -684,10 +675,6 @@ let profitDeltaLevel = 15, buyDeltaLevel = -15;
 
 let simHoverIdx = null, liveHoverIdx = null;
 
-// ─────────────────────────────────────────────
-//  MATH HELPERS
-// ─────────────────────────────────────────────
-
 function formatShortDate(dateStr) {
   if (!dateStr) return '';
   const parts = dateStr.split('-');
@@ -748,23 +735,20 @@ const universalAnnotationsPlugin = {
       const startX = meta.data[0].x;
       const endX   = meta.data[data.length - 1].x;
       
-      // ── NEW RATCHETING SWING LOW FINDER ──
+      // ── ALL SWING LOWS GATHERED FOR DEEP SCANNING ──
       let swingLows = [];
       for (let i = data.length - 3; i >= 2; i--) {
-        // Strict V-shape detection
         if (data[i] <= data[i-1] && data[i] < data[i-2] && data[i] <= data[i+1] && data[i] < data[i+2]) {
           if (swingLows.length === 0 || (swingLows[swingLows.length-1].idx - i) > 4) {
             swingLows.push({ idx: i, val: data[i] });
           }
-          if (swingLows.length === 2) break;
         }
       }
       
       if (swingLows.length > 0) {
         ctx.lineWidth = 1; ctx.setLineDash([3, 3]); ctx.font = '9px "Space Mono"';
         
-        // ── TRUE LOWER SWING LOW SELECTION ──
-        // Takes the absolute minimum of the two recent swing lows, providing deepest structural support
+        // ── 1. FIND THE TARGET LOW (MIN OF RECENT 2) ──
         let targetLow = swingLows[0];
         if (swingLows.length > 1 && swingLows[1].val < swingLows[0].val) {
             targetLow = swingLows[1];
@@ -773,17 +757,37 @@ const universalAnnotationsPlugin = {
         const lastVal = data[data.length - 1];
         const isBreached = lastVal < targetLow.val;
         
-        const yPos = ci.scales.y.getPixelForValue(targetLow.val);
+        // ── 2. DRAW THE PRIMARY (OR BREACHED) TSL ──
+        const yPos1 = ci.scales.y.getPixelForValue(targetLow.val);
         ctx.beginPath();
-        // Turns Red if current price plunges below it
         ctx.strokeStyle = isBreached ? '#f04060' : '#f59e0b';
         ctx.fillStyle   = ctx.strokeStyle;
-        ctx.moveTo(startX, yPos); ctx.lineTo(endX, yPos); ctx.stroke();
+        ctx.moveTo(startX, yPos1); ctx.lineTo(endX, yPos1); ctx.stroke();
         ctx.textAlign = 'left';
         
-        // Explicity labels it breached so it's not confusing why it's above the price
-        const lbl = isBreached ? `TSL BREACHED: ₹${targetLow.val.toFixed(2)}` : `TSL: ₹${targetLow.val.toFixed(2)}`;
-        ctx.fillText(lbl, startX + 5, yPos - 5);
+        const lbl1 = isBreached ? `TSL BREACHED: ₹${targetLow.val.toFixed(2)}` : `TSL: ₹${targetLow.val.toFixed(2)}`;
+        ctx.fillText(lbl1, startX + 5, yPos1 - 5);
+
+        // ── 3. IF BREACHED, DEEP SCAN FOR UNTESTED SUPPORT ──
+        if (isBreached) {
+          let untestedLow = null;
+          for (let i = 0; i < swingLows.length; i++) {
+            // Find the first historical low that is actually below current crashing price
+            if (swingLows[i].val < lastVal) {
+              untestedLow = swingLows[i];
+              break;
+            }
+          }
+          // ── 4. DRAW THE NEW UNTESTED SAFETY NET ──
+          if (untestedLow) {
+            const yPos2 = ci.scales.y.getPixelForValue(untestedLow.val);
+            ctx.beginPath();
+            ctx.strokeStyle = '#f59e0b'; 
+            ctx.fillStyle   = ctx.strokeStyle;
+            ctx.moveTo(startX, yPos2); ctx.lineTo(endX, yPos2); ctx.stroke();
+            ctx.fillText(`NEW TSL: ₹${untestedLow.val.toFixed(2)}`, startX + 5, yPos2 - 5);
+          }
+        }
       }
       
       if (wma.length > 0) {
@@ -863,7 +867,7 @@ async function initLive() {
   document.getElementById('liveModal').style.display   = 'flex';
   const btns = document.getElementById('liveTfRow').children;
   for (const b of btns) b.classList.remove('active');
-  btns[4].classList.add('active'); // 1Y DEFAULT
+  btns[4].classList.add('active'); 
   updateLiveChart(250);
 }
 
@@ -911,7 +915,7 @@ function updateLiveChart(days, btnEl) {
     }
   }
 
-  // ── UPDATED ALERT BANNER TSL LOGIC ──
+  // ── UPDATED ALERT BANNER TSL LOGIC (LIVE) ──
   let tslVal = 0;
   let sLows = [];
   for (let i = globalLiveData.length - 3; i >= 2; i--) {
@@ -920,14 +924,14 @@ function updateLiveChart(days, btnEl) {
       if (sLows.length === 0 || (sLows[sLows.length-1].idx - i) > 4) {
         sLows.push({idx: i, val: d[i].nav});
       }
-      if (sLows.length === 2) break;
     }
   }
-  if (sLows.length === 2) {
-     tslVal = Math.min(sLows[0].val, sLows[1].val);
-  } else if (sLows.length === 1) {
-     tslVal = sLows[0].val;
+  if (sLows.length > 0) {
+    let targetLow = sLows[0];
+    if (sLows.length > 1 && sLows[1].val < sLows[0].val) targetLow = sLows[1];
+    tslVal = targetLow.val;
   }
+  const tslHit = tslVal > 0 && lastNav < tslVal;
 
   const prevNavVal = latestPrices.length > 1 ? latestPrices[latestPrices.length - 2] : null;
   const prevWmaVal = calculateWMA(latestPrices.slice(0, -1), 20);
@@ -935,7 +939,9 @@ function updateLiveChart(days, btnEl) {
   
   const banner = document.getElementById('liveAlertBanner');
   let alertText = '', alertClass = '';
-  if (lastNav < tslVal) { alertText = '🚨 LIVE ALERT: PRICE BELOW TSL'; alertClass = 'alert-danger'; }
+  
+  // ── NEW FREE FALL EXPLICIT WARNING ──
+  if (tslHit) { alertText = '🚨 TSL BREACHED: CONSIDER RISK (FREE FALL MARKET)'; alertClass = 'alert-danger alert-mega'; }
   else if (lastRegime === 'C') { alertText = '⚠️ REGIME C BREAKDOWN'; alertClass = 'alert-danger'; }
   else if (ncAlert) { alertText = '🚨 DANGER: NC BREAKDOWN'; alertClass = 'alert-danger'; }
   else if (lastRegime === 'A') {
@@ -956,7 +962,13 @@ function updateLiveChart(days, btnEl) {
     const wr = calculateRSI(sp.filter((_, j) => j % 5 === 0), 14);
     const d = dr - wr;
     deltaData.push(d);
-    deltaColors.push(i === 0 ? (d >= 0 ? '#00e8a2' : '#f04060') : (d > deltaData[i-1] ? '#00e8a2' : '#f04060'));
+    
+    // NEW 4-STATE COLOR ENGINE
+    if (d >= 20) deltaColors.push('rgba(0, 232, 162, 1)'); 
+    else if (d <= -20) deltaColors.push('rgba(240, 64, 96, 1)');
+    else if (d > 0) deltaColors.push('rgba(0, 232, 162, 0.25)');
+    else deltaColors.push('rgba(240, 64, 96, 0.25)');
+
     wmaRegimes.push(wr >= 50 ? 'A' : (wr >= 40 ? 'B' : 'C'));
     drsiArr.push(dr); wrsiArr.push(wr);
   }
@@ -1008,7 +1020,8 @@ function updateLiveChart(days, btnEl) {
       datasets: [
         { type: 'bar',  data: deltaData, backgroundColor: deltaColors, barPercentage: 1.0, categoryPercentage: 1.0 },
         { type: 'line', data: Array(dataSlice.length).fill(profitDeltaLevel), borderColor: '#f04060', borderDash: [2,2], pointRadius: 0, borderWidth: 1 },
-        { type: 'line', data: Array(dataSlice.length).fill(buyDeltaLevel), borderColor: '#00e8a2', borderDash: [2,2], pointRadius: 0, borderWidth: 1 }
+        { type: 'line', data: Array(dataSlice.length).fill(buyDeltaLevel), borderColor: '#00e8a2', borderDash: [2,2], pointRadius: 0, borderWidth: 1 },
+        { type: 'line', data: Array(dataSlice.length).fill(0), borderColor: 'rgba(255,255,255,0.3)', borderDash: [4,4], pointRadius: 0, borderWidth: 1 }
       ]
     },
     options: {
@@ -1091,14 +1104,13 @@ function updateDisplay() {
   rBlock.className = 'ind-val ' + (currentRegime === 'A' ? 'reg-A' : (currentRegime === 'B' ? 'reg-B' : 'reg-C'));
   rBlock.textContent = `Regime ${currentRegime}`;
 
-  const lines = currentRegime === 'A'
+  let lines = currentRegime === 'A'
     ? (dRsi <= 50 ? ['Optimal Entry Window.', 'Institutional trend intact.', 'Execute tranche.', 'Trust Weekly RSI.']
                   : ['Structural Bull Trend.', 'Institutions accumulating.', 'Ride momentum, respect TSL.', 'Wait for Daily RSI dip to add.'])
     : currentRegime === 'B'
     ? ['Regime B Fatigue.', 'Smart money pausing.', 'Market chopping sideways.', 'Halt buying.', 'Manage with TSL.']
     : ['Trust Cycle Broken.', 'Institutional distribution.', 'Do not catch falling knife.', 'Preserve capital.', 'Stay in cash.'];
-  document.getElementById('psyMsg').innerHTML = lines.map((l, i) => `<div class="psy-line">(${i+1}) ${l}</div>`).join('');
-
+    
   const totalUnits = tranches.reduce((s, t) => s + t.units, 0);
   const currentNW = cash + totalUnits * currentNav;
   if (currentNW > peakNetWorth) peakNetWorth = currentNW;
@@ -1123,7 +1135,7 @@ function updateDisplay() {
 
   // ── UPDATED TSL ALERT LOGIC (SIM) ──
   const chartData = visible.slice(-80);
-  let tsl1 = null;
+  let tslVal = 0;
   let sLows = [];
   for (let i = chartData.length - 3; i >= 2; i--) {
     let d = chartData;
@@ -1131,23 +1143,33 @@ function updateDisplay() {
       if (sLows.length === 0 || (sLows[sLows.length-1].idx - i) > 4) {
         sLows.push({idx: i, val: d[i].nav});
       }
-      if (sLows.length === 2) break;
     }
   }
-  if (sLows.length === 2) {
-     tsl1 = Math.min(sLows[0].val, sLows[1].val);
-  } else if (sLows.length === 1) {
-     tsl1 = sLows[0].val;
+  if (sLows.length > 0) {
+    let targetLow = sLows[0];
+    if (sLows.length > 1 && sLows[1].val < sLows[0].val) targetLow = sLows[1];
+    tslVal = targetLow.val;
   }
-  const tslHit = tsl1 && prevNav !== null && prevNav >= tsl1 && currentNav < tsl1;
+  const tslHit = tslVal > 0 && currentNav < tslVal;
 
   const regimeDowngrade = prevRegime && ((prevRegime === 'A' && (currentRegime === 'B' || currentRegime === 'C')) || (prevRegime === 'B' && currentRegime === 'C'));
   const regimeUpgrade = prevRegime && ((prevRegime === 'C' && (currentRegime === 'B' || currentRegime === 'A')) || (prevRegime === 'B' && currentRegime === 'A'));
 
   const banner = document.getElementById('alertBanner');
   let alertText = '', alertClass = '';
+  
   if (currentIdx > simStartIdx) {
-    if (tslHit) { alertText = '🚨 TSL BREAKDOWN'; alertClass = 'alert-danger'; }
+    if (tslHit) { 
+        alertText = '🚨 TSL BREACHED: CONSIDER RISK (FREE FALL MARKET)'; 
+        alertClass = 'alert-danger alert-mega'; 
+        // OVERRIDE PSYCHOLOGY MESSAGE
+        lines = [
+           'TSL Breached earlier.',
+           'Consider your Risk.',
+           'It is a free fall market.',
+           'Following new untested swing low.'
+        ];
+    }
     else if (regimeDowngrade) {
       alertText = `⚠️ REGIME DOWNGRADE: ${prevRegime} ➔ ${currentRegime}`; alertClass = 'alert-danger';
       if (currentRegime === 'C') { alertText = `🚨 REGIME CRASH: ${prevRegime} ➔ C`; }
@@ -1165,6 +1187,8 @@ function updateDisplay() {
     }
     if (!alertText && delta > profitDeltaLevel) { alertText = `🟠 TAKE PROFIT: OVERHEATED (Delta > ${profitDeltaLevel})`; alertClass = 'alert-profit'; }
   }
+  
+  document.getElementById('psyMsg').innerHTML = lines.map((l, i) => `<div class="psy-line">(${i+1}) ${l}</div>`).join('');
   banner.textContent = alertText; banner.className = alertClass;
   banner.style.display = alertText ? 'block' : 'none';
 
@@ -1188,7 +1212,13 @@ function updateDisplay() {
     const wr = calculateRSI(sp.filter((_, j) => j % 5 === 0), 14);
     const d = dr - wr;
     deltaData.push(d);
-    deltaColors.push(i === 0 ? (d >= 0 ? '#00e8a2' : '#f04060') : (d > deltaData[i-1] ? '#00e8a2' : '#f04060'));
+    
+    // NEW 4-STATE COLOR ENGINE
+    if (d >= 20) deltaColors.push('rgba(0, 232, 162, 1)'); 
+    else if (d <= -20) deltaColors.push('rgba(240, 64, 96, 1)');
+    else if (d > 0) deltaColors.push('rgba(0, 232, 162, 0.25)');
+    else deltaColors.push('rgba(240, 64, 96, 0.25)');
+    
     wmaRegimes.push(wr >= 50 ? 'A' : (wr >= 40 ? 'B' : 'C'));
     drsiArrHud.push(dr); wrsiArrHud.push(wr);
   }
@@ -1232,7 +1262,8 @@ function updateDisplay() {
       datasets: [
         { type: 'bar',  data: deltaData, backgroundColor: deltaColors, barPercentage: 1.0, categoryPercentage: 1.0 },
         { type: 'line', data: Array(chartData.length).fill(profitDeltaLevel), borderColor: '#f04060', borderDash: [2,2], pointRadius: 0, borderWidth: 1 },
-        { type: 'line', data: Array(chartData.length).fill(buyDeltaLevel), borderColor: '#00e8a2', borderDash: [2,2], pointRadius: 0, borderWidth: 1 }
+        { type: 'line', data: Array(chartData.length).fill(buyDeltaLevel), borderColor: '#00e8a2', borderDash: [2,2], pointRadius: 0, borderWidth: 1 },
+        { type: 'line', data: Array(chartData.length).fill(0), borderColor: 'rgba(255,255,255,0.3)', borderDash: [4,4], pointRadius: 0, borderWidth: 1 }
       ]
     },
     options: {
