@@ -212,6 +212,13 @@
     flex: 1.2; position: relative; width: 100%; min-height: 0;
     border-top: 1px dashed var(--border); margin-top: 4px;
   }
+  
+  /* ONLY added for Live Modal */
+  .chart-rsi-pane {
+    flex: 1.2; position: relative; width: 100%; min-height: 0;
+    border-top: 1px dashed var(--border); margin-top: 4px;
+  }
+
   .canvas-box { position: absolute; inset: 0; }
   .canvas-box-bottom { position: absolute; inset: 0; top: 18px; }
   .delta-label {
@@ -360,18 +367,18 @@
   }
   .reset-zoom:hover { border-color: var(--muted); color: var(--text); }
 
-  /* ── NEW REVIEW UI (SPACING TRIMMED & FONT REDUCED) ── */
-  .review-container { padding: 14px 14px 40px 14px; overflow-y: auto; flex-grow: 1; }
-  .score-card { background: var(--surface2); border: 1px solid var(--border); padding: 10px 12px; border-radius: var(--radius); margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;}
+  /* ── NEW REVIEW UI ── */
+  .review-container { padding: 14px; overflow-y: auto; flex-grow: 1; }
+  .score-card { background: var(--surface2); border: 1px solid var(--border); padding: 10px; border-radius: var(--radius); margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;}
   .score-title { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 400;}
-  .score-val { font-size: 1.4rem; font-weight: 700; }
-  #revNW2 { font-weight: 400; font-size: 1.25rem; } /* Explicit target for Networth Line */
+  .score-val { font-size: 2.2rem; font-weight: 700; }
+  #revNW2 { font-size: 1.75rem; font-weight: 400; }
   
-  .audit-section { background: var(--surface2); border: 1px solid var(--border); padding: 8px 10px; border-radius: var(--radius); margin-bottom: 10px; }
+  .audit-section { background: var(--surface2); border: 1px solid var(--border); padding: 8px; border-radius: var(--radius); margin-bottom: 8px; }
   .audit-header { display: flex; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 4px; margin-bottom: 4px; }
   .audit-title { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
   .audit-score { font-size: 0.85rem; font-weight: 700; }
-  .audit-expected { font-size: 0.62rem; color: var(--muted2); font-style: italic; margin-bottom: 4px; line-height: 1.4; }
+  .audit-expected { font-size: 0.62rem; color: var(--muted2); font-style: italic; margin-bottom: 8px; line-height: 1.4; }
   .audit-stat-row { display: flex; justify-content: space-between; font-size: 0.65rem; margin-bottom: 5px; color: var(--text); }
   .audit-stat-val { font-weight: 700; font-family: var(--mono); }
   .pos-score { color: var(--accent); }
@@ -452,6 +459,10 @@
         <div class="chart-hud" id="liveHudMain"></div>
         <div class="canvas-box"><canvas id="liveChartCanvas"></canvas></div>
       </div>
+      <div class="chart-rsi-pane">
+        <div class="delta-label">MOMENTUM RIBBON · RSI vs WMA</div>
+        <div class="canvas-box-bottom"><canvas id="liveRsiCanvas"></canvas></div>
+      </div>
       <div class="chart-delta-pane">
         <div class="delta-label">RSI DELTA · Daily − Weekly</div>
         <div class="canvas-box-bottom"><canvas id="liveDeltaCanvas"></canvas></div>
@@ -500,7 +511,7 @@
 <div id="gameUI" style="display:none;height:100vh;flex-direction:column;">
   <header class="app-header">
     <div class="logo">
-      LIE DETECTOR <span>V2</span>
+      LIE DETECTOR <span>V3</span>
       <span id="simFundName" class="fund-name-tag"></span>
     </div>
     <div class="hdr-btns">
@@ -686,7 +697,7 @@ function getBriefFundName() {
 // ─────────────────────────────────────────────
 let fullHistory = [], globalLiveData = [];
 let currentIdx = 0, simStartIdx = 0;
-let chart = null, deltaChart = null, liveChart = null, liveDeltaChart = null;
+let chart = null, deltaChart = null, rsiChart = null, liveChart = null, liveDeltaChart = null, liveRsiChart = null;
 let cash = 100000, tranches = [], tradeLog = [];
 let prevRegime = null, prevNav = null, currentRegimeLog = 'A';
 let totalTaxPaid = 0, peakNetWorth = 100000, maxDrawdown = 0;
@@ -729,6 +740,13 @@ function calculateWMA(prices, period = 20) {
   let sum = 0;
   for (let i = 0; i < period; i++) sum += prices[prices.length - 1 - i] * (period - i);
   return sum / weightSum;
+}
+
+function calculateSMA(prices, period = 50) {
+  if (prices.length < period) return null;
+  let sum = 0;
+  for (let i = 0; i < period; i++) sum += prices[prices.length - 1 - i];
+  return sum / period;
 }
 
 const universalAnnotationsPlugin = {
@@ -822,15 +840,19 @@ const universalAnnotationsPlugin = {
           const bMax = Math.max(...window5), bMin = Math.min(...window5);
           const preBox = data.slice(i-50, i-5);
           const preMax = preBox.length ? Math.max(...preBox) : 0;
+          const preMin = preBox.length ? Math.min(...preBox) : 0;
+          
           if ((bMax - bMin) / bMin < 0.015 && wma[i] != null) {
             const isDeclining = preMax > bMax * 1.02;
-            if (meta.data[i-2] && meta.data[i-2].x !== undefined && isDeclining) {
+            const isAdvancing = preMin < bMin * 0.98;
+            
+            if (meta.data[i-2] && meta.data[i-2].x !== undefined) {
               const x = meta.data[i-2].x;
-              if (data[i] > wma[i]) {
+              if (isDeclining && data[i] > wma[i]) {
                 ctx.fillStyle = '#00e8a2';
                 ctx.fillText('PC', x, ci.scales.y.getPixelForValue(bMin) + 12);
                 lastLabelIdx = i;
-              } else if (data[i] < wma[i]) {
+              } else if (isAdvancing && data[i] < wma[i]) {
                 ctx.fillStyle = '#f04060';
                 ctx.fillText('NC', x, ci.scales.y.getPixelForValue(bMax) - 5);
                 lastLabelIdx = i;
@@ -848,17 +870,34 @@ const universalAnnotationsPlugin = {
       ctx.fillText(`NOW: ₹${lastVal.toFixed(2)}`, endX - 5, lastY - 5);
       ctx.restore();
     }
+
+    if (ci.canvas.id === 'liveDeltaCanvas' || ci.canvas.id === 'deltaChart') {
+      const yProfit = ci.scales.y.getPixelForValue(profitDeltaLevel);
+      const yBuy = ci.scales.y.getPixelForValue(buyDeltaLevel);
+      const endX = ci.chartArea.right;
+
+      ctx.save();
+      ctx.font = '9px "Space Mono"';
+      ctx.textAlign = 'right';
+      
+      ctx.fillStyle = 'rgba(240, 64, 96, 0.9)';
+      ctx.fillText(`PROFIT DELTA: ${profitDeltaLevel}`, endX - 5, yProfit - 4);
+      
+      ctx.fillStyle = 'rgba(0, 232, 162, 0.9)';
+      ctx.fillText(`SCOUT BUY: ${buyDeltaLevel}`, endX - 5, yBuy - 4);
+      ctx.restore();
+    }
   }
 };
 
-function syncPair(activeElements, sourceChart, targetChart, isLive) {
+function syncCharts(charts, activeElements, isLive) {
   if (activeElements && activeElements.length) {
     const idx = activeElements[0].index;
     if (isLive) liveHoverIdx = idx; else simHoverIdx = idx;
   } else {
     if (isLive) liveHoverIdx = null; else simHoverIdx = null;
   }
-  targetChart.update('none');
+  charts.forEach(c => { if(c) c.update('none'); });
 }
 
 async function fetchFundData() {
@@ -889,6 +928,12 @@ async function initLive() {
   buyDeltaLevel    = parseFloat(document.getElementById('buyDeltaIn').value)    || -15;
   globalLiveData = await fetchFundData();
   if (!globalLiveData.length) return;
+  
+  if (globalLiveData.length < 50) {
+      alert("INSUFFICIENT DATA\n\nThis fund is too new to plot Live moving averages.");
+      return;
+  }
+
   document.getElementById('setupScreen').style.display = 'none';
   document.getElementById('liveModal').style.display   = 'flex';
   const btns = document.getElementById('liveTfRow').children;
@@ -908,11 +953,32 @@ function updateLiveChart(days, btnEl) {
     const ai = globalLiveData.length - dataSlice.length + i;
     return calculateWMA(globalLiveData.slice(Math.max(0, ai - 19), ai + 1).map(h => h.nav), 20);
   });
+  const smaSlice = dataSlice.map((_, i) => {
+    const ai = globalLiveData.length - dataSlice.length + i;
+    return calculateSMA(globalLiveData.slice(Math.max(0, ai - 49), ai + 1).map(h => h.nav), 50);
+  });
+
+  const requiredRsiDaysLive = dataSlice.length + 20;
+  const recentDrsiLive = [];
+  for (let i = 0; i < requiredRsiDaysLive; i++) {
+      const ei = globalLiveData.length - requiredRsiDaysLive + i;
+      if (ei < 0) {
+         recentDrsiLive.push(50);
+      } else {
+         const sp = globalLiveData.slice(0, ei + 1).map(h => h.nav);
+         recentDrsiLive.push(calculateRSI(sp, 14));
+      }
+  }
+  const drsiWmaHud = [];
+  for (let i = 0; i < dataSlice.length; i++) {
+      drsiWmaHud.push(calculateWMA(recentDrsiLive.slice(i, i + 20), 20));
+  }
+  const drsiArrHud = recentDrsiLive.slice(20);
 
   const latestPrices = globalLiveData.map(d => d.nav);
   const lastNav      = latestPrices[latestPrices.length - 1];
   const lastDate     = globalLiveData[globalLiveData.length - 1].date;
-  const lastDRsi     = calculateRSI(latestPrices, 14);
+  const lastDRsi     = drsiArrHud[drsiArrHud.length - 1];
   const lastWRsi     = calculateRSI(latestPrices.filter((_, i) => i % 5 === 0), 14);
   const lastRegime   = lastWRsi >= 50 ? 'A' : (lastWRsi >= 40 ? 'B' : 'C');
   const lastDelta    = lastDRsi - lastWRsi;
@@ -942,10 +1008,11 @@ function updateLiveChart(days, btnEl) {
     const boxMax = Math.max(...box), boxMin = Math.min(...box);
     const preBox = latestPrices.slice(-56, -6);
     const preMax = Math.max(...preBox);
+    const preMin = Math.min(...preBox);
     const boxWma = calculateWMA(latestPrices.slice(0, -1), 20);
-    if ((boxMax - boxMin) / boxMin <= 0.02 && (boxWma ? Math.abs(boxMin - boxWma) / boxWma <= 0.04 : false) && preMax > boxMax * 1.02) {
-      if (lastNav > boxMax) pcAlert = true;
-      if (lastNav < boxMin) ncAlert = true;
+    if ((boxMax - boxMin) / boxMin <= 0.02 && (boxWma ? Math.abs(boxMin - boxWma) / boxWma <= 0.04 : false)) {
+      if (preMax > boxMax * 1.02 && lastNav > boxMax) pcAlert = true;
+      if (preMin < boxMin * 0.98 && lastNav < boxMin) ncAlert = true;
     }
   }
 
@@ -1016,13 +1083,12 @@ function updateLiveChart(days, btnEl) {
   banner.textContent = alertText; banner.className = alertClass;
   banner.style.display = alertText ? 'block' : 'none';
 
-  const deltaData = [], deltaColors = [], wmaRegimes = [], drsiArr = [], wrsiArr = [];
+  const deltaData = [], deltaColors = [], wmaRegimes = [], wrsiArrHud = [];
   for (let i = 0; i < dataSlice.length; i++) {
     const ei = globalLiveData.length - dataSlice.length + i;
     const sp = globalLiveData.slice(0, ei + 1).map(h => h.nav);
-    const dr = calculateRSI(sp, 14);
     const wr = calculateRSI(sp.filter((_, j) => j % 5 === 0), 14);
-    const d = dr - wr;
+    const d = drsiArrHud[i] - wr;
     deltaData.push(d);
     
     if (d >= 20) deltaColors.push('rgba(0, 232, 162, 1)'); 
@@ -1031,7 +1097,7 @@ function updateLiveChart(days, btnEl) {
     else deltaColors.push('rgba(240, 64, 96, 0.25)');
 
     wmaRegimes.push(wr >= 50 ? 'A' : (wr >= 40 ? 'B' : 'C'));
-    drsiArr.push(dr); wrsiArr.push(wr);
+    wrsiArrHud.push(wr);
   }
 
   const updateLocalLiveHud = (activeElements) => {
@@ -1041,27 +1107,72 @@ function updateLiveChart(days, btnEl) {
     const reg = wmaRegimes[i];
     const regColor = reg === 'A' ? '#00e8a2' : (reg === 'B' ? '#f59e0b' : '#f04060');
     const wmaText = wmaSlice[i] ? wmaSlice[i].toFixed(2) : '--';
+    const smaText = smaSlice[i] ? smaSlice[i].toFixed(2) : '--';
     const shortDt = formatShortDate(dataSlice[i].date);
-    const html = `<span style="color:var(--gold);font-weight:700;">[${shortDt}]</span> NAV: ${dataSlice[i].nav.toFixed(2)} | WMA: <span style="color:${regColor}; font-weight:700;">${wmaText}</span> | REG: <span style="color:${regColor}; font-weight:700;">${reg}</span> | D-RSI: ${Math.round(drsiArr[i])} | W-RSI: ${Math.round(wrsiArr[i])} | DELTA: ${deltaData[i].toFixed(1)}`;
+    
+    const dArr = dataSlice.map(x => x.nav);
+    let lastHigh = null, lastLow = null;
+    for (let k = i - 2; k >= 2; k--) {
+        if (!lastLow && dArr[k] <= dArr[k-1] && dArr[k] < dArr[k-2] && dArr[k] <= dArr[k+1] && dArr[k] < dArr[k+2]) lastLow = dArr[k];
+        if (!lastHigh && dArr[k] >= dArr[k-1] && dArr[k] > dArr[k-2] && dArr[k] >= dArr[k+1] && dArr[k] > dArr[k+2]) lastHigh = dArr[k];
+        if (lastLow && lastHigh) break;
+    }
+    const currP = dArr[i];
+    let chochBadge = '';
+    if (lastHigh && currP > lastHigh) chochBadge = '<span style="color:#00e8a2;font-weight:700;">[🟢 CHOCH: BULL]</span>';
+    else if (lastLow && currP < lastLow) chochBadge = '<span style="color:#f04060;font-weight:700;">[🔴 CHOCH: BEAR]</span>';
+    else chochBadge = '<span style="color:var(--muted);font-weight:700;">[➖ STRUCT: INSIDE]</span>';
+
+    const prevP = i > 0 ? dArr[i-1] : currP;
+    const currR = drsiArrHud[i];
+    const rWma  = drsiWmaHud[i];
+    let momBadge = '', momColor = '';
+    if (rWma) {
+        if (currR > rWma) {
+            if (currP < prevP) { momBadge = '[🛡️ MOM: HIDDEN BUYING]'; momColor = '#00e8a2'; }
+            else { momBadge = '[⚡ MOM: ACCELERATING]'; momColor = '#00e8a2'; }
+        } else {
+            if (currP >= prevP) { momBadge = '[⚠️ MOM: FAKE RALLY]'; momColor = '#f59e0b'; }
+            else { momBadge = '[📉 MOM: DECELERATING]'; momColor = '#f04060'; }
+        }
+    }
+
+    const html = `<span style="color:var(--gold);font-weight:700;">[${shortDt}]</span> NAV: ${dataSlice[i].nav.toFixed(2)} | WMA: <span style="color:${regColor}; font-weight:700;">${wmaText}</span> | SMA50: ${smaText} | ${chochBadge} | <span style="color:${momColor};font-weight:700;letter-spacing:0.05em;">${momBadge}</span> | R: ${Math.round(currR)} | W: ${Math.round(wrsiArrHud[i])} | DELTA: ${deltaData[i].toFixed(1)}`;
     hm.innerHTML = html; 
   };
 
   if (liveChart) liveChart.destroy();
+  if (liveRsiChart) liveRsiChart.destroy();
   if (liveDeltaChart) liveDeltaChart.destroy();
+  
+  const commonOptions = {
+    responsive: true, maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: { legend: { display: false }, tooltip: { enabled: false } },
+    scales: { x: { display: false, offset: true }, y: { position: 'right', grid: { color: '#1a2a45' }, ticks: { display: false }, afterFit: (scale) => { scale.width = 46; } } }
+  };
+
   liveChart = new Chart(document.getElementById('liveChartCanvas').getContext('2d'), {
     type: 'line', plugins: [universalAnnotationsPlugin],
     data: {
       labels: dataSlice.map(d => d.date),
       datasets: [
         { data: dataSlice.map(d => d.nav), borderColor: '#00e8a2', borderWidth: 1.5, pointRadius: 0, fill: true, backgroundColor: 'rgba(0,232,162,0.04)' },
-        { data: wmaSlice, borderWidth: 1.5, borderDash: [4, 4], pointRadius: 0, fill: false, segment: { borderColor: ctx => { const r = wmaRegimes[ctx.p1DataIndex]; return r==='A'?'#00e8a2':r==='B'?'#f59e0b':'#f04060'; } } }
+        { data: wmaSlice, borderWidth: 1.5, borderDash: [4, 4], pointRadius: 0, fill: false, segment: { borderColor: ctx => { const r = wmaRegimes[ctx.p1DataIndex]; return r==='A'?'#00e8a2':r==='B'?'#f59e0b':'#f04060'; } } },
+        { 
+          data: smaSlice, 
+          borderWidth: 1, 
+          pointRadius: 0, 
+          fill: false, 
+          segment: { borderColor: ctx => { const i = ctx.p1DataIndex; return dataSlice[i].nav > smaSlice[i] ? 'rgba(0,232,162,0.8)' : 'rgba(240,64,96,0.8)'; } } 
+        }
       ]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      layout: { padding: { top: 32, bottom: 4, left: 8, right: 8 } },
+      layout: { padding: { top: 32, bottom: 4, left: 0, right: 0 } },
       interaction: { mode: 'index', intersect: false },
-      onHover: (event, activeElements) => { if (liveDeltaChart) syncPair(activeElements, liveChart, liveDeltaChart, true); updateLocalLiveHud(activeElements); },
+      onHover: (event, activeElements) => { syncCharts([liveChart, liveRsiChart, liveDeltaChart], activeElements, true); updateLocalLiveHud(activeElements); },
       plugins: { legend: { display: false }, tooltip: { enabled: false }, zoom: { zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' }, pan: { enabled: true, mode: 'x' } } },
       scales: { 
         x: { display: false, offset: true }, 
@@ -1069,11 +1180,40 @@ function updateLiveChart(days, btnEl) {
           position: 'right',
           grid: { color: '#1a2a45' }, 
           ticks: { display: true, color: '#6080a0', font: { size: 9, family: '"Space Mono"' }, maxTicksLimit: 6 },
-          afterFit: (scale) => { scale.width = 46; } 
+          afterFit: (scale) => { scale.width = 40; } 
         } 
       }
     }
   });
+
+  liveRsiChart = new Chart(document.getElementById('liveRsiCanvas').getContext('2d'), {
+    type: 'line', plugins: [universalAnnotationsPlugin],
+    data: {
+      labels: dataSlice.map(d => d.date),
+      datasets: [
+        { data: drsiWmaHud, borderColor: 'rgba(128,153,187,0.8)', borderWidth: 1, borderDash: [2,2], pointRadius: 0, fill: false },
+        { data: drsiArrHud, borderColor: '#e8f0ff', borderWidth: 1.5, pointRadius: 0, fill: { target: 0, above: 'rgba(0, 232, 162, 0.25)', below: 'rgba(240, 64, 96, 0.25)' } }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      layout: { padding: { top: 4, bottom: 4, left: 0, right: 0 } },
+      interaction: { mode: 'index', intersect: false },
+      onHover: (event, activeElements) => { syncCharts([liveChart, liveRsiChart, liveDeltaChart], activeElements, true); updateLocalLiveHud(activeElements); },
+      plugins: { legend: { display: false }, tooltip: { enabled: false } },
+      scales: { 
+        x: { display: false, offset: true }, 
+        y: { 
+          position: 'right',
+          grid: { color: '#1a2a45' }, 
+          ticks: { display: false },
+          afterFit: (scale) => { scale.width = 40; },
+          min: 10, max: 100
+        } 
+      }
+    }
+  });
+
   liveDeltaChart = new Chart(document.getElementById('liveDeltaCanvas').getContext('2d'), {
     type: 'bar', plugins: [universalAnnotationsPlugin],
     data: {
@@ -1087,11 +1227,11 @@ function updateLiveChart(days, btnEl) {
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      layout: { padding: { top: 4, bottom: 4, left: 8, right: 8 } },
+      layout: { padding: { top: 4, bottom: 4, left: 0, right: 0 } },
       interaction: { mode: 'index', intersect: false },
-      onHover: (event, activeElements) => { if (liveChart) syncPair(activeElements, liveDeltaChart, liveChart, true); updateLocalLiveHud(activeElements); },
+      onHover: (event, activeElements) => { syncCharts([liveChart, liveRsiChart, liveDeltaChart], activeElements, true); updateLocalLiveHud(activeElements); },
       plugins: { legend: { display: false }, tooltip: { enabled: false } },
-      scales: {
+      scales: { 
         x: { display: false, offset: true }, 
         y: { 
           position: 'right',
@@ -1099,7 +1239,7 @@ function updateLiveChart(days, btnEl) {
           border: { dash: [2,4] }, 
           min: -35, max: 35, 
           ticks: { display: false },
-          afterFit: (scale) => { scale.width = 46; } 
+          afterFit: (scale) => { scale.width = 40; } 
         }
       }
     }
@@ -1180,10 +1320,11 @@ function updateDisplay() {
     const boxMax = Math.max(...box), boxMin = Math.min(...box);
     const preBox = prices.slice(-56, -6);
     const preMax = Math.max(...preBox);
+    const preMin = Math.min(...preBox);
     const boxWma = calculateWMA(prices.slice(0, -1), 20);
-    if ((boxMax - boxMin) / boxMin <= 0.02 && (boxWma ? Math.abs(boxMin - boxWma) / boxWma <= 0.04 : false) && preMax > boxMax * 1.02) {
-      if (currentNav > boxMax) pcAlert = true;
-      if (currentNav < boxMin) ncAlert = true;
+    if ((boxMax - boxMin) / boxMin <= 0.02 && (boxWma ? Math.abs(boxMin - boxWma) / boxWma <= 0.04 : false)) {
+      if (preMax > boxMax * 1.02 && currentNav > boxMax) pcAlert = true;
+      if (preMin < boxMin * 0.98 && currentNav < boxMin) ncAlert = true;
     }
   }
 
