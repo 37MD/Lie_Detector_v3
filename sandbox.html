@@ -182,26 +182,28 @@
   .reset-zoom { font-size: 0.6rem; background: transparent; border: 1px solid var(--border2); color: var(--muted); padding: 3px 8px; border-radius: var(--radius-sm); cursor: pointer; font-family: var(--mono); letter-spacing: 0.06em; transition: all 0.15s; font-weight: 400; }
   .reset-zoom:hover { border-color: var(--muted); color: var(--text); }
   
-  /* ── REVIEW UI COMPACTED FOR MOBILE VISIBILITY ── */
-  .review-container { padding: 10px; overflow-y: auto; flex-grow: 1; }
-  .score-card { background: var(--surface2); border: 1px solid var(--border); padding: 8px 12px; border-radius: var(--radius); margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;}
+  /* ── REVIEW UI (SCROLL-SAFE & LARGE FONT RESTORED) ── */
+  /* Added 32px bottom padding so scrolling easily clears mobile navigation bars */
+  .review-container { padding: 12px 12px 32px 12px; overflow-y: auto; flex-grow: 1; }
+  .score-card { background: var(--surface2); border: 1px solid var(--border); padding: 12px; border-radius: var(--radius); margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;}
   .score-title { font-size: 0.60rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 400;}
-  .score-val { font-size: 1.6rem; font-weight: 700; }
+  .score-val { font-size: 1.8rem; font-weight: 700; }
   
-  .audit-section { background: var(--surface2); border: 1px solid var(--border); padding: 8px 10px; border-radius: var(--radius); margin-bottom: 8px; }
-  .audit-header { display: flex; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 4px; margin-bottom: 4px; }
+  .audit-section { background: var(--surface2); border: 1px solid var(--border); padding: 10px; border-radius: var(--radius); margin-bottom: 10px; }
+  .audit-header { display: flex; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 4px; margin-bottom: 6px; }
   .audit-title { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
   .audit-score { font-size: 0.80rem; font-weight: 700; }
   .audit-expected { font-size: 0.58rem; color: var(--muted2); font-style: italic; margin-bottom: 6px; line-height: 1.3; }
-  .audit-stat-row { display: flex; justify-content: space-between; font-size: 0.62rem; margin-bottom: 3px; color: var(--text); }
+  .audit-stat-row { display: flex; justify-content: space-between; font-size: 0.62rem; margin-bottom: 4px; color: var(--text); }
   .audit-stat-row:last-child { margin-bottom: 0; }
   .audit-stat-val { font-weight: 700; font-family: var(--mono); }
   .pos-score { color: var(--accent); }
   .neg-score { color: var(--red); }
   .neu-score { color: var(--text); }
   
-  .remarks-box { padding: 8px 10px; border-left: 3px solid; background: rgba(0,0,0,0.2); font-size: 0.65rem; line-height: 1.4; font-weight: 400; margin-bottom: 6px; border-radius: 0 var(--radius-sm) var(--radius-sm) 0;}
-  .section-title { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 6px; border-bottom: 1px solid var(--border); padding-bottom: 4px; font-weight: 400; margin-top: 10px;}
+  /* Restored larger font (0.75rem) for final remarks */
+  .remarks-box { padding: 12px; border-left: 3px solid; background: rgba(0,0,0,0.2); font-size: 0.75rem; line-height: 1.5; font-weight: 400; margin-bottom: 10px; border-radius: 0 var(--radius-sm) var(--radius-sm) 0;}
+  .section-title { font-size: 0.70rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px; border-bottom: 1px solid var(--border); padding-bottom: 4px; font-weight: 400; margin-top: 14px;}
 </style>
 </head>
 <body>
