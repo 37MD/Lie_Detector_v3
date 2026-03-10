@@ -182,7 +182,7 @@
   .reset-zoom { font-size: 0.6rem; background: transparent; border: 1px solid var(--border2); color: var(--muted); padding: 3px 8px; border-radius: var(--radius-sm); cursor: pointer; font-family: var(--mono); letter-spacing: 0.06em; transition: all 0.15s; font-weight: 400; }
   .reset-zoom:hover { border-color: var(--muted); color: var(--text); }
   
-  /* ── REVIEW UI (SCROLL-SAFE & LARGE FONT RESTORED) ── */
+  /* ── REVIEW UI ── */
   .review-container { padding: 12px 12px 32px 12px; overflow-y: auto; flex-grow: 1; }
   .score-card { background: var(--surface2); border: 1px solid var(--border); padding: 12px; border-radius: var(--radius); margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;}
   .score-title { font-size: 0.60rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 400;}
@@ -632,6 +632,7 @@ const universalAnnotationsPlugin = {
         }
       }
       
+      // ── FIXED PC/NC ENGINE ──
       if (wma.length > 0) {
         ctx.font = '8px "Space Mono"'; ctx.textAlign = 'center'; ctx.setLineDash([]);
         let lastLabelIdx = -50;
@@ -641,13 +642,20 @@ const universalAnnotationsPlugin = {
           const bMax = Math.max(...window5), bMin = Math.min(...window5);
           const preBox = data.slice(i-50, i-5);
           const preMax = preBox.length ? Math.max(...preBox) : 0;
+          const preMin = preBox.length ? Math.min(...preBox) : 0;
+          
           if ((bMax - bMin) / bMin < 0.015 && wma[i] != null) {
-            const isDeclining = preMax > bMax * 1.02;
-            if (meta.data[i-2] && meta.data[i-2].x !== undefined && isDeclining) {
+            const isDeclining = preMax > bMax * 1.02; // Downtrend check for PC
+            const isAdvancing = preMin < bMin * 0.98; // Uptrend check for NC
+            
+            if (meta.data[i-2] && meta.data[i-2].x !== undefined) {
               const x = meta.data[i-2].x;
-              if (data[i] > wma[i]) {
+              // PC: Must be declining, and price breaks up
+              if (isDeclining && data[i] > wma[i]) {
                 ctx.fillStyle = '#00e8a2'; ctx.fillText('PC', x, ci.scales.y.getPixelForValue(bMin) + 12); lastLabelIdx = i;
-              } else if (data[i] < wma[i]) {
+              } 
+              // NC: Must be advancing, and price breaks down
+              else if (isAdvancing && data[i] < wma[i]) {
                 ctx.fillStyle = '#f04060'; ctx.fillText('NC', x, ci.scales.y.getPixelForValue(bMax) - 5); lastLabelIdx = i;
               }
             }
@@ -796,16 +804,19 @@ function updateLiveChart(days, btnEl) {
     prevRegimeLive = prevWRsi >= 50 ? 'A' : (prevWRsi >= 40 ? 'B' : 'C');
   }
 
+  // ── FIXED PC/NC ALERT ENGINE ──
   let pcAlert = false, ncAlert = false;
   if (latestPrices.length >= 56) {
     const box = latestPrices.slice(-6, -1);
     const boxMax = Math.max(...box), boxMin = Math.min(...box);
     const preBox = latestPrices.slice(-56, -6);
     const preMax = Math.max(...preBox);
+    const preMin = Math.min(...preBox);
     const boxWma = calculateWMA(latestPrices.slice(0, -1), 20);
-    if ((boxMax - boxMin) / boxMin <= 0.02 && (boxWma ? Math.abs(boxMin - boxWma) / boxWma <= 0.04 : false) && preMax > boxMax * 1.02) {
-      if (lastNav > boxMax) pcAlert = true;
-      if (lastNav < boxMin) ncAlert = true;
+    
+    if ((boxMax - boxMin) / boxMin <= 0.02 && (boxWma ? Math.abs(boxMin - boxWma) / boxWma <= 0.04 : false)) {
+      if (preMax > boxMax * 1.02 && lastNav > boxMax) pcAlert = true; // PC
+      if (preMin < boxMin * 0.98 && lastNav < boxMin) ncAlert = true; // NC
     }
   }
 
@@ -901,7 +912,6 @@ function updateLiveChart(days, btnEl) {
     const smaText = smaSlice[i] ? smaSlice[i].toFixed(2) : '--';
     const shortDt = formatShortDate(dataSlice[i].date);
     
-    // ── CHOCH LOGIC ──
     const dArr = dataSlice.map(x => x.nav);
     let lastHigh = null, lastLow = null;
     for (let k = i - 2; k >= 2; k--) {
@@ -1078,16 +1088,19 @@ function updateDisplay() {
   }
   const drsiArrHud = recentDrsi.slice(20);
 
+  // ── FIXED PC/NC ALERT ENGINE ──
   let pcAlert = false, ncAlert = false;
   if (prices.length >= 56) {
     const box = prices.slice(-6, -1);
     const boxMax = Math.max(...box), boxMin = Math.min(...box);
     const preBox = prices.slice(-56, -6);
     const preMax = Math.max(...preBox);
+    const preMin = Math.min(...preBox);
     const boxWma = calculateWMA(prices.slice(0, -1), 20);
-    if ((boxMax - boxMin) / boxMin <= 0.02 && (boxWma ? Math.abs(boxMin - boxWma) / boxWma <= 0.04 : false) && preMax > boxMax * 1.02) {
-      if (currentNav > boxMax) pcAlert = true;
-      if (currentNav < boxMin) ncAlert = true;
+    
+    if ((boxMax - boxMin) / boxMin <= 0.02 && (boxWma ? Math.abs(boxMin - boxWma) / boxWma <= 0.04 : false)) {
+      if (preMax > boxMax * 1.02 && currentNav > boxMax) pcAlert = true; // PC
+      if (preMin < boxMin * 0.98 && currentNav < boxMin) ncAlert = true; // NC
     }
   }
 
@@ -1211,7 +1224,6 @@ function updateDisplay() {
     const smaText = smaData[i] ? smaData[i].toFixed(2) : '--';
     const shortDt = formatShortDate(chartData[i].date);
     
-    // ── CHOCH LOGIC ──
     const dArr = chartData.map(x => x.nav);
     let lastHigh = null, lastLow = null;
     for (let k = i - 2; k >= 2; k--) {
@@ -1379,6 +1391,7 @@ function endAndReview() {
     const regime = wr >= 50 ? 'A' : wr >= 40 ? 'B' : 'C';
     const d      = dr - wr;
     
+    // ── FIXED AUDIT PC ENGINE ──
     let pcAlert = false;
     if (sp.length >= 56) {
       const box = sp.slice(-6, -1);
@@ -1386,8 +1399,10 @@ function endAndReview() {
       const preBox = sp.slice(-56, -6);
       const preMax = Math.max(...preBox);
       const boxWma = calculateWMA(sp.slice(0, -1), 20);
-      if ((boxMax - boxMin) / boxMin <= 0.02 && (boxWma ? Math.abs(boxMin - boxWma) / boxWma <= 0.04 : false) && preMax > boxMax * 1.02) {
-        if (currNav > boxMax) pcAlert = true;
+      
+      // Must be declining (preMax > boxMax * 1.02)
+      if ((boxMax - boxMin) / boxMin <= 0.02 && (boxWma ? Math.abs(boxMin - boxWma) / boxWma <= 0.04 : false)) {
+        if (preMax > boxMax * 1.02 && currNav > boxMax) pcAlert = true;
       }
     }
 
