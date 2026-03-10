@@ -1144,7 +1144,7 @@ function updateLiveChart(days, btnEl) {
     responsive: true, maintainAspectRatio: false,
     interaction: { mode: 'index', intersect: false },
     plugins: { legend: { display: false }, tooltip: { enabled: false } },
-    scales: { x: { display: false, offset: true }, y: { position: 'right', grid: { color: '#1a2a45' }, ticks: { display: false }, afterFit: (scale) => { scale.width = 46; } } }
+    scales: { x: { display: false, offset: true }, y: { position: 'right', grid: { color: '#1a2a45' }, ticks: { display: true, color: '#6080a0', font: { size: 9, family: '"Space Mono"' }, maxTicksLimit: 6 }, afterFit: (scale) => { scale.width = 46; } } }
   };
 
   liveChart = new Chart(document.getElementById('liveChartCanvas').getContext('2d'), {
