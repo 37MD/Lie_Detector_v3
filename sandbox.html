@@ -183,7 +183,6 @@
   .reset-zoom:hover { border-color: var(--muted); color: var(--text); }
   
   /* ── REVIEW UI (SCROLL-SAFE & LARGE FONT RESTORED) ── */
-  /* Added 32px bottom padding so scrolling easily clears mobile navigation bars */
   .review-container { padding: 12px 12px 32px 12px; overflow-y: auto; flex-grow: 1; }
   .score-card { background: var(--surface2); border: 1px solid var(--border); padding: 12px; border-radius: var(--radius); margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;}
   .score-title { font-size: 0.60rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 400;}
@@ -201,7 +200,6 @@
   .neg-score { color: var(--red); }
   .neu-score { color: var(--text); }
   
-  /* Restored larger font (0.75rem) for final remarks */
   .remarks-box { padding: 12px; border-left: 3px solid; background: rgba(0,0,0,0.2); font-size: 0.75rem; line-height: 1.5; font-weight: 400; margin-bottom: 10px; border-radius: 0 var(--radius-sm) var(--radius-sm) 0;}
   .section-title { font-size: 0.70rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px; border-bottom: 1px solid var(--border); padding-bottom: 4px; font-weight: 400; margin-top: 14px;}
 </style>
@@ -665,6 +663,24 @@ const universalAnnotationsPlugin = {
       ctx.fillText(`NOW: ₹${lastVal.toFixed(2)}`, endX - 5, lastY - 5);
       ctx.restore();
     }
+    
+    // ── NEW DELTA CHART LABELS ──
+    if (ci.canvas.id === 'liveDeltaCanvas' || ci.canvas.id === 'deltaChart') {
+      const yProfit = ci.scales.y.getPixelForValue(profitDeltaLevel);
+      const yBuy = ci.scales.y.getPixelForValue(buyDeltaLevel);
+      const endX = ci.chartArea.right;
+
+      ctx.save();
+      ctx.font = '9px "Space Mono"';
+      ctx.textAlign = 'right';
+      
+      ctx.fillStyle = 'rgba(240, 64, 96, 0.9)';
+      ctx.fillText(`PROFIT DELTA: ${profitDeltaLevel}`, endX - 5, yProfit - 4);
+      
+      ctx.fillStyle = 'rgba(0, 232, 162, 0.9)';
+      ctx.fillText(`SCOUT BUY: ${buyDeltaLevel}`, endX - 5, yBuy - 4);
+      ctx.restore();
+    }
   }
 };
 
@@ -895,7 +911,7 @@ function updateLiveChart(days, btnEl) {
         }
     }
     
-    const html = `<span style="color:var(--gold);font-weight:700;">[${shortDt}]</span> N: ${currP.toFixed(2)} | WMA: <span style="color:${regColor};">${wmaText}</span> | SMA: ${smaText} | <span style="color:${momColor};font-weight:700;letter-spacing:0.05em;">${momBadge}</span> | R: ${Math.round(currR)} | W: ${Math.round(wrsiArrHud[i])} | D: ${deltaData[i].toFixed(1)}`;
+    const html = `<span style="color:var(--gold);font-weight:700;">[${shortDt}]</span> N: ${currP.toFixed(2)} | WMA: <span style="color:${regColor};">${wmaText}</span> | SMA50: ${smaText} | <span style="color:${momColor};font-weight:700;letter-spacing:0.05em;">${momBadge}</span> | R: ${Math.round(currR)} | W: ${Math.round(wrsiArrHud[i])} | D: ${deltaData[i].toFixed(1)}`;
     hm.innerHTML = html; 
   };
 
@@ -1186,7 +1202,7 @@ function updateDisplay() {
         }
     }
 
-    const html = `<span style="color:var(--gold);font-weight:700;">[${shortDt}]</span> N: ${currP.toFixed(2)} | WMA: <span style="color:${regColor};">${wmaText}</span> | SMA: ${smaText} | <span style="color:${momColor};font-weight:700;letter-spacing:0.05em;">${momBadge}</span> | R: ${Math.round(currR)} | W: ${Math.round(wrsiArrHud[i])} | D: ${deltaData[i].toFixed(1)}`;
+    const html = `<span style="color:var(--gold);font-weight:700;">[${shortDt}]</span> N: ${currP.toFixed(2)} | WMA: <span style="color:${regColor};">${wmaText}</span> | SMA50: ${smaText} | <span style="color:${momColor};font-weight:700;letter-spacing:0.05em;">${momBadge}</span> | R: ${Math.round(currR)} | W: ${Math.round(wrsiArrHud[i])} | D: ${deltaData[i].toFixed(1)}`;
     hm.innerHTML = html; 
   };
 
