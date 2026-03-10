@@ -195,7 +195,7 @@
   /* ── CHART ── */
   .chart-container {
     background: var(--bg); padding: 6px;
-    height: 52vh; min-height: 380px;
+    height: 52vh; min-height: 380px; /* Modified slightly to fit 3rd pane */
     border-bottom: 1px solid var(--border);
     display: flex; flex-direction: column; flex-shrink: 0;
   }
@@ -207,11 +207,15 @@
   .chart-nav { font-size: 0.75rem; color: var(--text); font-weight: 400; }
 
   .chart-split { display: flex; flex-direction: column; flex-grow: 1; position: relative; min-height: 0; }
-  
-  .chart-main-pane { flex: 2.2; position: relative; width: 100%; min-height: 0; }
-  .chart-rsi-pane { flex: 1.1; position: relative; width: 100%; min-height: 0; border-top: 1px dashed var(--border); margin-top: 4px; }
-  .chart-delta-pane { flex: 1.1; position: relative; width: 100%; min-height: 0; border-top: 1px dashed var(--border); margin-top: 4px; }
-  
+  .chart-main-pane { flex: 3; position: relative; width: 100%; min-height: 0; }
+  .chart-rsi-pane {
+    flex: 1.2; position: relative; width: 100%; min-height: 0;
+    border-top: 1px dashed var(--border); margin-top: 4px;
+  }
+  .chart-delta-pane {
+    flex: 1.2; position: relative; width: 100%; min-height: 0;
+    border-top: 1px dashed var(--border); margin-top: 4px;
+  }
   .canvas-box { position: absolute; inset: 0; }
   .canvas-box-bottom { position: absolute; inset: 0; top: 18px; }
   .delta-label {
@@ -862,8 +866,35 @@ const universalAnnotationsPlugin = {
       ctx.fillText(`NOW: ₹${lastVal.toFixed(2)}`, endX - 5, lastY - 5);
       ctx.restore();
     }
+
+    if (ci.canvas.id === 'liveDeltaCanvas' || ci.canvas.id === 'deltaChart') {
+      const yProfit = ci.scales.y.getPixelForValue(profitDeltaLevel);
+      const yBuy = ci.scales.y.getPixelForValue(buyDeltaLevel);
+      const endX = ci.chartArea.right;
+
+      ctx.save();
+      ctx.font = '9px "Space Mono"';
+      ctx.textAlign = 'right';
+      
+      ctx.fillStyle = 'rgba(240, 64, 96, 0.9)';
+      ctx.fillText(`PROFIT DELTA: ${profitDeltaLevel}`, endX - 5, yProfit - 4);
+      
+      ctx.fillStyle = 'rgba(0, 232, 162, 0.9)';
+      ctx.fillText(`SCOUT BUY: ${buyDeltaLevel}`, endX - 5, yBuy - 4);
+      ctx.restore();
+    }
   }
 };
+
+function syncPair(activeElements, sourceChart, targetChart, isLive) {
+  if (activeElements && activeElements.length) {
+    const idx = activeElements[0].index;
+    if (isLive) liveHoverIdx = idx; else simHoverIdx = idx;
+  } else {
+    if (isLive) liveHoverIdx = null; else simHoverIdx = null;
+  }
+  targetChart.update('none');
+}
 
 function syncCharts(charts, activeElements, isLive) {
   if (activeElements && activeElements.length) {
@@ -947,7 +978,7 @@ function updateLiveChart(days, btnEl) {
   const latestPrices = globalLiveData.map(d => d.nav);
   const lastNav      = latestPrices[latestPrices.length - 1];
   const lastDate     = globalLiveData[globalLiveData.length - 1].date;
-  const lastDRsi     = drsiArrHud[drsiArrHud.length - 1];
+  const lastDRsi     = calculateRSI(latestPrices, 14);
   const lastWRsi     = calculateRSI(latestPrices.filter((_, i) => i % 5 === 0), 14);
   const lastRegime   = lastWRsi >= 50 ? 'A' : (lastWRsi >= 40 ? 'B' : 'C');
   const lastDelta    = lastDRsi - lastWRsi;
@@ -1051,12 +1082,13 @@ function updateLiveChart(days, btnEl) {
   banner.textContent = alertText; banner.className = alertClass;
   banner.style.display = alertText ? 'block' : 'none';
 
-  const deltaData = [], deltaColors = [], wmaRegimes = [], wrsiArrHud = [];
+  const deltaData = [], deltaColors = [], wmaRegimes = [], drsiArr = [], wrsiArr = [];
   for (let i = 0; i < dataSlice.length; i++) {
     const ei = globalLiveData.length - dataSlice.length + i;
     const sp = globalLiveData.slice(0, ei + 1).map(h => h.nav);
+    const dr = calculateRSI(sp, 14);
     const wr = calculateRSI(sp.filter((_, j) => j % 5 === 0), 14);
-    const d = drsiArrHud[i] - wr;
+    const d = dr - wr;
     deltaData.push(d);
     
     if (d >= 20) deltaColors.push('rgba(0, 232, 162, 1)'); 
@@ -1065,7 +1097,7 @@ function updateLiveChart(days, btnEl) {
     else deltaColors.push('rgba(240, 64, 96, 0.25)');
 
     wmaRegimes.push(wr >= 50 ? 'A' : (wr >= 40 ? 'B' : 'C'));
-    wrsiArrHud.push(wr);
+    drsiArr.push(dr); wrsiArr.push(wr);
   }
 
   const updateLocalLiveHud = (activeElements) => {
@@ -1077,14 +1109,42 @@ function updateLiveChart(days, btnEl) {
     const wmaText = wmaSlice[i] ? wmaSlice[i].toFixed(2) : '--';
     const smaText = smaSlice[i] ? smaSlice[i].toFixed(2) : '--';
     const shortDt = formatShortDate(dataSlice[i].date);
-    const html = `<span style="color:var(--gold);font-weight:700;">[${shortDt}]</span> NAV: ${dataSlice[i].nav.toFixed(2)} | WMA: <span style="color:${regColor}; font-weight:700;">${wmaText}</span> | SMA: ${smaText} | REG: <span style="color:${regColor}; font-weight:700;">${reg}</span> | D-RSI: ${Math.round(drsiArrHud[i])} | W-RSI: ${Math.round(wrsiArrHud[i])} | DELTA: ${deltaData[i].toFixed(1)}`;
+    
+    const dArr = dataSlice.map(x => x.nav);
+    let lastHigh = null, lastLow = null;
+    for (let k = i - 2; k >= 2; k--) {
+        if (!lastLow && dArr[k] <= dArr[k-1] && dArr[k] < dArr[k-2] && dArr[k] <= dArr[k+1] && dArr[k] < dArr[k+2]) lastLow = dArr[k];
+        if (!lastHigh && dArr[k] >= dArr[k-1] && dArr[k] > dArr[k-2] && dArr[k] >= dArr[k+1] && dArr[k] > dArr[k+2]) lastHigh = dArr[k];
+        if (lastLow && lastHigh) break;
+    }
+    const currP = dArr[i];
+    let chochBadge = '';
+    if (lastHigh && currP > lastHigh) chochBadge = '<span style="color:#00e8a2;font-weight:700;">[🟢 CHOCH: BULL]</span>';
+    else if (lastLow && currP < lastLow) chochBadge = '<span style="color:#f04060;font-weight:700;">[🔴 CHOCH: BEAR]</span>';
+    else chochBadge = '<span style="color:var(--muted);font-weight:700;">[➖ STRUCT: INSIDE]</span>';
+
+    const prevP = i > 0 ? dArr[i-1] : currP;
+    const currR = drsiArrHud[i];
+    const rWma  = drsiWmaHud[i];
+    let momBadge = '', momColor = '';
+    if (rWma) {
+        if (currR > rWma) {
+            if (currP < prevP) { momBadge = '[🛡️ MOM: HIDDEN BUYING]'; momColor = '#00e8a2'; }
+            else { momBadge = '[⚡ MOM: ACCELERATING]'; momColor = '#00e8a2'; }
+        } else {
+            if (currP >= prevP) { momBadge = '[⚠️ MOM: FAKE RALLY]'; momColor = '#f59e0b'; }
+            else { momBadge = '[📉 MOM: DECELERATING]'; momColor = '#f04060'; }
+        }
+    }
+
+    const html = `<span style="color:var(--gold);font-weight:700;">[${shortDt}]</span> NAV: ${dataSlice[i].nav.toFixed(2)} | WMA: <span style="color:${regColor}; font-weight:700;">${wmaText}</span> | SMA50: ${smaText} | ${chochBadge} | <span style="color:${momColor};font-weight:700;letter-spacing:0.05em;">${momBadge}</span> | R: ${Math.round(drsiArr[i])} | W: ${Math.round(wrsiArr[i])} | DELTA: ${deltaData[i].toFixed(1)}`;
     hm.innerHTML = html; 
   };
 
   if (liveChart) liveChart.destroy();
   if (liveRsiChart) liveRsiChart.destroy();
   if (liveDeltaChart) liveDeltaChart.destroy();
-  
+
   liveChart = new Chart(document.getElementById('liveChartCanvas').getContext('2d'), {
     type: 'line', plugins: [universalAnnotationsPlugin],
     data: {
@@ -1403,7 +1463,35 @@ function updateDisplay() {
     const wmaText = wmaData[i] ? wmaData[i].toFixed(2) : '--';
     const smaText = smaData[i] ? smaData[i].toFixed(2) : '--';
     const shortDt = formatShortDate(chartData[i].date);
-    const html = `<span style="color:var(--gold);font-weight:700;">[${shortDt}]</span> NAV: ${chartData[i].nav.toFixed(2)} | WMA: <span style="color:${regColor}; font-weight:700;">${wmaText}</span> | SMA: ${smaText} | REG: <span style="color:${regColor}; font-weight:700;">${reg}</span> | D-RSI: ${Math.round(drsiArrHud[i])} | W-RSI: ${Math.round(wrsiArrHud[i])} | DELTA: ${(drsiArrHud[i] - wrsiArrHud[i]).toFixed(1)}`;
+    
+    const dArr = chartData.map(x => x.nav);
+    let lastHigh = null, lastLow = null;
+    for (let k = i - 2; k >= 2; k--) {
+        if (!lastLow && dArr[k] <= dArr[k-1] && dArr[k] < dArr[k-2] && dArr[k] <= dArr[k+1] && dArr[k] < dArr[k+2]) lastLow = dArr[k];
+        if (!lastHigh && dArr[k] >= dArr[k-1] && dArr[k] > dArr[k-2] && dArr[k] >= dArr[k+1] && dArr[k] > dArr[k+2]) lastHigh = dArr[k];
+        if (lastLow && lastHigh) break;
+    }
+    const currP = dArr[i];
+    let chochBadge = '';
+    if (lastHigh && currP > lastHigh) chochBadge = '<span style="color:#00e8a2;font-weight:700;">[🟢 CHOCH: BULL]</span>';
+    else if (lastLow && currP < lastLow) chochBadge = '<span style="color:#f04060;font-weight:700;">[🔴 CHOCH: BEAR]</span>';
+    else chochBadge = '<span style="color:var(--muted);font-weight:700;">[➖ STRUCT: INSIDE]</span>';
+
+    const prevP = i > 0 ? dArr[i-1] : currP;
+    const currR = drsiArrHud[i];
+    const rWma  = drsiWmaHud[i];
+    let momBadge = '', momColor = '';
+    if (rWma) {
+        if (currR > rWma) {
+            if (currP < prevP) { momBadge = '[🛡️ MOM: HIDDEN BUYING]'; momColor = '#00e8a2'; }
+            else { momBadge = '[⚡ MOM: ACCELERATING]'; momColor = '#00e8a2'; }
+        } else {
+            if (currP >= prevP) { momBadge = '[⚠️ MOM: FAKE RALLY]'; momColor = '#f59e0b'; }
+            else { momBadge = '[📉 MOM: DECELERATING]'; momColor = '#f04060'; }
+        }
+    }
+
+    const html = `<span style="color:var(--gold);font-weight:700;">[${shortDt}]</span> NAV: ${chartData[i].nav.toFixed(2)} | WMA: <span style="color:${regColor}; font-weight:700;">${wmaText}</span> | SMA50: ${smaText} | ${chochBadge} | <span style="color:${momColor};font-weight:700;letter-spacing:0.05em;">${momBadge}</span> | R: ${Math.round(currR)} | W: ${Math.round(wrsiArrHud[i])} | DELTA: ${deltaData[i].toFixed(1)}`;
     hm.innerHTML = html; 
   };
 
