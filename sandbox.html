@@ -192,16 +192,16 @@
   /* ── MAIN SIM AREA ── */
   .main-sim { flex-grow: 1; display: flex; flex-direction: column; overflow-y: auto; padding-bottom: 96px; min-height: 0; }
 
-  /* ── CHART CONTAINER (PRECISION ALIGNED WITH BUTTONS) ── */
+  /* ── CHART ── */
   .chart-container {
-    background: var(--bg); padding: 6px 8px; 
+    background: var(--bg); padding: 6px;
     height: 52vh; min-height: 380px; 
     border-bottom: 1px solid var(--border);
     display: flex; flex-direction: column; flex-shrink: 0;
   }
   .chart-header {
     display: flex; justify-content: space-between; align-items: center;
-    padding: 0; margin-bottom: 4px; flex-shrink: 0;
+    padding: 0 6px; margin-bottom: 4px; flex-shrink: 0;
   }
   .label-sm { font-size: 0.55rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
   .chart-nav { font-size: 0.75rem; color: var(--text); font-weight: 400; }
@@ -215,7 +215,7 @@
   .canvas-box { position: absolute; inset: 0; }
   .canvas-box-bottom { position: absolute; inset: 0; top: 18px; }
   .delta-label {
-    position: absolute; top: 3px; left: 4px;
+    position: absolute; top: 3px; left: 8px;
     font-size: 0.52rem; color: var(--muted);
     z-index: 10; letter-spacing: 0.08em; pointer-events: none;
     background: rgba(7, 9, 15, 0.8); padding: 1px 4px; border-radius: 2px;
@@ -225,7 +225,7 @@
   .chart-hud {
     position: absolute;
     top: 4px;
-    left: 4px;
+    left: 8px;
     font-family: var(--mono);
     font-size: 0.55rem;
     font-weight: 400;
@@ -244,6 +244,7 @@
   @media (max-width: 600px) {
     .chart-hud {
       font-size: 0.50rem;
+      left: 4px;
       letter-spacing: -0.05em;
       white-space: normal; 
       max-width: 95%; 
@@ -1140,6 +1141,13 @@ function updateLiveChart(days, btnEl) {
   if (liveRsiChart) liveRsiChart.destroy();
   if (liveDeltaChart) liveDeltaChart.destroy();
   
+  const commonOptions = {
+    responsive: true, maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: { legend: { display: false }, tooltip: { enabled: false } },
+    scales: { x: { display: false, offset: true }, y: { position: 'right', grid: { color: '#1a2a45' }, ticks: { display: true, color: '#6080a0', font: { size: 9, family: '"Space Mono"' }, maxTicksLimit: 6 }, afterFit: (scale) => { scale.width = 46; } } }
+  };
+
   liveChart = new Chart(document.getElementById('liveChartCanvas').getContext('2d'), {
     type: 'line', plugins: [universalAnnotationsPlugin],
     data: {
@@ -1156,22 +1164,7 @@ function updateLiveChart(days, btnEl) {
         }
       ]
     },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      layout: { padding: { top: 32, bottom: 4, left: 0, right: 0 } },
-      interaction: { mode: 'index', intersect: false },
-      onHover: (event, activeElements) => { syncCharts([liveChart, liveRsiChart, liveDeltaChart], activeElements, true); updateLocalLiveHud(activeElements); },
-      plugins: { legend: { display: false }, tooltip: { enabled: false }, zoom: { zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' }, pan: { enabled: true, mode: 'x' } } },
-      scales: { 
-        x: { display: false, offset: true }, 
-        y: { 
-          position: 'right',
-          grid: { color: '#1a2a45' }, 
-          ticks: { display: true, color: '#6080a0', font: { size: 9, family: '"Space Mono"' }, maxTicksLimit: 6 },
-          afterFit: (scale) => { scale.width = 40; } 
-        } 
-      }
-    }
+    options: { ...commonOptions, layout: { padding: { top: 32, bottom: 4, left: 8, right: 8 } }, onHover: (event, activeElements) => { syncCharts([liveChart, liveRsiChart, liveDeltaChart], activeElements, true); updateLocalLiveHud(activeElements); }, plugins: { ...commonOptions.plugins, zoom: { zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' }, pan: { enabled: true, mode: 'x' } } } }
   });
 
   liveRsiChart = new Chart(document.getElementById('liveRsiCanvas').getContext('2d'), {
@@ -1183,23 +1176,7 @@ function updateLiveChart(days, btnEl) {
         { data: drsiArrHud, borderColor: '#e8f0ff', borderWidth: 1.5, pointRadius: 0, fill: { target: 0, above: 'rgba(0, 232, 162, 0.25)', below: 'rgba(240, 64, 96, 0.25)' } }
       ]
     },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      layout: { padding: { top: 4, bottom: 4, left: 0, right: 0 } },
-      interaction: { mode: 'index', intersect: false },
-      onHover: (event, activeElements) => { syncCharts([liveChart, liveRsiChart, liveDeltaChart], activeElements, true); updateLocalLiveHud(activeElements); },
-      plugins: { legend: { display: false }, tooltip: { enabled: false } },
-      scales: { 
-        x: { display: false, offset: true }, 
-        y: { 
-          position: 'right',
-          grid: { color: '#1a2a45' }, 
-          ticks: { display: false },
-          afterFit: (scale) => { scale.width = 40; },
-          min: 10, max: 100
-        } 
-      }
-    }
+    options: { ...commonOptions, layout: { padding: { top: 4, bottom: 4, left: 8, right: 8 } }, onHover: (event, activeElements) => { syncCharts([liveChart, liveRsiChart, liveDeltaChart], activeElements, true); updateLocalLiveHud(activeElements); }, scales: { x: { display: false }, y: { ...commonOptions.scales.y, min: 10, max: 100, ticks: {display: false} } } }
   });
 
   liveDeltaChart = new Chart(document.getElementById('liveDeltaCanvas').getContext('2d'), {
@@ -1213,24 +1190,7 @@ function updateLiveChart(days, btnEl) {
         { type: 'line', data: Array(dataSlice.length).fill(0), borderColor: 'rgba(255,255,255,0.3)', borderDash: [4,4], pointRadius: 0, borderWidth: 1 }
       ]
     },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      layout: { padding: { top: 4, bottom: 4, left: 0, right: 0 } },
-      interaction: { mode: 'index', intersect: false },
-      onHover: (event, activeElements) => { syncCharts([liveChart, liveRsiChart, liveDeltaChart], activeElements, true); updateLocalLiveHud(activeElements); },
-      plugins: { legend: { display: false }, tooltip: { enabled: false } },
-      scales: { 
-        x: { display: false, offset: true }, 
-        y: { 
-          position: 'right',
-          grid: { color: 'rgba(26,42,69,0.6)' }, 
-          border: { dash: [2,4] }, 
-          min: -35, max: 35, 
-          ticks: { display: false },
-          afterFit: (scale) => { scale.width = 40; } 
-        }
-      }
-    }
+    options: { ...commonOptions, layout: { padding: { top: 4, bottom: 4, left: 8, right: 8 } }, onHover: (event, activeElements) => { syncCharts([liveChart, liveRsiChart, liveDeltaChart], activeElements, true); updateLocalLiveHud(activeElements); }, scales: { x: { display: false }, y: { ...commonOptions.scales.y, grid: { color: 'rgba(26,42,69,0.6)' }, border: { dash: [2,4] }, min: -35, max: 35, ticks: { display: false } } } }
   });
 }
 
@@ -1308,27 +1268,6 @@ function updateDisplay() {
   document.getElementById('nwVal').textContent = `₹${Math.round(currentNW).toLocaleString('en-IN')}`;
   document.getElementById('ddVal').textContent = `-${currentDD.toFixed(1)}%`;
 
-  const chartData = visible.slice(-80);
-  const wmaData = chartData.map((_, i) => calculateWMA(fullHistory.slice(0, currentIdx - (chartData.length - 1) + i + 1).map(h => h.nav), 20));
-  const smaData = chartData.map((_, i) => calculateSMA(fullHistory.slice(0, currentIdx - (chartData.length - 1) + i + 1).map(h => h.nav), 50));
-  
-  const requiredRsiDays = chartData.length + 20; 
-  const recentDrsi = [];
-  for (let i = 0; i < requiredRsiDays; i++) {
-      const ei = currentIdx - requiredRsiDays + 1 + i;
-      if (ei < 0) {
-         recentDrsi.push(50);
-      } else {
-         const sp = fullHistory.slice(0, ei + 1).map(h => h.nav);
-         recentDrsi.push(calculateRSI(sp, 14));
-      }
-  }
-  const drsiWmaHud = [];
-  for (let i = 0; i < chartData.length; i++) {
-      drsiWmaHud.push(calculateWMA(recentDrsi.slice(i, i + 20), 20));
-  }
-  const drsiArrHud = recentDrsi.slice(20);
-
   let pcAlert = false, ncAlert = false;
   if (prices.length >= 56) {
     const box = prices.slice(-6, -1);
@@ -1343,6 +1282,7 @@ function updateDisplay() {
     }
   }
 
+  const chartData = visible.slice(-80);
   let tslVal = 0;
   let sLows = [];
   let sHighs = [];
@@ -1439,6 +1379,26 @@ function updateDisplay() {
   sellBtns.forEach(btn => { btn.disabled = false; });
   document.getElementById('btnAll').textContent = 'SELL ALL';
 
+  const wmaData = chartData.map((_, i) => calculateWMA(fullHistory.slice(0, currentIdx - (chartData.length - 1) + i + 1).map(h => h.nav), 20));
+  const smaData = chartData.map((_, i) => calculateSMA(fullHistory.slice(0, currentIdx - (chartData.length - 1) + i + 1).map(h => h.nav), 50));
+  
+  const requiredRsiDays = chartData.length + 20; 
+  const recentDrsi = [];
+  for (let i = 0; i < requiredRsiDays; i++) {
+      const ei = currentIdx - requiredRsiDays + 1 + i;
+      if (ei < 0) {
+         recentDrsi.push(50);
+      } else {
+         const sp = fullHistory.slice(0, ei + 1).map(h => h.nav);
+         recentDrsi.push(calculateRSI(sp, 14));
+      }
+  }
+  const drsiWmaHud = [];
+  for (let i = 0; i < chartData.length; i++) {
+      drsiWmaHud.push(calculateWMA(recentDrsi.slice(i, i + 20), 20));
+  }
+  const drsiArrHud = recentDrsi.slice(20);
+
   const deltaData = [], deltaColors = [], wmaRegimes = [], wrsiArrHud = [];
   for (let i = 0; i < chartData.length; i++) {
     const ei = currentIdx - (chartData.length - 1) + i;
@@ -1493,8 +1453,15 @@ function updateDisplay() {
         }
     }
 
-    const html = `<span style="color:var(--gold);font-weight:700;">[${shortDt}]</span> N: ${currP.toFixed(2)} | WMA: <span style="color:${regColor};">${wmaText}</span> | SMA50: ${smaText} | ${chochBadge} | <span style="color:${momColor};font-weight:700;letter-spacing:0.05em;">${momBadge}</span> | R: ${Math.round(currR)} | W: ${Math.round(wrsiArrHud[i])} | D: ${deltaData[i].toFixed(1)}`;
+    const html = `<span style="color:var(--gold);font-weight:700;">[${shortDt}]</span> NAV: ${chartData[i].nav.toFixed(2)} | WMA: <span style="color:${regColor}; font-weight:700;">${wmaText}</span> | SMA50: ${smaText} | ${chochBadge} | <span style="color:${momColor};font-weight:700;letter-spacing:0.05em;">${momBadge}</span> | R: ${Math.round(currR)} | W: ${Math.round(wrsiArrHud[i])} | DELTA: ${deltaData[i].toFixed(1)}`;
     hm.innerHTML = html; 
+  };
+
+  const commonOptions = {
+    responsive: true, maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: { legend: { display: false }, tooltip: { enabled: false } },
+    scales: { x: { display: false, offset: true }, y: { position: 'right', grid: { color: '#1a2a45' }, ticks: { display: false }, afterFit: (scale) => { scale.width = 46; } } }
   };
 
   if (chart) chart.destroy();
@@ -1519,14 +1486,11 @@ function updateDisplay() {
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      layout: { padding: { top: 32, bottom: 4, left: 0, right: 0 } },
+      layout: { padding: { top: 32, bottom: 4, left: 8, right: 8 } },
       interaction: { mode: 'index', intersect: false },
       onHover: (event, activeElements) => { syncCharts([chart, rsiChart, deltaChart], activeElements, false); updateLocalSimHud(activeElements); },
       plugins: { legend: { display: false }, tooltip: { enabled: false } },
-      scales: { 
-        x: { display: false, offset: true }, 
-        y: { position: 'right', grid: { color: '#1a2a45' }, ticks: { display: false } } 
-      }
+      scales: { x: { display: false, offset: true }, y: { position: 'right', grid: { color: '#1a2a45' }, ticks: { display: false }, afterFit: (scale) => { scale.width = 46; } } }
     }
   });
 
@@ -1541,7 +1505,7 @@ function updateDisplay() {
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      layout: { padding: { top: 4, bottom: 4, left: 0, right: 0 } },
+      layout: { padding: { top: 4, bottom: 4, left: 8, right: 8 } },
       interaction: { mode: 'index', intersect: false },
       onHover: (event, activeElements) => { syncCharts([chart, rsiChart, deltaChart], activeElements, false); updateLocalSimHud(activeElements); },
       plugins: { legend: { display: false }, tooltip: { enabled: false } },
@@ -1551,6 +1515,7 @@ function updateDisplay() {
           position: 'right',
           grid: { color: '#1a2a45' }, 
           ticks: { display: false },
+          afterFit: (scale) => { scale.width = 46; },
           min: 10, max: 100
         } 
       }
@@ -1570,7 +1535,7 @@ function updateDisplay() {
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      layout: { padding: { top: 4, bottom: 4, left: 0, right: 0 } },
+      layout: { padding: { top: 4, bottom: 4, left: 8, right: 8 } },
       interaction: { mode: 'index', intersect: false },
       onHover: (event, activeElements) => { syncCharts([chart, rsiChart, deltaChart], activeElements, false); updateLocalSimHud(activeElements); },
       plugins: { legend: { display: false }, tooltip: { enabled: false } },
@@ -1581,7 +1546,8 @@ function updateDisplay() {
           grid: { color: 'rgba(26,42,69,0.6)' }, 
           border: { dash: [2,4] }, 
           min: -35, max: 35, 
-          ticks: { display: false }
+          ticks: { display: false },
+          afterFit: (scale) => { scale.width = 46; }
         } 
       }
     }
@@ -1729,6 +1695,7 @@ function endAndReview() {
         runningUnits += t.units;
         if (regime === 'A') {
           if (dr <= 50 || pcAlert || d < buyDeltaLevel) { scoreEntry += 20; goodBuys++; } 
+          else { /* Neutral */ }
         } else if (regime === 'C') {
           if (pcAlert) { goodBuys++; } 
           else { scoreEntry -= 20; badBuys++; }
