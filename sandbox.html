@@ -81,7 +81,7 @@
   .setup-btn-live { border-color: var(--border2); color: var(--muted2); }
   .setup-btn-live:hover { border-color: var(--muted2); color: var(--text); }
 
-  /* ── GAME UI CHROME (TRIMMED) ── */
+  /* ── GAME UI CHROME ── */
   .app-header { display: flex; justify-content: space-between; align-items: center; padding: 6px 12px; background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0; }
   .logo { font-weight: 700; font-size: 0.75rem; color: var(--accent); letter-spacing: 0.12em; display: flex; align-items: center; }
   .logo span { color: var(--muted); font-weight: 400; }
@@ -131,7 +131,7 @@
     .ind-val { font-size: 0.90rem !important; padding: 2px 4px !important; }
   }
 
-  /* ── INDICATORS & PSYCHOLOGY (TRIMMED) ── */
+  /* ── INDICATORS & PSYCHOLOGY ── */
   .indicator-row { display: flex; justify-content: space-between; align-items: stretch; background: var(--surface); padding: 2px 0; border-bottom: 1px solid var(--border); flex-shrink: 0; }
   .ind-box { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2px; border-right: 1px solid var(--border); }
   .ind-box:last-child { border-right: none; }
@@ -145,7 +145,7 @@
   .psy-logic .psy-line { color: var(--muted2); margin-bottom: 3px; }
   .psy-logic .psy-line:first-child { color: var(--text); font-weight: 400; }
 
-  /* ── ACTION BAR (TRIMMED) ── */
+  /* ── ACTION BAR ── */
   .action-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: var(--surface); border-top: 1px solid var(--border); display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 6px; z-index: 200; height: 76px; }
   .btn { font-family: var(--mono); font-size: 0.65rem; font-weight: 700; padding: 6px 2px; border-radius: var(--radius-sm); cursor: pointer; border: 1.5px solid transparent; text-transform: uppercase; text-align: center; letter-spacing: 0.05em; transition: all 0.15s ease; background: transparent; }
   .btn:hover:not(:disabled) { filter: brightness(1.2); }
@@ -632,7 +632,6 @@ const universalAnnotationsPlugin = {
         }
       }
       
-      // ── FIXED PC/NC ENGINE ──
       if (wma.length > 0) {
         ctx.font = '8px "Space Mono"'; ctx.textAlign = 'center'; ctx.setLineDash([]);
         let lastLabelIdx = -50;
@@ -645,17 +644,14 @@ const universalAnnotationsPlugin = {
           const preMin = preBox.length ? Math.min(...preBox) : 0;
           
           if ((bMax - bMin) / bMin < 0.015 && wma[i] != null) {
-            const isDeclining = preMax > bMax * 1.02; // Downtrend check for PC
-            const isAdvancing = preMin < bMin * 0.98; // Uptrend check for NC
+            const isDeclining = preMax > bMax * 1.02;
+            const isAdvancing = preMin < bMin * 0.98;
             
             if (meta.data[i-2] && meta.data[i-2].x !== undefined) {
               const x = meta.data[i-2].x;
-              // PC: Must be declining, and price breaks up
               if (isDeclining && data[i] > wma[i]) {
                 ctx.fillStyle = '#00e8a2'; ctx.fillText('PC', x, ci.scales.y.getPixelForValue(bMin) + 12); lastLabelIdx = i;
-              } 
-              // NC: Must be advancing, and price breaks down
-              else if (isAdvancing && data[i] < wma[i]) {
+              } else if (isAdvancing && data[i] < wma[i]) {
                 ctx.fillStyle = '#f04060'; ctx.fillText('NC', x, ci.scales.y.getPixelForValue(bMax) - 5); lastLabelIdx = i;
               }
             }
@@ -680,10 +676,8 @@ const universalAnnotationsPlugin = {
       ctx.save();
       ctx.font = '9px "Space Mono"';
       ctx.textAlign = 'right';
-      
       ctx.fillStyle = 'rgba(240, 64, 96, 0.9)';
       ctx.fillText(`PROFIT DELTA: ${profitDeltaLevel}`, endX - 5, yProfit - 4);
-      
       ctx.fillStyle = 'rgba(0, 232, 162, 0.9)';
       ctx.fillText(`SCOUT BUY: ${buyDeltaLevel}`, endX - 5, yBuy - 4);
       ctx.restore();
@@ -804,7 +798,6 @@ function updateLiveChart(days, btnEl) {
     prevRegimeLive = prevWRsi >= 50 ? 'A' : (prevWRsi >= 40 ? 'B' : 'C');
   }
 
-  // ── FIXED PC/NC ALERT ENGINE ──
   let pcAlert = false, ncAlert = false;
   if (latestPrices.length >= 56) {
     const box = latestPrices.slice(-6, -1);
@@ -815,8 +808,8 @@ function updateLiveChart(days, btnEl) {
     const boxWma = calculateWMA(latestPrices.slice(0, -1), 20);
     
     if ((boxMax - boxMin) / boxMin <= 0.02 && (boxWma ? Math.abs(boxMin - boxWma) / boxWma <= 0.04 : false)) {
-      if (preMax > boxMax * 1.02 && lastNav > boxMax) pcAlert = true; // PC
-      if (preMin < boxMin * 0.98 && lastNav < boxMin) ncAlert = true; // NC
+      if (preMax > boxMax * 1.02 && lastNav > boxMax) pcAlert = true; 
+      if (preMin < boxMin * 0.98 && lastNav < boxMin) ncAlert = true; 
     }
   }
 
@@ -964,7 +957,7 @@ function updateLiveChart(days, btnEl) {
         { data: smaSlice, borderWidth: 1, pointRadius: 0, fill: false, segment: { borderColor: ctx => { const i = ctx.p1DataIndex; return dataSlice[i].nav > smaSlice[i] ? 'rgba(0,232,162,0.8)' : 'rgba(240,64,96,0.8)'; } } }
       ]
     },
-    options: { ...commonOptions, layout: { padding: { top: 24, bottom: 2, left: 4, right: 4 } }, onHover: (e, el) => { syncCharts([liveChart, liveRsiChart, liveDeltaChart], el, true); updateLocalLiveHud(el); }, plugins: { ...commonOptions.plugins, zoom: { zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' }, pan: { enabled: true, mode: 'x' } } } }
+    options: { ...commonOptions, layout: { padding: { top: 24, bottom: 2, left: 8, right: 8 } }, onHover: (e, el) => { syncCharts([liveChart, liveRsiChart, liveDeltaChart], el, true); updateLocalLiveHud(el); }, plugins: { ...commonOptions.plugins, zoom: { zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' }, pan: { enabled: true, mode: 'x' } } } }
   });
 
   liveRsiChart = new Chart(document.getElementById('liveRsiCanvas').getContext('2d'), {
@@ -976,7 +969,7 @@ function updateLiveChart(days, btnEl) {
         { data: drsiArrHud, borderColor: '#e8f0ff', borderWidth: 1.5, pointRadius: 0, fill: { target: 0, above: 'rgba(0, 232, 162, 0.25)', below: 'rgba(240, 64, 96, 0.25)' } }
       ]
     },
-    options: { ...commonOptions, layout: { padding: { top: 2, bottom: 2, left: 4, right: 4 } }, onHover: (e, el) => { syncCharts([liveChart, liveRsiChart, liveDeltaChart], el, true); updateLocalLiveHud(el); }, scales: { x: { display: false }, y: { ...commonOptions.scales.y, min: 10, max: 100 } } }
+    options: { ...commonOptions, layout: { padding: { top: 2, bottom: 2, left: 8, right: 8 } }, onHover: (e, el) => { syncCharts([liveChart, liveRsiChart, liveDeltaChart], el, true); updateLocalLiveHud(el); }, scales: { x: { display: false }, y: { ...commonOptions.scales.y, min: 10, max: 100 } } }
   });
 
   liveDeltaChart = new Chart(document.getElementById('liveDeltaCanvas').getContext('2d'), {
@@ -990,7 +983,7 @@ function updateLiveChart(days, btnEl) {
         { type: 'line', data: Array(dataSlice.length).fill(0), borderColor: 'rgba(255,255,255,0.3)', borderDash: [4,4], pointRadius: 0, borderWidth: 1 }
       ]
     },
-    options: { ...commonOptions, layout: { padding: { top: 2, bottom: 2, left: 4, right: 4 } }, onHover: (e, el) => { syncCharts([liveChart, liveRsiChart, liveDeltaChart], el, true); updateLocalLiveHud(el); }, scales: { x: { display: false }, y: { ...commonOptions.scales.y, min: -35, max: 35, ticks: {display: false} } } }
+    options: { ...commonOptions, layout: { padding: { top: 2, bottom: 2, left: 8, right: 8 } }, onHover: (e, el) => { syncCharts([liveChart, liveRsiChart, liveDeltaChart], el, true); updateLocalLiveHud(el); }, scales: { x: { display: false }, y: { ...commonOptions.scales.y, min: -35, max: 35, ticks: {display: false} } } }
   });
 }
 
@@ -1099,8 +1092,8 @@ function updateDisplay() {
     const boxWma = calculateWMA(prices.slice(0, -1), 20);
     
     if ((boxMax - boxMin) / boxMin <= 0.02 && (boxWma ? Math.abs(boxMin - boxWma) / boxWma <= 0.04 : false)) {
-      if (preMax > boxMax * 1.02 && currentNav > boxMax) pcAlert = true; // PC
-      if (preMin < boxMin * 0.98 && currentNav < boxMin) ncAlert = true; // NC
+      if (preMax > boxMax * 1.02 && currentNav > boxMax) pcAlert = true; 
+      if (preMin < boxMin * 0.98 && currentNav < boxMin) ncAlert = true; 
     }
   }
 
@@ -1276,7 +1269,7 @@ function updateDisplay() {
         { data: smaData, borderWidth: 1, pointRadius: 0, fill: false, segment: { borderColor: ctx => { const i = ctx.p1DataIndex; return chartData[i].nav > smaData[i] ? 'rgba(0,232,162,0.8)' : 'rgba(240,64,96,0.8)'; } } }
       ]
     },
-    options: { ...commonOptions, layout: { padding: { top: 24, bottom: 2, left: 4, right: 4 } }, onHover: (e, el) => { syncCharts([chart, rsiChart, deltaChart], el, false); updateLocalSimHud(el); } }
+    options: { ...commonOptions, layout: { padding: { top: 24, bottom: 2, left: 8, right: 8 } }, onHover: (e, el) => { syncCharts([chart, rsiChart, deltaChart], el, false); updateLocalSimHud(el); } }
   });
 
   rsiChart = new Chart(document.getElementById('rsiChart').getContext('2d'), {
@@ -1288,7 +1281,7 @@ function updateDisplay() {
         { data: drsiArrHud, borderColor: '#e8f0ff', borderWidth: 1.5, pointRadius: 0, fill: { target: 0, above: 'rgba(0, 232, 162, 0.25)', below: 'rgba(240, 64, 96, 0.25)' } }
       ]
     },
-    options: { ...commonOptions, layout: { padding: { top: 2, bottom: 2, left: 4, right: 4 } }, onHover: (e, el) => { syncCharts([chart, rsiChart, deltaChart], el, false); updateLocalSimHud(el); }, scales: { x: { display: false }, y: { ...commonOptions.scales.y, min: 10, max: 100 } } }
+    options: { ...commonOptions, layout: { padding: { top: 2, bottom: 2, left: 8, right: 8 } }, onHover: (e, el) => { syncCharts([chart, rsiChart, deltaChart], el, false); updateLocalSimHud(el); }, scales: { x: { display: false }, y: { ...commonOptions.scales.y, min: 10, max: 100 } } }
   });
 
   deltaChart = new Chart(document.getElementById('deltaChart').getContext('2d'), {
@@ -1302,13 +1295,16 @@ function updateDisplay() {
         { type: 'line', data: Array(chartData.length).fill(0), borderColor: 'rgba(255,255,255,0.3)', borderDash: [4,4], pointRadius: 0, borderWidth: 1 }
       ]
     },
-    options: { ...commonOptions, layout: { padding: { top: 2, bottom: 2, left: 4, right: 4 } }, onHover: (e, el) => { syncCharts([chart, rsiChart, deltaChart], el, false); updateLocalSimHud(el); }, scales: { x: { display: false }, y: { ...commonOptions.scales.y, min: -35, max: 35, ticks: {display: false} } } }
+    options: { ...commonOptions, layout: { padding: { top: 2, bottom: 2, left: 8, right: 8 } }, onHover: (e, el) => { syncCharts([chart, rsiChart, deltaChart], el, false); updateLocalSimHud(el); }, scales: { x: { display: false }, y: { ...commonOptions.scales.y, min: -35, max: 35, ticks: {display: false} } } }
   });
 }
 
 function trade(action) {
+  if (document.getElementById('btnBuy10').disabled) return;
+
   const nav = fullHistory[currentIdx].nav;
   const dayNum = currentIdx - simStartIdx;
+  
   if (action.includes('BUY')) {
     const pct = action.includes('10') ? 0.1 : (action.includes('25') ? 0.25 : 0.5);
     const amt = cash * pct;
@@ -1329,8 +1325,17 @@ function trade(action) {
     const totalUnits = tranches.reduce((s, t) => s + t.units, 0);
     executeSell(totalUnits, nav, dayNum, 'SELL REGIME'); 
   }
+  
   document.getElementById('alertBanner').style.display = 'none';
-  nextDay();
+
+  if (currentIdx < fullHistory.length - 1) {
+    nextDay();
+  } else {
+    updateDisplay();
+    alert("🏁 SIMULATION COMPLETE\n\nYou have reached today's date. There is no more historical data available for this fund.\n\nPlease click 'END & REVIEW' to generate your final Process Audit.");
+    const btns = document.querySelectorAll('.action-bar .btn');
+    btns.forEach(b => b.disabled = true);
+  }
 }
 
 function executeSell(unitsToSell, nav, dayNum, actionName) {
@@ -1358,6 +1363,8 @@ function nextDay() {
     updateDisplay(); 
   } else {
     alert("🏁 SIMULATION COMPLETE\n\nYou have reached today's date. There is no more historical data available for this fund.\n\nPlease click 'END & REVIEW' to generate your final Process Audit.");
+    const btns = document.querySelectorAll('.action-bar .btn');
+    btns.forEach(b => b.disabled = true);
   }
 }
 
@@ -1400,7 +1407,6 @@ function endAndReview() {
       const preMax = Math.max(...preBox);
       const boxWma = calculateWMA(sp.slice(0, -1), 20);
       
-      // Must be declining (preMax > boxMax * 1.02)
       if ((boxMax - boxMin) / boxMin <= 0.02 && (boxWma ? Math.abs(boxMin - boxWma) / boxWma <= 0.04 : false)) {
         if (preMax > boxMax * 1.02 && currNav > boxMax) pcAlert = true;
       }
