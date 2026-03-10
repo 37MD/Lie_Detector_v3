@@ -123,11 +123,11 @@
   .canvas-box-bottom { position: absolute; inset: 0; top: 12px; } 
   .delta-label { position: absolute; top: 0px; left: 4px; font-size: 0.5rem; color: var(--muted); z-index: 10; letter-spacing: 0.08em; pointer-events: none; background: rgba(7, 9, 15, 0.85); padding: 1px 3px; border-radius: 2px; }
 
-  .chart-hud { position: absolute; top: 2px; left: 4px; font-family: var(--mono); font-size: 0.55rem; font-weight: 400; color: #ffffff; z-index: 10; pointer-events: none; white-space: nowrap; letter-spacing: -0.02em; }
+  .chart-hud { position: absolute; top: 2px; left: 4px; font-family: var(--mono); font-size: 0.52rem; font-weight: 400; color: #ffffff; z-index: 10; pointer-events: none; white-space: nowrap; letter-spacing: -0.02em; }
   .chart-hud:not(:empty) { background: rgba(7, 9, 15, 0.85); padding: 2px 4px; border-radius: 2px; }
 
   @media (max-width: 600px) {
-    .chart-hud { font-size: 0.50rem; letter-spacing: -0.05em; white-space: normal; max-width: 98%; line-height: 1.1; }
+    .chart-hud { font-size: 0.48rem; letter-spacing: -0.05em; white-space: normal; max-width: 98%; line-height: 1.2; }
     .ind-val { font-size: 0.90rem !important; padding: 2px 4px !important; }
   }
 
@@ -379,7 +379,7 @@
 
   <footer class="action-bar">
     <button class="btn btn-buy"    id="btnBuy10"  onclick="trade('BUY10')">BUY 10%</button>
-    <button class="btn btn-hold"   id="btnHold"   onclick="nextDay()">HOLD</button>
+    <button class="btn btn-hold"               onclick="nextDay()">HOLD</button>
     <button class="btn btn-buy"    id="btnBuy25"  onclick="trade('BUY25')">BUY 25%</button>
     <button class="btn btn-buy"    id="btnBuy50"  onclick="trade('BUY50')">BUY 50%</button>
 
@@ -723,6 +723,12 @@ async function initLive() {
   buyDeltaLevel    = parseFloat(document.getElementById('buyDeltaIn').value)    || -15;
   globalLiveData = await fetchFundData();
   if (!globalLiveData.length) return;
+  
+  if (globalLiveData.length < 50) {
+      alert("INSUFFICIENT DATA\n\nThis fund is too new to plot Live moving averages.");
+      return;
+  }
+  
   document.getElementById('setupScreen').style.display = 'none';
   document.getElementById('liveModal').style.display   = 'flex';
   const btns = document.getElementById('liveTfRow').children;
@@ -895,22 +901,35 @@ function updateLiveChart(days, btnEl) {
     const smaText = smaSlice[i] ? smaSlice[i].toFixed(2) : '--';
     const shortDt = formatShortDate(dataSlice[i].date);
     
-    const currP = dataSlice[i].nav;
-    const prevP = i > 0 ? dataSlice[i-1].nav : currP;
+    // ── CHOCH LOGIC ──
+    const dArr = dataSlice.map(x => x.nav);
+    let lastHigh = null, lastLow = null;
+    for (let k = i - 2; k >= 2; k--) {
+        if (!lastLow && dArr[k] <= dArr[k-1] && dArr[k] < dArr[k-2] && dArr[k] <= dArr[k+1] && dArr[k] < dArr[k+2]) lastLow = dArr[k];
+        if (!lastHigh && dArr[k] >= dArr[k-1] && dArr[k] > dArr[k-2] && dArr[k] >= dArr[k+1] && dArr[k] > dArr[k+2]) lastHigh = dArr[k];
+        if (lastLow && lastHigh) break;
+    }
+    const currP = dArr[i];
+    let chochBadge = '';
+    if (lastHigh && currP > lastHigh) chochBadge = '<span style="color:#00e8a2;font-weight:700;">[🟢 CHOCH: BULL]</span>';
+    else if (lastLow && currP < lastLow) chochBadge = '<span style="color:#f04060;font-weight:700;">[🔴 CHOCH: BEAR]</span>';
+    else chochBadge = '<span style="color:var(--muted);font-weight:700;">[➖ STRUCT: INSIDE]</span>';
+
+    const prevP = i > 0 ? dArr[i-1] : currP;
     const currR = drsiArrHud[i];
     const rWma  = drsiWmaHud[i];
     let momBadge = '', momColor = '';
     if (rWma) {
         if (currR > rWma) {
-            if (currP < prevP) { momBadge = '[🛡️ MOMENTUM: HIDDEN BUYING]'; momColor = '#00e8a2'; }
-            else { momBadge = '[⚡ MOMENTUM: ACCELERATING]'; momColor = '#00e8a2'; }
+            if (currP < prevP) { momBadge = '[🛡️ MOM: HIDDEN BUYING]'; momColor = '#00e8a2'; }
+            else { momBadge = '[⚡ MOM: ACCELERATING]'; momColor = '#00e8a2'; }
         } else {
-            if (currP >= prevP) { momBadge = '[⚠️ MOMENTUM: FAKE RALLY]'; momColor = '#f59e0b'; }
-            else { momBadge = '[📉 MOMENTUM: DECELERATING]'; momColor = '#f04060'; }
+            if (currP >= prevP) { momBadge = '[⚠️ MOM: FAKE RALLY]'; momColor = '#f59e0b'; }
+            else { momBadge = '[📉 MOM: DECELERATING]'; momColor = '#f04060'; }
         }
     }
     
-    const html = `<span style="color:var(--gold);font-weight:700;">[${shortDt}]</span> N: ${currP.toFixed(2)} | WMA: <span style="color:${regColor};">${wmaText}</span> | SMA50: ${smaText} | <span style="color:${momColor};font-weight:700;letter-spacing:0.05em;">${momBadge}</span> | R: ${Math.round(currR)} | W: ${Math.round(wrsiArrHud[i])} | D: ${deltaData[i].toFixed(1)}`;
+    const html = `<span style="color:var(--gold);font-weight:700;">[${shortDt}]</span> N: ${currP.toFixed(2)} | WMA: <span style="color:${regColor};">${wmaText}</span> | SMA50: ${smaText} | ${chochBadge} | <span style="color:${momColor};font-weight:700;letter-spacing:0.05em;">${momBadge}</span> | R: ${Math.round(currR)} | W: ${Math.round(wrsiArrHud[i])} | D: ${deltaData[i].toFixed(1)}`;
     hm.innerHTML = html; 
   };
 
@@ -978,6 +997,12 @@ async function initGame(mode) {
   buyDeltaLevel    = parseFloat(document.getElementById('buyDeltaIn').value)    || -15;
   fullHistory = await fetchFundData();
   if (!fullHistory.length) return;
+  
+  if (fullHistory.length < 80) {
+      alert("INSUFFICIENT DATA\n\nThis fund is too new. It requires at least 80 days of historical data to generate the simulation charts.");
+      document.getElementById('ov').style.display = 'none';
+      return;
+  }
   
   const minRequired = 20;
   if (mode === 'wave') {
@@ -1154,25 +1179,12 @@ function updateDisplay() {
   prevRegime = currentRegime; prevNav = currentNav;
 
   const b10 = document.getElementById('btnBuy10'), b25 = document.getElementById('btnBuy25'), b50 = document.getElementById('btnBuy50');
-  const bHold = document.getElementById('btnHold');
   const sellBtns = [document.getElementById('btnProfit'), document.getElementById('btnTsl'), document.getElementById('btnRegime'), document.getElementById('btnAll')];
-  
   b10.disabled = false; b10.textContent = 'BUY 10%';
   b25.disabled = false; b25.textContent = 'BUY 25%';
   b50.disabled = false; b50.textContent = 'BUY 50%';
-  bHold.disabled = false;
   sellBtns.forEach(btn => { btn.disabled = false; });
   document.getElementById('btnAll').textContent = 'SELL ALL';
-
-  // ── END OF DATA TRAP ──
-  if (currentIdx >= fullHistory.length - 1) {
-      banner.textContent = '🏁 REACHED LATEST DATE ➔ CLICK [ END & REVIEW ]';
-      banner.className = 'alert-profit alert-mega';
-      banner.style.display = 'block';
-      b10.disabled = true; b25.disabled = true; b50.disabled = true;
-      bHold.disabled = true;
-      sellBtns.forEach(btn => { btn.disabled = true; });
-  }
 
   const deltaData = [], deltaColors = [], wmaRegimes = [], wrsiArrHud = [];
   for (let i = 0; i < chartData.length; i++) {
@@ -1199,22 +1211,35 @@ function updateDisplay() {
     const smaText = smaData[i] ? smaData[i].toFixed(2) : '--';
     const shortDt = formatShortDate(chartData[i].date);
     
-    const currP = chartData[i].nav;
-    const prevP = i > 0 ? chartData[i-1].nav : currP;
+    // ── CHOCH LOGIC ──
+    const dArr = chartData.map(x => x.nav);
+    let lastHigh = null, lastLow = null;
+    for (let k = i - 2; k >= 2; k--) {
+        if (!lastLow && dArr[k] <= dArr[k-1] && dArr[k] < dArr[k-2] && dArr[k] <= dArr[k+1] && dArr[k] < dArr[k+2]) lastLow = dArr[k];
+        if (!lastHigh && dArr[k] >= dArr[k-1] && dArr[k] > dArr[k-2] && dArr[k] >= dArr[k+1] && dArr[k] > dArr[k+2]) lastHigh = dArr[k];
+        if (lastLow && lastHigh) break;
+    }
+    const currP = dArr[i];
+    let chochBadge = '';
+    if (lastHigh && currP > lastHigh) chochBadge = '<span style="color:#00e8a2;font-weight:700;">[🟢 CHOCH: BULL]</span>';
+    else if (lastLow && currP < lastLow) chochBadge = '<span style="color:#f04060;font-weight:700;">[🔴 CHOCH: BEAR]</span>';
+    else chochBadge = '<span style="color:var(--muted);font-weight:700;">[➖ STRUCT: INSIDE]</span>';
+
+    const prevP = i > 0 ? dArr[i-1] : currP;
     const currR = drsiArrHud[i];
     const rWma  = drsiWmaHud[i];
     let momBadge = '', momColor = '';
     if (rWma) {
         if (currR > rWma) {
-            if (currP < prevP) { momBadge = '[🛡️ MOMENTUM: HIDDEN BUYING]'; momColor = '#00e8a2'; }
-            else { momBadge = '[⚡ MOMENTUM: ACCELERATING]'; momColor = '#00e8a2'; }
+            if (currP < prevP) { momBadge = '[🛡️ MOM: HIDDEN BUYING]'; momColor = '#00e8a2'; }
+            else { momBadge = '[⚡ MOM: ACCELERATING]'; momColor = '#00e8a2'; }
         } else {
-            if (currP >= prevP) { momBadge = '[⚠️ MOMENTUM: FAKE RALLY]'; momColor = '#f59e0b'; }
-            else { momBadge = '[📉 MOMENTUM: DECELERATING]'; momColor = '#f04060'; }
+            if (currP >= prevP) { momBadge = '[⚠️ MOM: FAKE RALLY]'; momColor = '#f59e0b'; }
+            else { momBadge = '[📉 MOM: DECELERATING]'; momColor = '#f04060'; }
         }
     }
 
-    const html = `<span style="color:var(--gold);font-weight:700;">[${shortDt}]</span> N: ${currP.toFixed(2)} | WMA: <span style="color:${regColor};">${wmaText}</span> | SMA50: ${smaText} | <span style="color:${momColor};font-weight:700;letter-spacing:0.05em;">${momBadge}</span> | R: ${Math.round(currR)} | W: ${Math.round(wrsiArrHud[i])} | D: ${deltaData[i].toFixed(1)}`;
+    const html = `<span style="color:var(--gold);font-weight:700;">[${shortDt}]</span> N: ${currP.toFixed(2)} | WMA: <span style="color:${regColor};">${wmaText}</span> | SMA50: ${smaText} | ${chochBadge} | <span style="color:${momColor};font-weight:700;letter-spacing:0.05em;">${momBadge}</span> | R: ${Math.round(currR)} | W: ${Math.round(wrsiArrHud[i])} | D: ${deltaData[i].toFixed(1)}`;
     hm.innerHTML = html; 
   };
 
@@ -1270,7 +1295,6 @@ function updateDisplay() {
 }
 
 function trade(action) {
-  if (currentIdx >= fullHistory.length - 1) return;
   const nav = fullHistory[currentIdx].nav;
   const dayNum = currentIdx - simStartIdx;
   if (action.includes('BUY')) {
@@ -1316,7 +1340,15 @@ function executeSell(unitsToSell, nav, dayNum, actionName) {
   }
 }
 
-function nextDay() { if (currentIdx < fullHistory.length - 1) { currentIdx++; updateDisplay(); } }
+function nextDay() { 
+  if (currentIdx < fullHistory.length - 1) { 
+    currentIdx++; 
+    updateDisplay(); 
+  } else {
+    alert("🏁 SIMULATION COMPLETE\n\nYou have reached today's date. There is no more historical data available for this fund.\n\nPlease click 'END & REVIEW' to generate your final Process Audit.");
+  }
+}
+
 function showLog() { 
   const tbody = document.getElementById('logBody');
   tbody.innerHTML = '';
