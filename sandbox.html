@@ -373,24 +373,24 @@
   .reset-zoom:hover { border-color: var(--muted); color: var(--text); }
 
   /* ── NEW REVIEW UI ── */
-  .review-container { padding: 14px 14px 40px 14px; overflow-y: auto; flex-grow: 1; }
-  .score-card { background: var(--surface2); border: 1px solid var(--border); padding: 15px; border-radius: var(--radius); margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center;}
-  .score-title { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 400;}
-  .score-val { font-size: 2.2rem; font-weight: 700; }
+  .review-container { padding: 10px 14px 24px 14px; overflow-y: scroll; -webkit-overflow-scrolling: touch; flex-grow: 1; min-height: 0; }
+  .score-card { background: var(--surface2); border: 1px solid var(--border); padding: 10px 14px; border-radius: var(--radius); margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;}
+  .score-title { font-size: 0.55rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 400;}
+  .score-val { font-size: 1.35rem; font-weight: 400; }
   
-  .audit-section { background: var(--surface2); border: 1px solid var(--border); padding: 12px; border-radius: var(--radius); margin-bottom: 12px; }
-  .audit-header { display: flex; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 8px; }
-  .audit-title { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
-  .audit-score { font-size: 0.85rem; font-weight: 700; }
-  .audit-expected { font-size: 0.62rem; color: var(--muted2); font-style: italic; margin-bottom: 8px; line-height: 1.4; }
-  .audit-stat-row { display: flex; justify-content: space-between; font-size: 0.65rem; margin-bottom: 5px; color: var(--text); }
+  .audit-section { background: var(--surface2); border: 1px solid var(--border); padding: 10px 12px; border-radius: var(--radius); margin-bottom: 7px; }
+  .audit-header { display: flex; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 6px; margin-bottom: 6px; }
+  .audit-title { font-size: 0.70rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+  .audit-score { font-size: 0.82rem; font-weight: 700; }
+  .audit-expected { font-size: 0.60rem; color: var(--muted2); font-style: italic; margin-bottom: 6px; line-height: 1.35; }
+  .audit-stat-row { display: flex; justify-content: space-between; font-size: 0.63rem; margin-bottom: 4px; color: var(--text); }
   .audit-stat-val { font-weight: 700; font-family: var(--mono); }
   .pos-score { color: var(--accent); }
   .neg-score { color: var(--red); }
   .neu-score { color: var(--text); }
   
-  .remarks-box { padding: 12px; border-left: 3px solid; background: rgba(0,0,0,0.2); font-size: 0.70rem; line-height: 1.5; font-weight: 400; margin-bottom: 10px; border-radius: 0 var(--radius-sm) var(--radius-sm) 0;}
-  .section-title { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 10px; border-bottom: 1px solid var(--border); padding-bottom: 6px; font-weight: 400; margin-top: 20px;}
+  .remarks-box { padding: 9px 11px; border-left: 3px solid; background: rgba(0,0,0,0.2); font-size: 0.68rem; line-height: 1.45; font-weight: 400; margin-bottom: 7px; border-radius: 0 var(--radius-sm) var(--radius-sm) 0;}
+  .section-title { font-size: 0.60rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 7px; border-bottom: 1px solid var(--border); padding-bottom: 5px; font-weight: 400; margin-top: 12px;}
 </style>
 </head>
 <body>
