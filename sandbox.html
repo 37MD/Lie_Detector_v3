@@ -143,8 +143,8 @@
   .chart-delta-pane { flex: 1; position: relative; width: 100%; min-height: 0; border-top: 1px dashed var(--border); margin-top: 4px; }
 
   .canvas-box { position: absolute; inset: 0; }
-  .canvas-box-bottom { position: absolute; inset: 0; top: 18px; }
-  .delta-label { position: absolute; top: 3px; left: 8px; font-size: 0.52rem; color: var(--muted); z-index: 10; letter-spacing: 0.08em; pointer-events: none; background: rgba(7, 9, 15, 0.8); padding: 1px 4px; border-radius: 2px; }
+  .canvas-box-bottom { position: absolute; inset: 0; top: 15px; }
+  .delta-label { position: absolute; top: 1px; left: 8px; font-size: 0.52rem; color: var(--muted); z-index: 10; letter-spacing: 0.08em; pointer-events: none; background: rgba(7, 9, 15, 0.85); padding: 1px 4px; border-radius: 2px; }
 
   .chart-hud { position: absolute; top: 4px; left: 8px; font-family: var(--mono); font-size: 0.55rem; font-weight: 400; color: #ffffff; z-index: 10; pointer-events: none; white-space: nowrap; letter-spacing: -0.02em; }
   .chart-hud:not(:empty) { background: rgba(7, 9, 15, 0.85); padding: 2px 4px; border-radius: 2px; }
@@ -293,11 +293,11 @@
         <div class="canvas-box"><canvas id="liveChartCanvas"></canvas></div>
       </div>
       <div class="chart-rsi-pane">
-        <div class="delta-label" style="top:-6px;">MOMENTUM RIBBON · RSI vs WMA(RSI)</div>
+        <div class="delta-label">MOMENTUM RIBBON · RSI vs WMA(RSI)</div>
         <div class="canvas-box-bottom"><canvas id="liveRsiCanvas"></canvas></div>
       </div>
       <div class="chart-delta-pane">
-        <div class="delta-label" style="top:-6px;">VELOCITY · Daily − Weekly</div>
+        <div class="delta-label">VELOCITY · Daily − Weekly</div>
         <div class="canvas-box-bottom"><canvas id="liveDeltaCanvas"></canvas></div>
       </div>
     </div>
@@ -373,11 +373,11 @@
           <div class="canvas-box"><canvas id="mainChart"></canvas></div>
         </div>
         <div class="chart-rsi-pane">
-          <div class="delta-label" style="top:-6px;">MOMENTUM RIBBON · RSI vs WMA(RSI)</div>
+          <div class="delta-label">MOMENTUM RIBBON · RSI vs WMA(RSI)</div>
           <div class="canvas-box-bottom"><canvas id="rsiChart"></canvas></div>
         </div>
         <div class="chart-delta-pane">
-          <div class="delta-label" style="top:-6px;">VELOCITY · Daily − Weekly</div>
+          <div class="delta-label">VELOCITY · Daily − Weekly</div>
           <div class="canvas-box-bottom"><canvas id="deltaChart"></canvas></div>
         </div>
       </div>
@@ -589,7 +589,6 @@ const universalAnnotationsPlugin = {
     const isLive = ci.canvas.id.includes('live');
     const activeIdx = isLive ? liveHoverIdx : simHoverIdx;
     
-    // Vertical Sync Line
     if (activeIdx !== null && meta.data[activeIdx]) {
       const ax = meta.data[activeIdx].x;
       ctx.save();
@@ -599,7 +598,6 @@ const universalAnnotationsPlugin = {
       ctx.restore();
     }
 
-    // Annotations on Top Pane Only
     if (ci.canvas.id === 'liveChartCanvas' || ci.canvas.id === 'mainChart') {
       const data = ci.data.datasets[0].data;
       const wma  = ci.data.datasets[1] ? ci.data.datasets[1].data : [];
@@ -686,7 +684,6 @@ const universalAnnotationsPlugin = {
   }
 };
 
-// ── SYNC 3 CHARTS ──
 function syncCharts(charts, activeElements, isLive) {
   if (activeElements && activeElements.length) {
     const idx = activeElements[0].index;
@@ -742,7 +739,6 @@ function updateLiveChart(days, btnEl) {
   }
   liveHoverIdx = null;
   
-  // Data prep
   const dataSlice = globalLiveData.slice(-days);
   const latestPrices = globalLiveData.map(d => d.nav);
   const lastNav = latestPrices[latestPrices.length - 1];
@@ -777,7 +773,6 @@ function updateLiveChart(days, btnEl) {
   rEl.textContent = `Regime ${lastRegime}`;
   rEl.className = 'ind-val ' + (lastRegime === 'A' ? 'reg-A' : (lastRegime === 'B' ? 'reg-B' : 'reg-C'));
 
-  // 4-State Delta
   const deltaData = [], deltaColors = [], wmaRegimes = [], wrsiArrHud = [];
   for (let i = 0; i < dataSlice.length; i++) {
     const ei = globalLiveData.length - days + i;
@@ -803,7 +798,6 @@ function updateLiveChart(days, btnEl) {
     const smaText = smaSlice[i] ? smaSlice[i].toFixed(2) : '--';
     const shortDt = formatShortDate(dataSlice[i].date);
     
-    // ── THE HUD MOMENTUM MATRIX LOGIC ──
     const currP = dataSlice[i].nav;
     const prevP = i > 0 ? dataSlice[i-1].nav : currP;
     const currR = drsiArrHud[i];
@@ -811,11 +805,11 @@ function updateLiveChart(days, btnEl) {
     let momBadge = '', momColor = '';
     if (rWma) {
         if (currR > rWma) {
-            if (currP < prevP) { momBadge = '[🛡️ HIDDEN BUYING]'; momColor = '#00e8a2'; }
-            else { momBadge = '[⚡ ACCELERATING]'; momColor = '#00e8a2'; }
+            if (currP < prevP) { momBadge = '[🛡️ MOMENTUM: HIDDEN BUYING]'; momColor = '#00e8a2'; }
+            else { momBadge = '[⚡ MOMENTUM: ACCELERATING]'; momColor = '#00e8a2'; }
         } else {
-            if (currP >= prevP) { momBadge = '[⚠️ FAKE RALLY]'; momColor = '#f59e0b'; }
-            else { momBadge = '[📉 DECELERATING]'; momColor = '#f04060'; }
+            if (currP >= prevP) { momBadge = '[⚠️ MOMENTUM: FAKE RALLY]'; momColor = '#f59e0b'; }
+            else { momBadge = '[📉 MOMENTUM: DECELERATING]'; momColor = '#f04060'; }
         }
     }
     
@@ -847,7 +841,6 @@ function updateLiveChart(days, btnEl) {
     options: { ...commonOptions, layout: { padding: { top: 32, bottom: 4, left: 8, right: 8 } }, onHover: (e, el) => { syncCharts([liveChart, liveRsiChart, liveDeltaChart], el, true); updateLocalLiveHud(el); }, plugins: { ...commonOptions.plugins, zoom: { zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' }, pan: { enabled: true, mode: 'x' } } } }
   });
 
-  // ── NEW RSI RIBBON CHART ──
   liveRsiChart = new Chart(document.getElementById('liveRsiCanvas').getContext('2d'), {
     type: 'line', plugins: [universalAnnotationsPlugin],
     data: {
@@ -857,7 +850,8 @@ function updateLiveChart(days, btnEl) {
         { data: drsiArrHud, borderColor: '#e8f0ff', borderWidth: 1.5, pointRadius: 0, fill: { target: 0, above: 'rgba(0, 232, 162, 0.25)', below: 'rgba(240, 64, 96, 0.25)' } }
       ]
     },
-    options: { ...commonOptions, layout: { padding: { top: 4, bottom: 4, left: 8, right: 8 } }, onHover: (e, el) => { syncCharts([liveChart, liveRsiChart, liveDeltaChart], el, true); updateLocalLiveHud(el); }, scales: { x: { display: false }, y: { ...commonOptions.scales.y, min: 15, max: 85 } } }
+    // SCALE PUSHED TO 100
+    options: { ...commonOptions, layout: { padding: { top: 2, bottom: 4, left: 8, right: 8 } }, onHover: (e, el) => { syncCharts([liveChart, liveRsiChart, liveDeltaChart], el, true); updateLocalLiveHud(el); }, scales: { x: { display: false }, y: { ...commonOptions.scales.y, min: 10, max: 100 } } }
   });
 
   liveDeltaChart = new Chart(document.getElementById('liveDeltaCanvas').getContext('2d'), {
@@ -984,11 +978,11 @@ function updateDisplay() {
     let momBadge = '', momColor = '';
     if (rWma) {
         if (currR > rWma) {
-            if (currP < prevP) { momBadge = '[🛡️ HIDDEN BUYING]'; momColor = '#00e8a2'; }
-            else { momBadge = '[⚡ ACCELERATING]'; momColor = '#00e8a2'; }
+            if (currP < prevP) { momBadge = '[🛡️ MOMENTUM: HIDDEN BUYING]'; momColor = '#00e8a2'; }
+            else { momBadge = '[⚡ MOMENTUM: ACCELERATING]'; momColor = '#00e8a2'; }
         } else {
-            if (currP >= prevP) { momBadge = '[⚠️ FAKE RALLY]'; momColor = '#f59e0b'; }
-            else { momBadge = '[📉 DECELERATING]'; momColor = '#f04060'; }
+            if (currP >= prevP) { momBadge = '[⚠️ MOMENTUM: FAKE RALLY]'; momColor = '#f59e0b'; }
+            else { momBadge = '[📉 MOMENTUM: DECELERATING]'; momColor = '#f04060'; }
         }
     }
 
@@ -1020,7 +1014,6 @@ function updateDisplay() {
     options: { ...commonOptions, layout: { padding: { top: 32, bottom: 4, left: 8, right: 8 } }, onHover: (e, el) => { syncCharts([chart, rsiChart, deltaChart], el, false); updateLocalSimHud(el); } }
   });
 
-  // ── NEW RSI RIBBON CHART ──
   rsiChart = new Chart(document.getElementById('rsiChart').getContext('2d'), {
     type: 'line', plugins: [universalAnnotationsPlugin],
     data: {
@@ -1030,7 +1023,8 @@ function updateDisplay() {
         { data: drsiArrHud, borderColor: '#e8f0ff', borderWidth: 1.5, pointRadius: 0, fill: { target: 0, above: 'rgba(0, 232, 162, 0.25)', below: 'rgba(240, 64, 96, 0.25)' } }
       ]
     },
-    options: { ...commonOptions, layout: { padding: { top: 4, bottom: 4, left: 8, right: 8 } }, onHover: (e, el) => { syncCharts([chart, rsiChart, deltaChart], el, false); updateLocalSimHud(el); }, scales: { x: { display: false }, y: { ...commonOptions.scales.y, min: 15, max: 85 } } }
+    // SCALE PUSHED TO 100
+    options: { ...commonOptions, layout: { padding: { top: 2, bottom: 4, left: 8, right: 8 } }, onHover: (e, el) => { syncCharts([chart, rsiChart, deltaChart], el, false); updateLocalSimHud(el); }, scales: { x: { display: false }, y: { ...commonOptions.scales.y, min: 10, max: 100 } } }
   });
 
   deltaChart = new Chart(document.getElementById('deltaChart').getContext('2d'), {
