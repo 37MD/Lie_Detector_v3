@@ -192,7 +192,7 @@
   /* ── MAIN SIM AREA ── */
   .main-sim { flex-grow: 1; display: flex; flex-direction: column; overflow-y: auto; padding-bottom: 96px; min-height: 0; }
 
-  /* ── CHART CONTAINER (PRECISION ALIGNED WITH BUTTONS) ── */
+  /* ── CHART CONTAINER ── */
   .chart-container {
     background: var(--bg); padding: 6px 8px; 
     height: 52vh; min-height: 380px; 
@@ -253,6 +253,19 @@
       font-size: 0.95rem !important;
       padding: 2px 4px !important;
     }
+    /* ── FIX: reduce chart height on mobile to free up psy-box space ── */
+    .chart-container {
+      height: 44vh;
+      min-height: 300px;
+    }
+    /* ── FIX: tighten psy-logic so all 4 lines fit comfortably ── */
+    .psy-logic {
+      font-size: 0.65rem;
+      line-height: 1.4;
+    }
+    .psy-logic .psy-line {
+      margin-bottom: 2px;
+    }
   }
 
   /* ── INDICATOR ROW ── */
@@ -276,8 +289,8 @@
   .reg-B { color: var(--accent2); background: var(--accent2-dim); border: 1px solid rgba(245,158,11,0.3); }
   .reg-C { color: var(--red); background: var(--red-dim); border: 1px solid rgba(240,64,96,0.3); }
 
-  /* ── PSY BOX ── */
-  .psy-box { padding: 4px 14px 10px 14px; background: var(--surface); flex-grow: 1; overflow-y: auto; }
+  /* ── PSY BOX ── FIX: removed overflow-y:auto and flex-grow:1 so content always renders fully ── */
+  .psy-box { padding: 4px 14px 10px 14px; background: var(--surface); flex-shrink: 0; }
   .psy-logic {
     font-size: 0.70rem; color: var(--text); line-height: 1.6; font-weight: 400;
     border-left: 2px solid var(--accent); padding-left: 10px; margin-top: 6px;
@@ -1687,7 +1700,6 @@ function endAndReview() {
     const regime = wr >= 50 ? 'A' : wr >= 40 ? 'B' : 'C';
     const d      = dr - wr;
     
-    // ── FIXED AUDIT PC ENGINE ──
     let pcAlert = false;
     if (sp.length >= 56) {
       const box = sp.slice(-6, -1);
