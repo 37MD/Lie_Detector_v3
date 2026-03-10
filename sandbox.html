@@ -47,29 +47,13 @@
   canvas { touch-action: none; }
 
   /* ── SPINNER ── */
-  #ov {
-    display: none; position: fixed; inset: 0;
-    background: rgba(7, 9, 15, 0.96);
-    z-index: 1000; align-items: center; justify-content: center; flex-direction: column;
-    backdrop-filter: blur(4px);
-  }
-  .spin {
-    width: 36px; height: 36px;
-    border: 2px solid var(--border2);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin 0.7s linear infinite;
-  }
+  #ov { display: none; position: fixed; inset: 0; background: rgba(7, 9, 15, 0.96); z-index: 1000; align-items: center; justify-content: center; flex-direction: column; backdrop-filter: blur(4px); }
+  .spin { width: 36px; height: 36px; border: 2px solid var(--border2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
   #ovTxt { color: var(--accent); font-size: 0.65rem; margin-top: 12px; letter-spacing: 0.12em; opacity: 0.8; transition: color 0.2s;}
 
   /* ── SETUP SCREEN ── */
-  #setupScreen {
-    position: fixed; inset: 0; background: var(--bg);
-    z-index: 500; display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    padding: 1.5rem; text-align: center;
-  }
+  #setupScreen { position: fixed; inset: 0; background: var(--bg); z-index: 500; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1.5rem; text-align: center; }
   .setup-logo { font-size: 0.65rem; color: var(--accent); letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 1.2rem; opacity: 0.7; }
   .setup-title { font-size: 1.75rem; font-weight: 400; letter-spacing: -0.02em; margin-bottom: 0.3rem; }
   .setup-sub { color: var(--muted); font-size: 0.75rem; margin-bottom: 1.4rem; letter-spacing: 0.04em; }
@@ -131,15 +115,12 @@
   .chart-nav { font-size: 0.75rem; color: var(--text); font-weight: 400; }
 
   .chart-split { display: flex; flex-direction: column; flex-grow: 1; position: relative; min-height: 0; }
-  
-  /* TOP PANE: PRICE */
   .chart-main-pane { flex: 2.2; position: relative; width: 100%; min-height: 0; }
-  /* MIDDLE PANE (FLEX 1) & BOTTOM PANE (FLEX 1) = EQUAL HEIGHT */
   .chart-rsi-pane { flex: 1; position: relative; width: 100%; min-height: 0; border-top: 1px dashed var(--border); margin-top: 2px; }
   .chart-delta-pane { flex: 1; position: relative; width: 100%; min-height: 0; border-top: 1px dashed var(--border); margin-top: 2px; }
 
   .canvas-box { position: absolute; inset: 0; }
-  .canvas-box-bottom { position: absolute; inset: 0; top: 12px; } /* Pushed higher to remove dead space */
+  .canvas-box-bottom { position: absolute; inset: 0; top: 12px; } 
   .delta-label { position: absolute; top: 0px; left: 4px; font-size: 0.5rem; color: var(--muted); z-index: 10; letter-spacing: 0.08em; pointer-events: none; background: rgba(7, 9, 15, 0.85); padding: 1px 3px; border-radius: 2px; }
 
   .chart-hud { position: absolute; top: 2px; left: 4px; font-family: var(--mono); font-size: 0.55rem; font-weight: 400; color: #ffffff; z-index: 10; pointer-events: none; white-space: nowrap; letter-spacing: -0.02em; }
@@ -746,11 +727,23 @@ function updateLiveChart(days, btnEl) {
   const wmaSlice = dataSlice.map((_, i) => calculateWMA(globalLiveData.slice(Math.max(0, globalLiveData.length - days + i - 19), globalLiveData.length - days + i + 1).map(h => h.nav), 20));
   const smaSlice = dataSlice.map((_, i) => calculateSMA(globalLiveData.slice(Math.max(0, globalLiveData.length - days + i - 49), globalLiveData.length - days + i + 1).map(h => h.nav), 50));
 
-  const fullDrsiLive = globalLiveData.map((_, i) => calculateRSI(globalLiveData.slice(0, i + 1).map(h=>h.nav), 14));
-  const drsiWmaLive = fullDrsiLive.map((_, i) => calculateWMA(fullDrsiLive.slice(Math.max(0, i - 19), i + 1), 20));
-  
-  const drsiArrHud = fullDrsiLive.slice(-days);
-  const drsiWmaHud = drsiWmaLive.slice(-days);
+  // OPTIMIZED LIVE RSI WMA ENGINE
+  const requiredRsiDaysLive = dataSlice.length + 20;
+  const recentDrsiLive = [];
+  for (let i = 0; i < requiredRsiDaysLive; i++) {
+      const ei = globalLiveData.length - requiredRsiDaysLive + i;
+      if (ei < 0) {
+         recentDrsiLive.push(50);
+      } else {
+         const sp = globalLiveData.slice(0, ei + 1).map(h => h.nav);
+         recentDrsiLive.push(calculateRSI(sp, 14));
+      }
+  }
+  const drsiWmaHud = [];
+  for (let i = 0; i < dataSlice.length; i++) {
+      drsiWmaHud.push(calculateWMA(recentDrsiLive.slice(i, i + 20), 20));
+  }
+  const drsiArrHud = recentDrsiLive.slice(20);
 
   const lastDRsi = drsiArrHud[drsiArrHud.length - 1];
   const lastWRsi = calculateRSI(latestPrices.filter((_, i) => i % 5 === 0), 14);
@@ -771,6 +764,93 @@ function updateLiveChart(days, btnEl) {
   const rEl = document.getElementById('liveRegimeBlock');
   rEl.textContent = `Regime ${lastRegime}`;
   rEl.className = 'ind-val ' + (lastRegime === 'A' ? 'reg-A' : (lastRegime === 'B' ? 'reg-B' : 'reg-C'));
+
+  let prevRegimeLive = null;
+  if (latestPrices.length > 20) {
+    const prevPrices = latestPrices.slice(0, -1);
+    const prevWRsi = calculateRSI(prevPrices.filter((_, i) => i % 5 === 0), 14);
+    prevRegimeLive = prevWRsi >= 50 ? 'A' : (prevWRsi >= 40 ? 'B' : 'C');
+  }
+
+  let pcAlert = false, ncAlert = false;
+  if (latestPrices.length >= 56) {
+    const box = latestPrices.slice(-6, -1);
+    const boxMax = Math.max(...box), boxMin = Math.min(...box);
+    const preBox = latestPrices.slice(-56, -6);
+    const preMax = Math.max(...preBox);
+    const boxWma = calculateWMA(latestPrices.slice(0, -1), 20);
+    if ((boxMax - boxMin) / boxMin <= 0.02 && (boxWma ? Math.abs(boxMin - boxWma) / boxWma <= 0.04 : false) && preMax > boxMax * 1.02) {
+      if (lastNav > boxMax) pcAlert = true;
+      if (lastNav < boxMin) ncAlert = true;
+    }
+  }
+
+  let tslVal = 0;
+  let sLows = [];
+  let sHighs = [];
+  for (let i = latestPrices.length - 3; i >= 2; i--) {
+    let d = latestPrices;
+    if (d[i] <= d[i-1] && d[i] < d[i-2] && d[i] <= d[i+1] && d[i] < d[i+2]) {
+      if (sLows.length === 0 || (sLows[sLows.length-1].idx - i) > 4) sLows.push({idx: i, val: d[i]});
+    }
+    if (d[i] >= d[i-1] && d[i] > d[i-2] && d[i] >= d[i+1] && d[i] > d[i+2]) {
+      if (sHighs.length === 0 || (sHighs[sHighs.length-1].idx - i) > 4) sHighs.push({idx: i, val: d[i]});
+    }
+  }
+  
+  let reclaimed = false;
+  if (sHighs.length >= 2 && lastNav > sHighs[0].val && lastNav > sHighs[1].val) {
+      reclaimed = true;
+  }
+  
+  if (sLows.length > 0) {
+      let targetLow = sLows[0];
+      if (!reclaimed && sLows.length > 1 && sLows[1].val < sLows[0].val) targetLow = sLows[1];
+      tslVal = targetLow.val;
+  }
+  const tslHit = tslVal > 0 && lastNav < tslVal;
+
+  const regimeDowngrade = prevRegimeLive && ((prevRegimeLive === 'A' && (lastRegime === 'B' || lastRegime === 'C')) || (prevRegimeLive === 'B' && lastRegime === 'C'));
+  const regimeUpgrade = prevRegimeLive && ((prevRegimeLive === 'C' && (lastRegime === 'B' || lastRegime === 'A')) || (prevRegimeLive === 'B' && lastRegime === 'A'));
+
+  const banner = document.getElementById('liveAlertBanner');
+  let alertText = '', alertClass = '';
+
+  if (tslHit) { 
+      alertText = '🚨 TSL BREACHED ➔ EXECUTE TSL SELL'; 
+      alertClass = 'alert-danger alert-mega'; 
+  } else if (regimeDowngrade) {
+      if (lastRegime === 'C') {
+          alertText = `🚨 REGIME CRASH: ${prevRegimeLive} ➔ C ➔ SELL ALL`;
+          alertClass = 'alert-danger';
+      } else {
+          alertText = `⚠️ REGIME DOWNGRADE: ${prevRegimeLive} ➔ B ➔ HALT BUYING`;
+          alertClass = 'alert-danger';
+      }
+  } else if (ncAlert) { 
+      alertText = '🚨 NC BREAKDOWN ➔ DO NOT BUY'; 
+      alertClass = 'alert-danger'; 
+  } else if (regimeUpgrade) {
+      if (lastRegime === 'A') {
+          alertText = '🟢 REGIME A RESTORED ➔ RESUME BUYING';
+          alertClass = 'alert-buy alert-mega';
+      } else {
+          alertText = '🟢 REGIME UPGRADE: C ➔ B ➔ PREPARE TO BUY';
+          alertClass = 'alert-buy';
+      }
+  } else if (lastRegime === 'A') {
+      if (pcAlert) { alertText = '🟢 PC BREAKOUT ➔ BUY TRANCHE'; alertClass = 'alert-buy'; }
+      else if (lastDRsi < 40) { alertText = '🟢 OVERSOLD (RSI < 40) ➔ BUY TRANCHE ON BOUNCE'; alertClass = 'alert-buy'; }
+      else if (lastDelta < buyDeltaLevel) { alertText = `🟢 SLINGSHOT (Delta < ${buyDeltaLevel}) ➔ BUY TRANCHE`; alertClass = 'alert-buy'; }
+  }
+
+  if (!alertText && lastDelta > profitDeltaLevel) { 
+      alertText = `🟠 OVERHEATED (Delta > ${profitDeltaLevel}) ➔ PULL OUT SOME PROFITS`; 
+      alertClass = 'alert-profit'; 
+  }
+
+  banner.textContent = alertText; banner.className = alertClass;
+  banner.style.display = alertText ? 'block' : 'none';
 
   const deltaData = [], deltaColors = [], wmaRegimes = [], wrsiArrHud = [];
   for (let i = 0; i < dataSlice.length; i++) {
@@ -938,11 +1018,131 @@ function updateDisplay() {
   const wmaData = chartData.map((_, i) => calculateWMA(fullHistory.slice(0, currentIdx - (chartData.length - 1) + i + 1).map(h => h.nav), 20));
   const smaData = chartData.map((_, i) => calculateSMA(fullHistory.slice(0, currentIdx - (chartData.length - 1) + i + 1).map(h => h.nav), 50));
   
-  const fullDrsiSim = fullHistory.slice(0, currentIdx + 1).map((_, i) => calculateRSI(fullHistory.slice(0, i + 1).map(h=>h.nav), 14));
-  const drsiWmaSim = fullDrsiSim.map((_, i) => calculateWMA(fullDrsiSim.slice(Math.max(0, i - 19), i + 1), 20));
+  // OPTIMIZED SIMULATOR RSI WMA ENGINE (Fixes the crash)
+  const requiredRsiDays = chartData.length + 20; 
+  const recentDrsi = [];
+  for (let i = 0; i < requiredRsiDays; i++) {
+      const ei = currentIdx - requiredRsiDays + 1 + i;
+      if (ei < 0) {
+         recentDrsi.push(50);
+      } else {
+         const sp = fullHistory.slice(0, ei + 1).map(h => h.nav);
+         recentDrsi.push(calculateRSI(sp, 14));
+      }
+  }
+  const drsiWmaHud = [];
+  for (let i = 0; i < chartData.length; i++) {
+      drsiWmaHud.push(calculateWMA(recentDrsi.slice(i, i + 20), 20));
+  }
+  const drsiArrHud = recentDrsi.slice(20);
 
-  const drsiArrHud = fullDrsiSim.slice(-chartData.length);
-  const drsiWmaHud = drsiWmaSim.slice(-chartData.length);
+  let pcAlert = false, ncAlert = false;
+  if (prices.length >= 56) {
+    const box = prices.slice(-6, -1);
+    const boxMax = Math.max(...box), boxMin = Math.min(...box);
+    const preBox = prices.slice(-56, -6);
+    const preMax = Math.max(...preBox);
+    const boxWma = calculateWMA(prices.slice(0, -1), 20);
+    if ((boxMax - boxMin) / boxMin <= 0.02 && (boxWma ? Math.abs(boxMin - boxWma) / boxWma <= 0.04 : false) && preMax > boxMax * 1.02) {
+      if (currentNav > boxMax) pcAlert = true;
+      if (currentNav < boxMin) ncAlert = true;
+    }
+  }
+
+  let tslVal = 0;
+  let sLows = [];
+  let sHighs = [];
+  const d = chartData.map(x=>x.nav);
+  for (let i = d.length - 3; i >= 2; i--) {
+      if (d[i] <= d[i-1] && d[i] < d[i-2] && d[i] <= d[i+1] && d[i] < d[i+2]) {
+          if (sLows.length === 0 || (sLows[sLows.length-1].idx - i) > 4) sLows.push({idx: i, val: d[i]});
+      }
+      if (d[i] >= d[i-1] && d[i] > d[i-2] && d[i] >= d[i+1] && d[i] > d[i+2]) {
+          if (sHighs.length === 0 || (sHighs[sHighs.length-1].idx - i) > 4) sHighs.push({idx: i, val: d[i]});
+      }
+  }
+  let reclaimed = false;
+  if (sHighs.length >= 2 && currentNav > sHighs[0].val && currentNav > sHighs[1].val) {
+      reclaimed = true;
+  }
+  if (sLows.length > 0) {
+      let targetLow = sLows[0];
+      if (!reclaimed && sLows.length > 1 && sLows[1].val < sLows[0].val) targetLow = sLows[1];
+      tslVal = targetLow.val;
+  }
+  const tslHit = tslVal > 0 && currentNav < tslVal;
+
+  const regimeDowngrade = prevRegime && ((prevRegime === 'A' && (currentRegime === 'B' || currentRegime === 'C')) || (prevRegime === 'B' && currentRegime === 'C'));
+  const regimeUpgrade = prevRegime && ((prevRegime === 'C' && (currentRegime === 'B' || currentRegime === 'A')) || (prevRegime === 'B' && currentRegime === 'A'));
+
+  let lines = currentRegime === 'A'
+    ? (dRsi <= 50 ? ['Optimal Entry Window.', 'Institutional trend intact.', 'Execute tranche.', 'Trust Weekly RSI.']
+                  : ['Structural Bull Trend.', 'Institutions accumulating.', 'Ride momentum, respect TSL.', 'Wait for Daily RSI dip to add.'])
+    : currentRegime === 'B'
+    ? ['Regime B Fatigue.', 'Smart money pausing.', 'Market chopping sideways.', 'Halt buying.', 'Manage with TSL.']
+    : ['Trust Cycle Broken.', 'Institutional distribution.', 'Do not catch falling knife.', 'Preserve capital.', 'Stay in cash.'];
+
+  const banner = document.getElementById('alertBanner');
+  let alertText = '', alertClass = '';
+  
+  if (currentIdx > simStartIdx) {
+    if (tslHit) { 
+        alertText = '🚨 TSL BREACHED ➔ EXECUTE TSL SELL'; 
+        alertClass = 'alert-danger alert-mega'; 
+        lines = [
+           'TSL Breached earlier.',
+           'Consider your Risk.',
+           'It is a free fall market.',
+           'Following new untested swing low.'
+        ];
+    }
+    else if (regimeDowngrade) {
+      if (currentRegime === 'C') {
+          alertText = `🚨 REGIME CRASH: ${prevRegime} ➔ C ➔ SELL ALL`;
+          alertClass = 'alert-danger';
+      } else {
+          alertText = `⚠️ REGIME DOWNGRADE: ${prevRegime} ➔ B ➔ HALT BUYING`;
+          alertClass = 'alert-danger';
+      }
+    }
+    else if (ncAlert) { 
+        alertText = '🚨 NC BREAKDOWN ➔ DO NOT BUY'; 
+        alertClass = 'alert-danger'; 
+    }
+    else if (regimeUpgrade) {
+      if (currentRegime === 'A') {
+          alertText = '🟢 REGIME A RESTORED ➔ RESUME BUYING';
+          alertClass = 'alert-buy alert-mega';
+      } else {
+          alertText = '🟢 REGIME UPGRADE: C ➔ B ➔ PREPARE TO BUY';
+          alertClass = 'alert-buy';
+      }
+    }
+    else if (currentRegime === 'A') {
+      if (pcAlert) { alertText = '🟢 PC BREAKOUT ➔ BUY TRANCHE'; alertClass = 'alert-buy'; }
+      else if (dRsi < 40) { alertText = '🟢 OVERSOLD (RSI < 40) ➔ BUY TRANCHE ON BOUNCE'; alertClass = 'alert-buy'; }
+      else if (delta < buyDeltaLevel) { alertText = `🟢 SLINGSHOT (Delta < ${buyDeltaLevel}) ➔ BUY TRANCHE`; alertClass = 'alert-buy'; }
+    }
+    
+    if (!alertText && delta > profitDeltaLevel) { 
+        alertText = `🟠 OVERHEATED (Delta > ${profitDeltaLevel}) ➔ PULL OUT SOME PROFITS`; 
+        alertClass = 'alert-profit'; 
+    }
+  }
+  
+  document.getElementById('psyMsg').innerHTML = lines.map((l, i) => `<div class="psy-line">(${i+1}) ${l}</div>`).join('');
+  banner.textContent = alertText; banner.className = alertClass;
+  banner.style.display = alertText ? 'block' : 'none';
+
+  prevRegime = currentRegime; prevNav = currentNav;
+
+  const b10 = document.getElementById('btnBuy10'), b25 = document.getElementById('btnBuy25'), b50 = document.getElementById('btnBuy50');
+  const sellBtns = [document.getElementById('btnProfit'), document.getElementById('btnTsl'), document.getElementById('btnRegime'), document.getElementById('btnAll')];
+  b10.disabled = false; b10.textContent = 'BUY 10%';
+  b25.disabled = false; b25.textContent = 'BUY 25%';
+  b50.disabled = false; b50.textContent = 'BUY 50%';
+  sellBtns.forEach(btn => { btn.disabled = false; });
+  document.getElementById('btnAll').textContent = 'SELL ALL';
 
   const deltaData = [], deltaColors = [], wmaRegimes = [], wrsiArrHud = [];
   for (let i = 0; i < chartData.length; i++) {
@@ -1021,7 +1221,6 @@ function updateDisplay() {
         { data: drsiArrHud, borderColor: '#e8f0ff', borderWidth: 1.5, pointRadius: 0, fill: { target: 0, above: 'rgba(0, 232, 162, 0.25)', below: 'rgba(240, 64, 96, 0.25)' } }
       ]
     },
-    // SCALE PUSHED TO 100
     options: { ...commonOptions, layout: { padding: { top: 2, bottom: 2, left: 4, right: 4 } }, onHover: (e, el) => { syncCharts([chart, rsiChart, deltaChart], el, false); updateLocalSimHud(el); }, scales: { x: { display: false }, y: { ...commonOptions.scales.y, min: 10, max: 100 } } }
   });
 
@@ -1063,6 +1262,7 @@ function trade(action) {
     const totalUnits = tranches.reduce((s, t) => s + t.units, 0);
     executeSell(totalUnits, nav, dayNum, 'SELL REGIME'); 
   }
+  document.getElementById('alertBanner').style.display = 'none';
   nextDay();
 }
 
@@ -1100,7 +1300,147 @@ function showLog() {
   document.getElementById('logModal').style.display = 'flex'; 
 }
 function closeLog() { document.getElementById('logModal').style.display = 'none'; }
-function endAndReview() { location.reload(); }
+
+// ── RESTORED BEHAVIORAL DIAGNOSTICS ENGINE ──
+function endAndReview() { 
+  let scoreEntry = 0, scoreExit = 0, scoreProfit = 0;
+  let goodBuys = 0, badBuys = 0, missedBuys = 0;
+  let successfulExits = 0, daysTslBreachHeld = 0, daysRegimeCHeld = 0;
+  let profitExits = 0, missedProfits = 0;
+  let runningUnits = 0;
+
+  for (let i = simStartIdx; i <= currentIdx; i++) {
+    const sp     = fullHistory.slice(0, i + 1).map(h => h.nav);
+    const currNav = sp[sp.length - 1];
+    const dr     = calculateRSI(sp, 14);
+    const wr     = calculateRSI(sp.filter((_, j) => j % 5 === 0), 14);
+    const regime = wr >= 50 ? 'A' : wr >= 40 ? 'B' : 'C';
+    const d      = dr - wr;
+    
+    let pcAlert = false;
+    if (sp.length >= 56) {
+      const box = sp.slice(-6, -1);
+      const boxMax = Math.max(...box), boxMin = Math.min(...box);
+      const preBox = sp.slice(-56, -6);
+      const preMax = Math.max(...preBox);
+      const boxWma = calculateWMA(sp.slice(0, -1), 20);
+      if ((boxMax - boxMin) / boxMin <= 0.02 && (boxWma ? Math.abs(boxMin - boxWma) / boxWma <= 0.04 : false) && preMax > boxMax * 1.02) {
+        if (currNav > boxMax) pcAlert = true;
+      }
+    }
+
+    const chartData = sp.slice(-80);
+    let tslVal = 0, sLows = [], sHighs = [];
+    for (let k = chartData.length - 3; k >= 2; k--) {
+      if (chartData[k] <= chartData[k-1] && chartData[k] < chartData[k-2] && chartData[k] <= chartData[k+1] && chartData[k] < chartData[k+2]) {
+        if (sLows.length === 0 || (sLows[sLows.length-1].idx - k) > 4) sLows.push({idx: k, val: chartData[k]});
+      }
+      if (chartData[k] >= chartData[k-1] && chartData[k] > chartData[k-2] && chartData[k] >= chartData[k+1] && chartData[k] > chartData[k+2]) {
+        if (sHighs.length === 0 || (sHighs[sHighs.length-1].idx - k) > 4) sHighs.push({idx: k, val: chartData[k]});
+      }
+    }
+    let reclaimed = false;
+    if (sHighs.length >= 2 && currNav > sHighs[0].val && currNav > sHighs[1].val) reclaimed = true;
+    if (sLows.length > 0) {
+      let targetLow = sLows[0];
+      if (!reclaimed && sLows.length > 1 && sLows[1].val < sLows[0].val) targetLow = sLows[1];
+      tslVal = targetLow.val;
+    }
+    const tslHit = tslVal > 0 && currNav < tslVal;
+
+    const dayT = tradeLog.filter(t => t.day === (i - simStartIdx));
+    let hasBuy = false, hasProfit = false;
+
+    dayT.forEach(t => {
+      if (t.action.includes('BUY')) {
+        hasBuy = true;
+        runningUnits += t.units;
+        if (regime === 'A') {
+          if (dr <= 50 || pcAlert || d < buyDeltaLevel) { scoreEntry += 20; goodBuys++; } 
+          else { /* Neutral */ }
+        } else if (regime === 'C') {
+          if (pcAlert) { goodBuys++; } 
+          else { scoreEntry -= 20; badBuys++; }
+        } else if (regime === 'B') {
+          scoreEntry -= 10; badBuys++;
+        }
+      } else if (t.action.includes('SELL')) {
+        runningUnits -= t.units;
+        if (t.action.includes('TSL') || t.action.includes('REGIME')) { scoreExit += 30; successfulExits++; }
+        if (t.action.includes('PROFIT')) { scoreProfit += 5; profitExits++; hasProfit = true; }
+      }
+    });
+
+    if (runningUnits > 0.001) {
+      if (tslHit) { daysTslBreachHeld++; scoreExit -= 10; }
+      if (regime === 'C') { daysRegimeCHeld++; scoreExit -= 20; }
+    }
+
+    if (regime === 'A' && (dr < 40 || d < buyDeltaLevel) && !hasBuy) { missedBuys++; scoreEntry -= 5; }
+    if (d > profitDeltaLevel && !hasProfit && runningUnits > 0.001) { missedProfits++; scoreProfit -= 2; }
+  }
+
+  const totalScore  = scoreEntry + scoreExit + scoreProfit;
+  const totalUnits  = tranches.reduce((s, t) => s + t.units, 0);
+  const finalNW     = cash + totalUnits * fullHistory[currentIdx].nav;
+
+  document.getElementById('totalScore').textContent = totalScore;
+  document.getElementById('totalScore').style.color = totalScore > 0 ? 'var(--accent)' : 'var(--red)';
+  document.getElementById('revNW2').textContent = `₹${Math.round(finalNW).toLocaleString('en-IN')}`;
+
+  const fmtScore = (v) => `<span class="audit-score ${v >= 0 ? 'pos-score' : 'neg-score'}">${v > 0 ? '+'+v : v}</span>`;
+
+  document.getElementById('auditContent').innerHTML = `
+    <div class="audit-section">
+      <div class="audit-header">
+        <span class="audit-title" style="color:var(--accent);">Entry · The Hunter</span>
+        ${fmtScore(scoreEntry)}
+      </div>
+      <div class="audit-expected">Action Expected: Buy Regime A dips (RSI &lt; 50), Slingshots, and PC Breakouts.</div>
+      <div class="audit-stat-row"><span>Good Buys (Structure/Dip)</span><span class="audit-stat-val pos-score">${goodBuys}</span></div>
+      <div class="audit-stat-row"><span>Bad Buys (Knives)</span><span class="audit-stat-val neg-score">${badBuys}</span></div>
+      <div class="audit-stat-row"><span>Missed Opportunities</span><span class="audit-stat-val neg-score">${missedBuys}</span></div>
+    </div>
+    <div class="audit-section">
+      <div class="audit-header">
+        <span class="audit-title" style="color:var(--red);">Exit · The Defender</span>
+        ${fmtScore(scoreExit)}
+      </div>
+      <div class="audit-expected">Action Expected: Instantly execute TSL Sell on breach. Liquidate entirely on Regime C crash.</div>
+      <div class="audit-stat-row"><span>Successful Exits</span><span class="audit-stat-val pos-score">${successfulExits}</span></div>
+      <div class="audit-stat-row"><span>Days held in TSL Breach</span><span class="audit-stat-val neg-score">${daysTslBreachHeld} (-${daysTslBreachHeld * 10})</span></div>
+      <div class="audit-stat-row"><span>Days held in Regime C</span><span class="audit-stat-val neg-score">${daysRegimeCHeld} (-${daysRegimeCHeld * 20})</span></div>
+    </div>
+    <div class="audit-section">
+      <div class="audit-header">
+        <span class="audit-title" style="color:var(--accent2);">Profit · The Sniper</span>
+        ${fmtScore(scoreProfit)}
+      </div>
+      <div class="audit-expected">Action Expected: Pull out profits when Overheated (Delta &gt; Limit).</div>
+      <div class="audit-stat-row"><span>Profit Exits Executed</span><span class="audit-stat-val pos-score">${profitExits}</span></div>
+      <div class="audit-stat-row"><span>Days Ignored Overheated</span><span class="audit-stat-val neg-score">${missedProfits} (-${missedProfits * 2})</span></div>
+    </div>
+  `;
+
+  let remarks = "";
+  if (daysRegimeCHeld > 2 || daysTslBreachHeld > 2) {
+      remarks += `<div class="remarks-box" style="border-color: var(--red);">🚨 <strong>Critical Risk Failure:</strong> You held a position for ${daysRegimeCHeld + daysTslBreachHeld} days while Danger alerts were flashing. In a live market, this hesitation leads to catastrophic ruin. You must respect the broken floor.</div>`;
+  } else if (scoreExit > 0 && maxDrawdown < 15) {
+      remarks += `<div class="remarks-box" style="border-color: var(--accent);">🟢 <strong>Excellent Defense:</strong> You respected the structural stops and kept drawdowns low.</div>`;
+  }
+  if (badBuys >= 2) {
+      remarks += `<div class="remarks-box" style="border-color: var(--accent2);">⚠️ <strong>Reckless Hunting:</strong> You caught falling knives ${badBuys} times by buying in negative regimes without a PC Breakout. Wait for structure.</div>`;
+  }
+  if (missedBuys >= 2) {
+      remarks += `<div class="remarks-box" style="border-color: var(--accent2);">⚠️ <strong>Hesitation Detected:</strong> You missed ${missedBuys} high-probability entry setups. Trust the engine when it flashes green.</div>`;
+  }
+  if (remarks === "") {
+      remarks = `<div class="remarks-box" style="border-color: var(--accent);">✅ <strong>Disciplined Process:</strong> Solid, mechanical execution. You followed the algorithmic rules beautifully.</div>`;
+  }
+
+  document.getElementById('feedbackContainer').innerHTML = remarks;
+  document.getElementById('reviewModal').style.display = 'flex'; 
+}
 
 if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(() => {}); }
 </script>
