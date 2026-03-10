@@ -81,7 +81,7 @@
   .setup-btn-live { border-color: var(--border2); color: var(--muted2); }
   .setup-btn-live:hover { border-color: var(--muted2); color: var(--text); }
 
-  /* ── GAME UI CHROME (RESTORED TO V2.10 HORIZONTAL SPACING) ── */
+  /* ── GAME UI CHROME (V2.10 BASELINE) ── */
   .app-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 14px; background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0; }
   .logo { font-weight: 700; font-size: 0.75rem; color: var(--accent); letter-spacing: 0.12em; display: flex; align-items: center; }
   .logo span { color: var(--muted); font-weight: 400; }
@@ -108,20 +108,24 @@
 
   .main-sim { flex-grow: 1; display: flex; flex-direction: column; overflow-y: auto; padding-bottom: 96px; min-height: 0; }
 
-  /* ── 3-PANE CHART LAYOUT (RESTORED TO V2.10 PADDING) ── */
-  .chart-container { background: var(--bg); padding: 6px; height: 48vh; min-height: 320px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; }
+  /* ── 3-PANE CHART LAYOUT (V2.10 PADDING) ── */
+  .chart-container { background: var(--bg); padding: 6px; height: 55vh; min-height: 380px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; }
   .chart-header { display: flex; justify-content: space-between; align-items: center; padding: 0 6px; margin-bottom: 4px; flex-shrink: 0; }
   .label-sm { font-size: 0.55rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
   .chart-nav { font-size: 0.75rem; color: var(--text); font-weight: 400; }
 
   .chart-split { display: flex; flex-direction: column; flex-grow: 1; position: relative; min-height: 0; }
-  .chart-main-pane { flex: 2.2; position: relative; width: 100%; min-height: 0; }
-  .chart-rsi-pane { flex: 1.1; position: relative; width: 100%; min-height: 0; border-top: 1px dashed var(--border); margin-top: 4px; }
-  .chart-delta-pane { flex: 1.1; position: relative; width: 100%; min-height: 0; border-top: 1px dashed var(--border); margin-top: 4px; }
+  
+  /* TOP PANE: PRICE */
+  .chart-main-pane { flex: 2; position: relative; width: 100%; min-height: 0; }
+  /* MIDDLE PANE: RSI */
+  .chart-rsi-pane { flex: 1; position: relative; width: 100%; min-height: 0; border-top: 1px dashed var(--border); margin-top: 4px; }
+  /* BOTTOM PANE: DELTA */
+  .chart-delta-pane { flex: 1; position: relative; width: 100%; min-height: 0; border-top: 1px dashed var(--border); margin-top: 4px; }
 
   .canvas-box { position: absolute; inset: 0; }
-  .canvas-box-bottom { position: absolute; inset: 0; top: 15px; } 
-  .delta-label { position: absolute; top: 2px; left: 8px; font-size: 0.52rem; color: var(--muted); z-index: 10; letter-spacing: 0.08em; pointer-events: none; background: rgba(7, 9, 15, 0.85); padding: 1px 4px; border-radius: 2px; }
+  .canvas-box-bottom { position: absolute; inset: 0; top: 18px; } 
+  .delta-label { position: absolute; top: 3px; left: 8px; font-size: 0.52rem; color: var(--muted); z-index: 10; letter-spacing: 0.08em; pointer-events: none; background: rgba(7, 9, 15, 0.85); padding: 1px 4px; border-radius: 2px; }
 
   .chart-hud { position: absolute; top: 4px; left: 8px; font-family: var(--mono); font-size: 0.55rem; font-weight: 400; color: #ffffff; z-index: 10; pointer-events: none; white-space: nowrap; letter-spacing: -0.02em; }
   .chart-hud:not(:empty) { background: rgba(7, 9, 15, 0.85); padding: 2px 4px; border-radius: 2px; }
@@ -131,7 +135,7 @@
     .ind-val { font-size: 0.95rem !important; padding: 2px 4px !important; }
   }
 
-  /* ── INDICATORS & PSYCHOLOGY (RESTORED TO V2.10 PADDING) ── */
+  /* ── INDICATORS & PSYCHOLOGY (V2.10 PADDING) ── */
   .indicator-row { display: flex; justify-content: space-between; align-items: stretch; background: var(--surface); padding: 0; border-bottom: 1px solid var(--border); flex-shrink: 0; }
   .ind-box { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 4px 2px; border-right: 1px solid var(--border); }
   .ind-box:last-child { border-right: none; }
@@ -145,7 +149,7 @@
   .psy-logic .psy-line { color: var(--muted2); margin-bottom: 4px; }
   .psy-logic .psy-line:first-child { color: var(--text); font-weight: 400; }
 
-  /* ── ACTION BAR (RESTORED TO V2.10 HEIGHT/PADDING) ── */
+  /* ── ACTION BAR (V2.10 PADDING) ── */
   .action-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: var(--surface); border-top: 1px solid var(--border); display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 8px; z-index: 200; height: 88px; }
   .btn { font-family: var(--mono); font-size: 0.67rem; font-weight: 700; padding: 8px 2px; border-radius: var(--radius-sm); cursor: pointer; border: 1.5px solid transparent; text-transform: uppercase; text-align: center; letter-spacing: 0.06em; transition: all 0.15s ease; background: transparent; }
   .btn:hover:not(:disabled) { filter: brightness(1.2); }
@@ -183,7 +187,7 @@
   .reset-zoom:hover { border-color: var(--muted); color: var(--text); }
   
   /* ── REVIEW UI (SCROLL-SAFE & LARGE FONT RESTORED) ── */
-  .review-container { padding: 14px 14px 32px 14px; overflow-y: auto; flex-grow: 1; }
+  .review-container { padding: 14px 14px 40px 14px; overflow-y: auto; flex-grow: 1; }
   .score-card { background: var(--surface2); border: 1px solid var(--border); padding: 15px; border-radius: var(--radius); margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center;}
   .score-title { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 400;}
   .score-val { font-size: 2.2rem; font-weight: 700; }
@@ -194,7 +198,6 @@
   .audit-score { font-size: 0.85rem; font-weight: 700; }
   .audit-expected { font-size: 0.62rem; color: var(--muted2); font-style: italic; margin-bottom: 8px; line-height: 1.4; }
   .audit-stat-row { display: flex; justify-content: space-between; font-size: 0.65rem; margin-bottom: 5px; color: var(--text); }
-  .audit-stat-row:last-child { margin-bottom: 0; }
   .audit-stat-val { font-weight: 700; font-family: var(--mono); }
   .pos-score { color: var(--accent); }
   .neg-score { color: var(--red); }
@@ -1217,6 +1220,7 @@ function updateDisplay() {
     const smaText = smaData[i] ? smaData[i].toFixed(2) : '--';
     const shortDt = formatShortDate(chartData[i].date);
     
+    // ── CHOCH LOGIC ──
     const dArr = chartData.map(x => x.nav);
     let lastHigh = null, lastLow = null;
     for (let k = i - 2; k >= 2; k--) {
