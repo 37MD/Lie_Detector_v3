@@ -2197,6 +2197,7 @@ function updateDisplay() {
     deltaLabelEl.innerHTML =
       `<span style="color:${dCol};font-weight:700;">Δ ${latestDelta >= 0 ? '+' : ''}${latestDelta.toFixed(1)}</span>`;
   }
+} // end updateDisplay
 
 function flashBanner(text, cls, ms = 1800) {
   const b = document.getElementById('alertBanner');
