@@ -235,22 +235,29 @@
     color: #ffffff;
     z-index: 10;
     pointer-events: none;
-    white-space: normal;
+    white-space: nowrap;
     max-width: 96%;
     line-height: 1.4;
     letter-spacing: -0.02em;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .chart-hud:not(:empty) {
     background: rgba(7, 9, 15, 0.85);
-    padding: 2px 4px;
+    padding: 2px 5px;
     border-radius: 2px;
+  }
+  /* Sub-pane HUDs sit below the delta-label row */
+  #liveRsiHud, #liveDeltaHud, #simRsiHud, #simDeltaHud {
+    top: 20px;
+    font-size: 0.52rem;
   }
 
   @media (max-width: 600px) {
     .chart-hud {
       font-size: 0.50rem;
       letter-spacing: -0.05em;
-      white-space: normal; 
+      white-space: nowrap;
       max-width: 95%; 
       line-height: 1.2;
     }
@@ -507,11 +514,13 @@
       </div>
       <div class="chart-rsi-pane">
         <div class="delta-label">MOMENTUM RIBBON · RSI vs WMA20(RSI)</div>
+        <div class="chart-hud" id="liveRsiHud" style="top:18px;"></div>
         <div id="liveRsiLabel" style="position:absolute;top:3px;right:44px;font-size:0.52rem;color:var(--muted2);z-index:10;pointer-events:none;background:rgba(7,9,15,0.8);padding:1px 4px;border-radius:2px;"></div>
         <div class="canvas-box-bottom"><canvas id="liveRsiCanvas2"></canvas></div>
       </div>
       <div class="chart-delta-pane">
         <div class="delta-label">RSI DELTA · Daily − Weekly</div>
+        <div class="chart-hud" id="liveDeltaHud" style="top:18px;"></div>
         <div class="canvas-box-bottom"><canvas id="liveDeltaCanvas2"></canvas></div>
       </div>
     </div>
@@ -711,11 +720,13 @@
         </div>
         <div class="chart-rsi-pane">
           <div class="delta-label">MOMENTUM RIBBON · RSI vs WMA20(RSI)</div>
+          <div class="chart-hud" id="simRsiHud" style="top:18px;"></div>
           <div id="simRsiLabel" style="position:absolute;top:3px;right:4px;font-size:0.52rem;z-index:10;pointer-events:none;background:rgba(7,9,15,0.85);padding:1px 5px;border-radius:2px;letter-spacing:0.02em;"></div>
           <div class="canvas-box-bottom"><canvas id="rsiChart"></canvas></div>
         </div>
         <div class="chart-delta-pane">
           <div class="delta-label">VELOCITY · Daily − Weekly</div>
+          <div class="chart-hud" id="simDeltaHud" style="top:18px;"></div>
           <div id="simDeltaLabel" style="position:absolute;top:3px;right:4px;font-size:0.52rem;z-index:10;pointer-events:none;background:rgba(7,9,15,0.85);padding:1px 5px;border-radius:2px;letter-spacing:0.02em;"></div>
           <div class="canvas-box-bottom"><canvas id="deltaChart"></canvas></div>
         </div>
@@ -1306,9 +1317,16 @@ function updateLiveChartOnly(days, btnEl) {
     wrsiArr2.push(wr);
   }
 
+  // Clear all 3 cockpit pane HUDs (called on hover-out and on new chart load)
+  const clearCockpitHuds = () => {
+    ['liveHudMainChart','liveRsiHud','liveDeltaHud'].forEach(id=>{
+      const el=document.getElementById(id); if(el) el.innerHTML='';
+    });
+  };
+
   const hudFn2 = (activeElements) => {
     const hm = document.getElementById('liveHudMainChart');
-    if(!activeElements||!activeElements.length){hm.innerHTML='';return;}
+    if(!activeElements||!activeElements.length){clearCockpitHuds();return;}
     const i=activeElements[0].index;
     const reg=wmaRegimes2[i];const regC=reg==='A'?'#00e8a2':(reg==='B'?'#f59e0b':'#f04060');
     const wt=wmaSlice[i]?wmaSlice[i].toFixed(2):'--';const st=smaSlice[i]?smaSlice[i].toFixed(2):'--';
@@ -1323,10 +1341,13 @@ function updateLiveChartOnly(days, btnEl) {
     let mBadge='',mColor='';
     if(rW){if(cR>rW){if(cP<pP){mBadge='[🛡️ MOM: HIDDEN BUYING]';mColor='#00e8a2';}else{mBadge='[⚡ MOM: ACCELERATING]';mColor='#00e8a2';}}else{if(cP>=pP){mBadge='[⚠️ MOM: FAKE RALLY]';mColor='#f59e0b';}else{mBadge='[📉 MOM: DECELERATING]';mColor='#f04060';}}}
     const tide2 = calcTideHTML(wrsiArr2, i);
-    hm.innerHTML=
-      `<span style="color:var(--gold);font-weight:700;">[${dt}]</span> NAV: ${dataSlice[i].nav.toFixed(2)} | WMA: <span style="color:${regC};font-weight:700;">${wt}</span> | SMA50: ${st} | ${chBadge} | <span style="color:${mColor};font-weight:700;">${mBadge}</span><br>` +
-      `D.RSI: ${Math.round(cR)} | W.RSI: ${Math.round(wrsiArr2[i])} | DELTA: ${deltaData2[i].toFixed(1)}<br>` +
-      tide2.html;
+    // ── Distribute across 3 pane HUDs ────────────────────────────────────
+    hm.innerHTML =
+      `<span style="color:var(--gold);font-weight:700;">[${dt}]</span> NAV: ${dataSlice[i].nav.toFixed(2)} | WMA: <span style="color:${regC};font-weight:700;">${wt}</span> | SMA50: ${st} | ${chBadge} | <span style="color:${mColor};font-weight:700;">${mBadge}</span>`;
+    const rsiHud = document.getElementById('liveRsiHud');
+    if(rsiHud) rsiHud.innerHTML = `D.RSI: <b>${Math.round(cR)}</b> | W.RSI: <b>${Math.round(wrsiArr2[i])}</b>`;
+    const dltHud = document.getElementById('liveDeltaHud');
+    if(dltHud) dltHud.innerHTML = tide2.html;
   };
 
   if(liveChart)liveChart.destroy();
@@ -1740,7 +1761,12 @@ function updateLiveChart(days, btnEl) {
   const updateLocalLiveHud = (activeElements) => {
     const hm = document.getElementById('liveHudMain');
     if (!hm) return;
-    if (!activeElements || !activeElements.length) { hm.innerHTML = ""; return; }
+    if (!activeElements || !activeElements.length) {
+      hm.innerHTML = "";
+      const r=document.getElementById('liveRsiHud'); if(r) r.innerHTML='';
+      const d=document.getElementById('liveDeltaHud'); if(d) d.innerHTML='';
+      return;
+    }
     const i = activeElements[0].index;
     const reg = wmaRegimes[i];
     const regColor = reg === 'A' ? '#00e8a2' : (reg === 'B' ? '#f59e0b' : '#f04060');
@@ -1776,10 +1802,15 @@ function updateLiveChart(days, btnEl) {
     }
 
     const tideA = calcTideHTML(wrsiArrHud, i);
+    // Price pane: Date · NAV · WMA · SMA · CHOCH · MOM
     hm.innerHTML =
-      `<span style="color:var(--gold);font-weight:700;">[${shortDt}]</span> NAV: ${dataSlice[i].nav.toFixed(2)} | WMA: <span style="color:${regColor};font-weight:700;">${wmaText}</span> | SMA50: ${smaText} | ${chochBadge} | <span style="color:${momColor};font-weight:700;">${momBadge}</span><br>` +
-      `D.RSI: ${Math.round(currR)} | W.RSI: ${Math.round(wrsiArrHud[i])} | DELTA: ${deltaData[i].toFixed(1)}<br>` +
-      tideA.html;
+      `<span style="color:var(--gold);font-weight:700;">[${shortDt}]</span> NAV: ${dataSlice[i].nav.toFixed(2)} | WMA: <span style="color:${regColor};font-weight:700;">${wmaText}</span> | SMA50: ${smaText} | ${chochBadge} | <span style="color:${momColor};font-weight:700;">${momBadge}</span>`;
+    // RSI pane: D.RSI · W.RSI
+    const laRsiHud = document.getElementById('liveRsiHud');
+    if (laRsiHud) laRsiHud.innerHTML = `D.RSI: <b>${Math.round(currR)}</b> | W.RSI: <b>${Math.round(wrsiArrHud[i])}</b>`;
+    // Delta pane: Tide badge
+    const laDeltaHud = document.getElementById('liveDeltaHud');
+    if (laDeltaHud) laDeltaHud.innerHTML = tideA.html;
 
   };
 
@@ -2126,7 +2157,12 @@ function updateDisplay() {
 
   const updateLocalSimHud = (activeElements) => {
     const hm = document.getElementById('simHudMain');
-    if (!activeElements || !activeElements.length) { hm.innerHTML = ""; return; }
+    if (!activeElements || !activeElements.length) {
+      hm.innerHTML = "";
+      const r=document.getElementById('simRsiHud'); if(r) r.innerHTML='';
+      const d=document.getElementById('simDeltaHud'); if(d) d.innerHTML='';
+      return;
+    }
     const i = activeElements[0].index;
     const reg = wmaRegimes[i];
     const regColor = reg === 'A' ? '#00e8a2' : (reg === 'B' ? '#f59e0b' : '#f04060');
@@ -2164,10 +2200,15 @@ function updateDisplay() {
     const dv = deltaData[i];
     const dvCol = dv >= 0 ? '#00e8a2' : '#f04060';
     const tideS = calcTideHTML(wrsiArrHud, i);
+    // Price pane: Date · NAV · WMA · SMA · CHOCH · MOM
     hm.innerHTML =
-      `<span style="color:var(--gold);font-weight:700;">[${shortDt}]</span> N: ${currP.toFixed(2)} | WMA: <span style="color:${regColor};">${wmaText}</span> | SMA50: ${smaText} | ${chochBadge} | <span style="color:${momColor};font-weight:700;">${momBadge}</span><br>` +
-      `D.RSI: ${Math.round(currR)} | W.RSI: ${Math.round(wrsiArrHud[i])} | <span style="color:${dvCol};font-weight:700;">Δ ${dv>=0?'+':''}${dv.toFixed(1)}</span><br>` +
-      tideS.html;
+      `<span style="color:var(--gold);font-weight:700;">[${shortDt}]</span> N: ${currP.toFixed(2)} | WMA: <span style="color:${regColor};">${wmaText}</span> | SMA50: ${smaText} | ${chochBadge} | <span style="color:${momColor};font-weight:700;">${momBadge}</span>`;
+    // RSI pane: D.RSI · W.RSI · Δ
+    const sRsiHud = document.getElementById('simRsiHud');
+    if (sRsiHud) sRsiHud.innerHTML = `D.RSI: <b>${Math.round(currR)}</b> | W.RSI: <b>${Math.round(wrsiArrHud[i])}</b> | <span style="color:${dvCol};font-weight:700;">Δ ${dv>=0?'+':''}${dv.toFixed(1)}</span>`;
+    // Delta pane: Tide badge
+    const sDeltaHud = document.getElementById('simDeltaHud');
+    if (sDeltaHud) sDeltaHud.innerHTML = tideS.html;
 
     // Update right-side labels on hover
     const rv = drsiArrHud[i];
