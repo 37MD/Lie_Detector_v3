@@ -1167,6 +1167,30 @@ function calcTideHTML(wrsiArr, idx) {
   return { html, arrow, color, label: badge };
 }
 
+// ── calcVectorClass: W-RSI 4-Week Slope → Execution Rule ─────────────────────
+// For buying Daily-RSI 40–50 dips in Regime A.  Three exclusive tiers:
+//   🟢 Rising_100% Size       : Δ4W > 0  (vector pointing up)
+//   🟠 Healthy Cooldown_50%   : |Δ4W| ≤ 5 AND W-RSI ≥ 60  (slowing but intact)
+//   🔴 Regime Death_Hard Abort: Δ4W ≤ −5  (institutional sellers taking over)
+// Returns { text, color, sizeRule, dW }
+function calcVectorClass(wrsiArr, idx) {
+  const wv  = wrsiArr[idx];
+  const wv4 = idx >= 20 ? wrsiArr[idx - 20] : wrsiArr[0];
+  const dW  = wv - wv4;
+  if (dW <= -5) {
+    return { text: '🔴 Regime Death_Hard Abort', color: '#f04060', sizeRule: 'ABORT', dW };
+  }
+  if (dW > 0) {
+    return { text: '🟢 Rising_100% Size', color: '#00e8a2', sizeRule: '100%', dW };
+  }
+  // dW in (-5, 0]
+  if (wv >= 60) {
+    return { text: '🟠 Healthy Cooldown_50% Size', color: '#f59e0b', sizeRule: '50%', dW };
+  }
+  // W-RSI < 60 and slightly negative — treat conservatively
+  return { text: '🔴 Regime Death_Hard Abort', color: '#f04060', sizeRule: 'ABORT', dW };
+}
+
 // ── wrsiSegColor: W-RSI line segment colorizer ───────────────────────────────
 // Used as the Chart.js segment.borderColor callback on the W-RSI dashed line
 // overlay on all 3 RSI/Momentum panes (cockpit, analytics, simulator).
@@ -1299,12 +1323,19 @@ function updateLiveChartOnly(days, btnEl) {
   const rgDown2 = prevRegimeLive2&&((prevRegimeLive2==='A'&&(lastRegime==='B'||lastRegime==='C'))||(prevRegimeLive2==='B'&&lastRegime==='C'));
   const rgUp2   = prevRegimeLive2&&((prevRegimeLive2==='C'&&(lastRegime==='B'||lastRegime==='A'))||(prevRegimeLive2==='B'&&lastRegime==='A'));
   const banner2 = document.getElementById('liveChartAlertBanner');
+  const vecLive2 = calcVectorClass(wrsiArr2, wrsiArr2.length - 1);
   let aText='', aCls='';
   if(tslHit2){aText='🚨 TSL BREACHED ➔ EXECUTE TSL SELL';aCls='alert-danger alert-mega';}
   else if(rgDown2){aText=lastRegime==='C'?`🚨 REGIME CRASH: ${prevRegimeLive2} ➔ C ➔ SELL ALL`:`⚠️ REGIME DOWNGRADE: ${prevRegimeLive2} ➔ B ➔ HALT BUYING`;aCls='alert-danger';}
   else if(ncAlert2){aText='🚨 NC BREAKDOWN ➔ DO NOT BUY';aCls='alert-danger';}
   else if(rgUp2){aText=lastRegime==='A'?'🟢 REGIME A RESTORED ➔ RESUME BUYING':'🟢 REGIME UPGRADE: C ➔ B ➔ PREPARE TO BUY';aCls=lastRegime==='A'?'alert-buy alert-mega':'alert-buy';}
-  else if(lastRegime==='A'){if(pcAlert2){aText='🟢 PC BREAKOUT ➔ BUY TRANCHE';aCls='alert-buy';}else if(lastDRsi<40){aText='🟢 OVERSOLD (RSI < 40) ➔ BUY TRANCHE ON BOUNCE';aCls='alert-buy';}else if(lastDelta<buyDeltaLevel){aText=`🟢 SLINGSHOT (Delta < ${buyDeltaLevel}) ➔ BUY TRANCHE`;aCls='alert-buy';}}
+  else if(lastRegime==='A'){
+    if(vecLive2.sizeRule==='ABORT'){aText=`🔴 VECTOR: ${vecLive2.text} ➔ ABORT ALL BUYING`;aCls='alert-danger';}
+    else if(pcAlert2){aText=`🟢 PC BREAKOUT ➔ BUY TRANCHE [${vecLive2.sizeRule}]`;aCls='alert-buy';}
+    else if(lastDRsi<40){aText=`🟢 OVERSOLD (RSI < 40) ➔ BUY TRANCHE ON BOUNCE [${vecLive2.sizeRule}]`;aCls='alert-buy';}
+    else if(lastDelta<buyDeltaLevel){aText=`🟢 SLINGSHOT (Delta < ${buyDeltaLevel}) ➔ BUY TRANCHE [${vecLive2.sizeRule}]`;aCls='alert-buy';}
+    else if(lastDRsi<=50){aText=`🟢 DIP ZONE (RSI ≤ 50) ➔ WATCH FOR ENTRY [${vecLive2.sizeRule}]`;aCls='alert-buy';}
+  }
   if(!aText&&lastDelta>profitDeltaLevel){aText=`🟠 OVERHEATED (Delta > ${profitDeltaLevel}) ➔ PULL OUT SOME PROFITS`;aCls='alert-profit';}
   banner2.textContent=aText;banner2.className=aCls;banner2.style.display=aText?'block':'none';
 
@@ -1344,15 +1375,17 @@ function updateLiveChartOnly(days, btnEl) {
     let mBadge='',mColor='';
     if(rW){if(cR>rW){if(cP<pP){mBadge='[🛡️ MOM: HIDDEN BUYING]';mColor='#00e8a2';}else{mBadge='[⚡ MOM: ACCELERATING]';mColor='#00e8a2';}}else{if(cP>=pP){mBadge='[⚠️ MOM: FAKE RALLY]';mColor='#f59e0b';}else{mBadge='[📉 MOM: DECELERATING]';mColor='#f04060';}}}
     const tide2 = calcTideHTML(wrsiArr2, i);
-    // ── Price pane: date · NAV · WMA · SMA50 · CHOCH (price-chart data only) ──
+    const vec2  = calcVectorClass(wrsiArr2, i);
+    // ── Price pane: date · NAV · WMA · SMA50 · CHOCH ─────────────────────────
     hm.innerHTML =
       `<span style="color:var(--gold);font-weight:700;">[${dt}]</span> NAV:${dataSlice[i].nav.toFixed(2)} WMA:<span style="color:${regC};">${wt}</span> SMA:${st} ${chBadge}`;
-    // ── RSI/Momentum pane: D.RSI · W.RSI · MOM badge (RSI-chart data) ─────────
+    // ── Momentum/RSI pane: MOM badge · Vector classification · Tide ──────────
     const rsiHud = document.getElementById('liveRsiHud');
-    if(rsiHud) rsiHud.innerHTML = `D.RSI:<b>${Math.round(cR)}</b> W.RSI:<b>${Math.round(wrsiArr2[i])}</b> <span style="color:${mColor};">${mBadge}</span>`;
-    // ── Delta pane: Δ value · Tide badge (delta-chart data) ───────────────────
+    if(rsiHud) rsiHud.innerHTML =
+      `<span style="color:${mColor};">${mBadge}</span>&nbsp;&nbsp;<span style="color:${vec2.color};font-weight:700;">${vec2.text}</span>&nbsp;&nbsp;${tide2.html}`;
+    // ── Delta pane: D.RSI · W.RSI · Δ value ──────────────────────────────────
     const dltHud = document.getElementById('liveDeltaHud');
-    if(dltHud) dltHud.innerHTML = `<span style="color:${deltaData2[i]>=0?'#00e8a2':'#f04060'};font-weight:700;">Δ${deltaData2[i]>=0?'+':''}${deltaData2[i].toFixed(1)}</span> ${tide2.html}`;
+    if(dltHud) dltHud.innerHTML = `D.RSI:<b>${Math.round(cR)}</b> W.RSI:<b>${Math.round(wrsiArr2[i])}</b> <span style="color:${deltaData2[i]>=0?'#00e8a2':'#f04060'};font-weight:700;">Δ${deltaData2[i]>=0?'+':''}${deltaData2[i].toFixed(1)}</span>`;
   };
 
   if(liveChart)liveChart.destroy();
@@ -1517,6 +1550,22 @@ function updateLiveChart(days, btnEl) {
   const regimeUpgrade = prevRegimeLive && ((prevRegimeLive === 'C' && (lastRegime === 'B' || lastRegime === 'A')) || (prevRegimeLive === 'B' && lastRegime === 'A'));
 
   const banner = document.getElementById('liveAlertBanner');
+  // Compute a quick W-RSI vector for the current bar using raw price history
+  const _wPrices4w = latestPrices.filter((_, i) => i % 5 === 0);
+  const _wRsi4wAgo = _wPrices4w.length > 4
+    ? calculateRSI(_wPrices4w.slice(0, -4), 14)
+    : lastWRsi;
+  const _vecDw = lastWRsi - _wRsi4wAgo;
+  let vecLive;
+  if (_vecDw <= -5) {
+    vecLive = { text: '🔴 Regime Death_Hard Abort', color: '#f04060', sizeRule: 'ABORT' };
+  } else if (_vecDw > 0) {
+    vecLive = { text: '🟢 Rising_100% Size', color: '#00e8a2', sizeRule: '100%' };
+  } else if (lastWRsi >= 60) {
+    vecLive = { text: '🟠 Healthy Cooldown_50% Size', color: '#f59e0b', sizeRule: '50%' };
+  } else {
+    vecLive = { text: '🔴 Regime Death_Hard Abort', color: '#f04060', sizeRule: 'ABORT' };
+  }
   let alertText = '', alertClass = '';
 
   if (tslHit) { 
@@ -1542,9 +1591,13 @@ function updateLiveChart(days, btnEl) {
           alertClass = 'alert-buy';
       }
   } else if (lastRegime === 'A') {
-      if (pcAlert) { alertText = '🟢 PC BREAKOUT ➔ BUY TRANCHE'; alertClass = 'alert-buy'; }
-      else if (lastDRsi < 40) { alertText = '🟢 OVERSOLD (RSI < 40) ➔ BUY TRANCHE ON BOUNCE'; alertClass = 'alert-buy'; }
-      else if (lastDelta < buyDeltaLevel) { alertText = `🟢 SLINGSHOT (Delta < ${buyDeltaLevel}) ➔ BUY TRANCHE`; alertClass = 'alert-buy'; }
+      if (vecLive.sizeRule === 'ABORT') {
+          alertText = `🔴 VECTOR: ${vecLive.text} ➔ ABORT ALL BUYING`;
+          alertClass = 'alert-danger';
+      } else if (pcAlert) { alertText = `🟢 PC BREAKOUT ➔ BUY TRANCHE [${vecLive.sizeRule}]`; alertClass = 'alert-buy'; }
+      else if (lastDRsi < 40) { alertText = `🟢 OVERSOLD (RSI < 40) ➔ BUY TRANCHE ON BOUNCE [${vecLive.sizeRule}]`; alertClass = 'alert-buy'; }
+      else if (lastDelta < buyDeltaLevel) { alertText = `🟢 SLINGSHOT (Delta < ${buyDeltaLevel}) ➔ BUY TRANCHE [${vecLive.sizeRule}]`; alertClass = 'alert-buy'; }
+      else if (lastDRsi <= 50) { alertText = `🟢 DIP ZONE (RSI ≤ 50) ➔ WATCH FOR ENTRY [${vecLive.sizeRule}]`; alertClass = 'alert-buy'; }
   }
 
   if (!alertText && lastDelta > profitDeltaLevel) { 
@@ -1625,17 +1678,21 @@ function updateLiveChart(days, btnEl) {
     verdictReason = `Delta ${lastDelta.toFixed(1)} is overheated (>${profitDeltaLevel}). Market exhausted. Trim profits, keep core position.`;
     verdictBadge = '🟠'; verdictBorder = 'var(--accent2)';
   } else if (lastRegime === 'A') {
-    if (pcAlert) {
+    if (vecLive.sizeRule === 'ABORT') {
+      verdictText = 'ABORT BUYING — VECTOR DEATH';
+      verdictReason = `${vecLive.text}. W-RSI slope is falling hard. No new positions even in Regime A until vector recovers.`;
+      verdictBadge = '🔴'; verdictBorder = 'var(--red)';
+    } else if (pcAlert) {
       verdictText = 'BUY 25–50% — PC BREAKOUT';
-      verdictReason = 'Price consolidated at WMA and just broke out. Highest-probability entry signal.';
+      verdictReason = `Price consolidated at WMA and just broke out. Highest-probability entry signal. Position size: ${vecLive.sizeRule}.`;
       verdictBadge = '🟢'; verdictBorder = 'var(--accent)';
     } else if (lastDRsi < 40 || slingshotActive) {
-      verdictText = 'BUY 25% — CONFIRMED DIP';
-      verdictReason = lastDRsi < 40 ? 'Oversold RSI in Regime A. Buy the bounce, not the fall.' : `Slingshot active (Delta ${lastDelta.toFixed(1)} < ${buyDeltaLevel}). Rubber-band snap pending.`;
+      verdictText = `BUY ${vecLive.sizeRule} — CONFIRMED DIP`;
+      verdictReason = lastDRsi < 40 ? `Oversold RSI in Regime A. Buy the bounce, not the fall. Position size: ${vecLive.sizeRule}.` : `Slingshot active (Delta ${lastDelta.toFixed(1)} < ${buyDeltaLevel}). Rubber-band snap pending. Position size: ${vecLive.sizeRule}.`;
       verdictBadge = '🟢'; verdictBorder = 'var(--accent)';
     } else if (lastDRsi <= 50) {
-      verdictText = 'BUY 25% — DIP ENTRY WINDOW';
-      verdictReason = 'Regime A + Daily RSI ≤ 50. Classic dip-buy opportunity. Check TSL before entry.';
+      verdictText = `BUY ${vecLive.sizeRule} — DIP ENTRY WINDOW`;
+      verdictReason = `Regime A + Daily RSI ≤ 50. Classic dip-buy opportunity. Check TSL before entry. Position size: ${vecLive.sizeRule}.`;
       verdictBadge = '🟢'; verdictBorder = 'var(--accent)';
     } else if (ncAlert) {
       verdictText = 'HOLD — NC BREAKDOWN TRAP';
@@ -1657,7 +1714,10 @@ function updateLiveChart(days, btnEl) {
   vCard.style.borderColor = verdictBorder;
   document.getElementById('laVerdictText').textContent = verdictText;
   document.getElementById('laVerdictText').style.color = verdictBorder;
-  document.getElementById('laVerdictReason').textContent = verdictReason;
+  // Vector classification shown as first bold line in reason block
+  document.getElementById('laVerdictReason').innerHTML =
+    `<span style="color:${vecLive.color};font-weight:700;font-size:0.58rem;">${vecLive.text}</span>` +
+    `<br><span style="color:var(--muted2);">${verdictReason}</span>`;
   document.getElementById('laVerdictBadge').textContent = verdictBadge;
   const ftag = document.getElementById('laVerdictFundTag');
   if (ftag) ftag.textContent = '— ' + getBriefFundName();
@@ -1807,15 +1867,17 @@ function updateLiveChart(days, btnEl) {
     }
 
     const tideA = calcTideHTML(wrsiArrHud, i);
-    // Price pane: date · NAV · WMA · SMA50 · CHOCH (price-chart data only)
+    const vecA  = calcVectorClass(wrsiArrHud, i);
+    // Price pane: date · NAV · WMA · SMA50 · CHOCH
     hm.innerHTML =
       `<span style="color:var(--gold);font-weight:700;">[${shortDt}]</span> NAV:${dataSlice[i].nav.toFixed(2)} WMA:<span style="color:${regColor};">${wmaText}</span> SMA:${smaText} ${chochBadge}`;
-    // RSI/Momentum pane: D.RSI · W.RSI · MOM badge (RSI-chart data)
+    // Momentum/RSI pane: MOM badge · Vector classification · Tide
     const laRsiHud = document.getElementById('liveRsiHud');
-    if (laRsiHud) laRsiHud.innerHTML = `D.RSI:<b>${Math.round(currR)}</b> W.RSI:<b>${Math.round(wrsiArrHud[i])}</b> <span style="color:${momColor};">${momBadge}</span>`;
-    // Delta pane: Δ value · Tide badge (delta-chart data)
+    if (laRsiHud) laRsiHud.innerHTML =
+      `<span style="color:${momColor};">${momBadge}</span>&nbsp;&nbsp;<span style="color:${vecA.color};font-weight:700;">${vecA.text}</span>&nbsp;&nbsp;${tideA.html}`;
+    // Delta pane: D.RSI · W.RSI · Δ value
     const laDeltaHud = document.getElementById('liveDeltaHud');
-    if (laDeltaHud) laDeltaHud.innerHTML = `<span style="color:${deltaData[i]>=0?'#00e8a2':'#f04060'};font-weight:700;">Δ${deltaData[i]>=0?'+':''}${deltaData[i].toFixed(1)}</span> ${tideA.html}`;
+    if (laDeltaHud) laDeltaHud.innerHTML = `D.RSI:<b>${Math.round(currR)}</b> W.RSI:<b>${Math.round(wrsiArrHud[i])}</b> <span style="color:${deltaData[i]>=0?'#00e8a2':'#f04060'};font-weight:700;">Δ${deltaData[i]>=0?'+':''}${deltaData[i].toFixed(1)}</span>`;
 
   };
 
@@ -2205,15 +2267,17 @@ function updateDisplay() {
     const dv = deltaData[i];
     const dvCol = dv >= 0 ? '#00e8a2' : '#f04060';
     const tideS = calcTideHTML(wrsiArrHud, i);
-    // Price pane: date · NAV · WMA · SMA50 · CHOCH (price-chart data only)
+    const vecS  = calcVectorClass(wrsiArrHud, i);
+    // Price pane: date · NAV · WMA · SMA50 · CHOCH
     hm.innerHTML =
       `<span style="color:var(--gold);font-weight:700;">[${shortDt}]</span> N:${currP.toFixed(2)} WMA:<span style="color:${regColor};">${wmaText}</span> SMA:${smaText} ${chochBadge}`;
-    // RSI/Momentum pane: D.RSI · W.RSI · MOM badge (RSI-chart data)
+    // Momentum/RSI pane: MOM badge · Vector classification · Tide
     const sRsiHud = document.getElementById('simRsiHud');
-    if (sRsiHud) sRsiHud.innerHTML = `D.RSI:<b>${Math.round(currR)}</b> W.RSI:<b>${Math.round(wrsiArrHud[i])}</b> <span style="color:${momColor};">${momBadge}</span>`;
-    // Delta pane: Δ value · Tide badge (delta-chart data)
+    if (sRsiHud) sRsiHud.innerHTML =
+      `<span style="color:${momColor};">${momBadge}</span>&nbsp;&nbsp;<span style="color:${vecS.color};font-weight:700;">${vecS.text}</span>&nbsp;&nbsp;${tideS.html}`;
+    // Delta pane: D.RSI · W.RSI · Δ value
     const sDeltaHud = document.getElementById('simDeltaHud');
-    if (sDeltaHud) sDeltaHud.innerHTML = `<span style="color:${dvCol};font-weight:700;">Δ${dv>=0?'+':''}${dv.toFixed(1)}</span> ${tideS.html}`;
+    if (sDeltaHud) sDeltaHud.innerHTML = `D.RSI:<b>${Math.round(currR)}</b> W.RSI:<b>${Math.round(wrsiArrHud[i])}</b> <span style="color:${dvCol};font-weight:700;">Δ${dv>=0?'+':''}${dv.toFixed(1)}</span>`;
 
     // Update right-side labels on hover
     const rv = drsiArrHud[i];
