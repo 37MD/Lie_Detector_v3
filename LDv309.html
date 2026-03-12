@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Lie Detector v3.05</title>
+<title>Lie Detector v3.09</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-zoom/2.0.1/chartjs-plugin-zoom.min.js"></script>
@@ -431,7 +431,7 @@
 
 <div id="setupScreen">
   <div class="setup-logo">Sacred RSI Regime System</div>
-  <h1 class="setup-title">Lie Detector <span style="color:var(--muted);font-size:0.45em;font-weight:400;">v3.06</span></h1>
+  <h1 class="setup-title">Lie Detector <span style="color:var(--muted);font-size:0.45em;font-weight:400;">v3.09</span></h1>
   <p class="setup-sub">Train your discipline before real money does.</p>
 
   <div class="fund-grid" id="fundGrid">
@@ -1087,6 +1087,10 @@ const universalAnnotationsPlugin = {
   }
 };
 
+// ── syncCharts: cross-chart hover synchronisation ────────────────────────────
+// Stores the hovered index into simHoverIdx / liveHoverIdx so the
+// universalAnnotationsPlugin can draw the crosshair on all panes at once.
+// Called from every onHover handler on every chart canvas.
 function syncCharts(charts, activeElements, isLive) {
   if (activeElements && activeElements.length) {
     const idx = activeElements[0].index;
@@ -1112,8 +1116,20 @@ function syncSimZoom(sourceChart) {
   }
 }
 
-// ── Shared W-RSI Vector helper ────────────────────────────────────────────
-// Returns { html, arrow, color, label } for tide badge line in HUD
+// ── Shared W-RSI Vector helper (The Auditor's Tide Algorithm) ────────────────
+// Classifies the Weekly RSI slope into one of 5 tide phases using a 4-week
+// (Δ20 trading-day) lookback — the "Goldilocks" window capturing one full
+// institutional monthly rebalancing cycle.
+//
+// Phase mapping (matches the 3-Stage Declining W-RSI framework):
+//   🌊 RISING  : W-RSI ≥ 60 AND Δ4W ≥ 0  → GREEN LIGHT, full size
+//   🟢 COOLING : W-RSI ≥ 60 AND Δ4W < 0  → GREEN LIGHT, standard cooldown
+//   ⚠️ WARNING : 50 ≤ W-RSI < 60 AND Δ4W ≤ −5 → YELLOW, truncate to 50%
+//   🟡 FLAT    : 50 ≤ W-RSI < 60 AND Δ4W > −5 → YELLOW caution
+//   🔴 DEAD    : W-RSI < 50              → RED ABORT, Daily RSI rule invalid
+//
+// Returns { html, arrow (↑↘→↓), color, label } used by all 3 HUD builders
+// and the static RSI pane right-side labels.
 function calcTideHTML(wrsiArr, idx) {
   const wv   = wrsiArr[idx];
   const wv4w = idx >= 20 ? wrsiArr[idx - 20] : wrsiArr[0];
@@ -1137,7 +1153,10 @@ function calcTideHTML(wrsiArr, idx) {
   return { html, arrow, color, label: badge };
 }
 
-// Segment colorizer for W-RSI line on RSI charts
+// ── wrsiSegColor: W-RSI line segment colorizer ───────────────────────────────
+// Used as the Chart.js segment.borderColor callback on the W-RSI dashed line
+// overlay on all 3 RSI/Momentum panes (cockpit, analytics, simulator).
+// Colors the line green/amber/red to show live tide phase at each data point.
 function wrsiSegColor(wrsiArr) {
   return ctx => {
     const wr = wrsiArr[ctx.p1DataIndex];
@@ -1379,6 +1398,10 @@ function openLiveAnalyticsFromCockpit() {
   updateLiveChart(250);
 }
 
+// ── updateLiveChart: drives Live Analytics modal (numbers dashboard) ─────────
+// Computes all indicators for the selected time window, populates the verdict
+// card, signal checklist, indicator row, and all 3 mini chart canvases.
+// Implements W-RSI Vector (tide phase) via calcTideHTML() on the RSI pane.
 function updateLiveChart(days, btnEl) {
   liveHoverIdx = null;
   const dataSlice = globalLiveData.slice(-days);
@@ -1695,6 +1718,9 @@ function updateLiveChart(days, btnEl) {
       <span class="la-check-val">${c.val}</span>
     </div>
   `).join('');
+
+  // ── Per-bar arrays: W-RSI, Daily-Weekly delta, momentum, regime color ────
+  const deltaData = [], deltaColors = [], wmaRegimes = [], wrsiArrHud = [];
   for (let i = 0; i < dataSlice.length; i++) {
     const ei = globalLiveData.length - dataSlice.length + i;
     const sp = globalLiveData.slice(0, ei + 1).map(h => h.nav);
@@ -1864,7 +1890,11 @@ function updateLiveChart(days, btnEl) {
 function resetLiveZoom() { if (liveChart) liveChart.resetZoom(); }
 function closeLive() { document.getElementById('liveAnalyticsModal').style.display = 'none'; document.getElementById('setupScreen').style.display = 'flex'; }
 
-// ── SIM ENGINE ──
+// ── SIM ENGINE ──────────────────────────────────────────────────────────────
+// initGame(mode): entry point for Simulator and Recent Simulator buttons.
+//   mode='random' — picks a random 18-month window from full history.
+//   mode='wave'   — always starts ~18 months ago (recent history challenge).
+// Fetches fund data, initialises game state, calls updateDisplay() for day 0.
 async function initGame(mode) {
   saveFundSelection(); 
   document.getElementById('simFundName').textContent = getBriefFundName();
@@ -1904,6 +1934,13 @@ async function initGame(mode) {
   updateDisplay();
 }
 
+// ── updateDisplay: master render for the Simulator ───────────────────────────
+// Called after every HOLD/BUY/SELL action and on initial load.
+// Rebuilds all 3 chart panes (price+WMA+SMA, RSI ribbon+W-RSI slope,
+// velocity delta), updates the HUD, regime block, psychology logic,
+// net-worth/drawdown display, and action-bar button states.
+// W-RSI Vector (tide phase) injected via calcTideHTML() into HUD line 3
+// and into the simRsiLabel right-side pane overlay.
 function updateDisplay() {
   const visible = fullHistory.slice(0, currentIdx + 1);
   const currentNav = visible[visible.length - 1].nav;
