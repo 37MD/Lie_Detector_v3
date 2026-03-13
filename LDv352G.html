@@ -2976,7 +2976,7 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').ca
 
 <script>
 (function() {
-
+  // 1. Inject the CSS
   const css = `
     #liveEstBox {
       position: absolute; bottom: 6px; right: 6px;
@@ -2986,207 +2986,187 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').ca
       pointer-events: none; transition: background-color 0.3s ease;
       text-align: right; white-space: nowrap;
     }
-    #estIdxName {
-      font-size: 0.45rem;
-      color: #7090b0;
-      display: block;
-      margin-bottom: 2px;
-      text-transform: uppercase;
-    }
+    #estIdxName { font-size: 0.45rem; color: #7090b0; display: block; margin-bottom: 2px; text-transform: uppercase; }
   `;
-
   const styleEl = document.createElement('style');
   styleEl.innerHTML = css;
   document.head.appendChild(styleEl);
 
+  // 2. Inject the HTML Box
   window.addEventListener('DOMContentLoaded', () => {
-
     const mainPane = document.querySelector('#liveChartModal .chart-main-pane');
-
     if (mainPane) {
-
       const estBox = document.createElement('div');
-
       estBox.id = 'liveEstBox';
       estBox.style.display = 'none';
-
-      estBox.innerHTML =
-        '<span id="estIdxName">Reference Index</span><div id="estValue">Change: --%</div>';
-
+      estBox.innerHTML = '<span id="estIdxName">Reference Index</span><div id="estValue">Change: --%</div>';
       mainPane.appendChild(estBox);
     }
   });
 
-  const benchmarkMap = {
-
+  // 3. YOUR EXACT MAPPING LIST
+  const NSE_BENCHMARK_MAP = {
     /* FLEXICAP → NIFTY500 */
-
-    '118989': { index: 'NIFTY 500', name: 'Nifty 500' },
-    '119062': { index: 'NIFTY 500', name: 'Nifty 500' },
-    '120166': { index: 'NIFTY 500', name: 'Nifty 500' },
-    '120517': { index: 'NIFTY 500', name: 'Nifty 500' },
-    '152778': { index: 'NIFTY 500', name: 'Nifty 500' },
-
-    /* BAF → NIFTY100 */
-
-    '118968': { index: 'NIFTY 100', name: 'Nifty 100' },
-    '120377': { index: 'NIFTY 100', name: 'Nifty 100' },
-    '144335': { index: 'NIFTY 100', name: 'Nifty 100' },
-    '131670': { index: 'NIFTY 100', name: 'Nifty 100' },
-
-    /* NPS EQUITY → NIFTY200 */
-
-    'SM008001': { index: 'NIFTY 200', name: 'Nifty 200' },
-    'SM008004': { index: 'NIFTY 200', name: 'Nifty 200' },
-    'SM007001': { index: 'NIFTY 200', name: 'Nifty 200' },
-    'SM007004': { index: 'NIFTY 200', name: 'Nifty 200' },
-    'SM005001': { index: 'NIFTY 200', name: 'Nifty 200' },
-    'SM005004': { index: 'NIFTY 200', name: 'Nifty 200' },
-    'SM006001': { index: 'NIFTY 200', name: 'Nifty 200' },
-    'SM006004': { index: 'NIFTY 200', name: 'Nifty 200' },
-
-    /* SECTORAL */
-
-    '150468': { index: 'NIFTY IT', name: 'Nifty IT' },
-    '153097': { index: 'NIFTY INDIA DIGITAL', name: 'Nifty India Digital' },
-
-    '149858': { index: 'NIFTY BANK', name: 'Nifty Bank' },
-    '153679': { index: 'NIFTY PRIVATE BANK', name: 'Nifty Pvt Bank' },
-
-    '150643': { index: 'NIFTY AUTO', name: 'Nifty Auto' },
-    '153394': { index: 'NIFTY EV & NEW AGE AUTO', name: 'Nifty EV Auto' },
-
-    '150930': { index: 'NIFTY PHARMA', name: 'Nifty Pharma' },
-    '152521': { index: 'NIFTY REALTY', name: 'Nifty Realty' },
-    '152039': { index: 'NIFTY REALTY', name: 'Nifty Realty' },
-
-    '154179': { index: 'NIFTY CONSUMPTION', name: 'Nifty Consumption' },
-    '153081': { index: 'NIFTY INFRASTRUCTURE', name: 'Nifty Infra' },
-    '151911': { index: 'NIFTY FINANCIAL SERVICES', name: 'Nifty Fin Serv' },
+    "118989":"NIFTY 500", "119062":"NIFTY 500", "120166":"NIFTY 500", "120517":"NIFTY 500", "152778":"NIFTY 500", "154032":"NIFTY 500",
+    
+    /* BALANCED ADVANTAGE → NIFTY100 */
+    "118968":"NIFTY 100", "120377":"NIFTY 100", "144335":"NIFTY 100", "131670":"NIFTY 100",
 
     /* MID / SMALL */
+    "148807":"NIFTY MIDCAP 150", "152916":"NIFTY MIDCAP 150", "153223":"NIFTY SMALLCAP 250",
 
-    '153223': { index: 'NIFTY SMALLCAP 250', name: 'Nifty Smallcap 250' },
-    '148807': { index: 'NIFTY MIDCAP 150', name: 'Nifty Midcap 150' },
-    '152916': { index: 'NIFTY MIDCAP 150', name: 'Nifty Midcap 150' },
+    /* FACTOR INDICES */
+    "153264":"NIFTY100 QUALITY 30", "151781":"NIFTY200 MOMENTUM 30", "152936":"NIFTY200 VALUE 30", "154145":"NIFTY200 VALUE 30", "153736":"NIFTY500 MOMENTUM 50",
 
-    '153264': { index: 'NIFTY 100', name: 'Nifty 100' },
-    '152936': { index: 'NIFTY 200', name: 'Nifty 200' },
-    '154145': { index: 'NIFTY 200', name: 'Nifty 200' },
-    '151781': { index: 'NIFTY 200', name: 'Nifty 200' },
+    /* SECTOR */
+    "150468":"NIFTY IT", "153097":"NIFTY IT", "153679":"NIFTY PRIVATE BANK", "149858":"NIFTY BANK", "150643":"NIFTY AUTO", "150930":"NIFTY PHARMA", "152521":"NIFTY REALTY", "152039":"NIFTY REALTY", "151911":"NIFTY FIN SERVICE",
 
-    '153736': { index: 'NIFTY 500', name: 'Nifty 500' },
-    '154032': { index: 'NIFTY 500', name: 'Nifty 500' },
+    /* THEMATIC */
+    "154179":"NIFTY INDIA CONSUMPTION", "152798":"NIFTY INDIA DEFENCE",
+    
+    /* CORRECTED */
+    "153394":"NIFTY EV & NEW AGE AUTOMOTIVE",
 
-    DEFAULT: { index: 'NIFTY 50', name: 'Nifty 50' }
+    /* INFRA */
+    "153081":"NIFTY INFRASTRUCTURE",
+
+    /* GOLD */
+    "119132":"MCX_GOLD", "120546":"MCX_GOLD", "119781":"MCX_GOLD", "153921":"MCX_GOLD",
+
+    /* SILVER */
+    "150737":"MCX_SILVER", "151603":"MCX_SILVER", "149780":"MCX_SILVER",
+
+    /* NPS EQUITY */
+    "SM008001":"NIFTY 200", "SM007001":"NIFTY 200", "SM005001":"NIFTY 200", "SM006001":"NIFTY 200",
+    "SM008004":"NIFTY 200", "SM007004":"NIFTY 200", "SM005004":"NIFTY 200", "SM006004":"NIFTY 200",
+
+    /* NPS CORPORATE BOND */
+    "SM008002":"BHARATBOND", "SM007002":"BHARATBOND", "SM005002":"BHARATBOND", "SM006002":"BHARATBOND",
+    "SM008005":"BHARATBOND", "SM007005":"BHARATBOND", "SM005005":"BHARATBOND", "SM006005":"BHARATBOND"
   };
 
-  async function fetchNSE(indexName) {
-
-    const res = await fetch(
-      "https://www.nseindia.com/api/allIndices",
-      { headers: { "accept": "application/json" } }
-    );
-
-    const data = await res.json();
-
-    const row = data.data.find(d => d.index === indexName);
-
-    if (!row) throw new Error("Index not found");
-
-    return parseFloat(row.percentChange);
-  }
+  // 4. YAHOO TRANSLATOR (Maps your string to Yahoo's API code)
+  const YAHOO_TICKER_MAP = {
+    "NIFTY 500": "^CRSL500",
+    "NIFTY 100": "^CNX100",
+    "NIFTY MIDCAP 150": "MID150BEES.NS",      // Live NSE ETF used for reliable midcap feed
+    "NIFTY SMALLCAP 250": "^CRSLSML",
+    "NIFTY100 QUALITY 30": "QUAL30IETF.NS",   // SBI Quality 30 ETF
+    "NIFTY200 MOMENTUM 30": "MOMOM100.NS",    // Motilal Momentum ETF
+    "NIFTY200 VALUE 30": "VALUE30.NS",        // Kotak Value 30 ETF
+    "NIFTY500 MOMENTUM 50": "MOM50.NS",       // Motilal Momentum 50 ETF
+    "NIFTY IT": "^CNXIT",
+    "NIFTY PRIVATE BANK": "^NIFTYPVTBANK",
+    "NIFTY BANK": "^NSEBANK",
+    "NIFTY AUTO": "^CNXAUTO",
+    "NIFTY PHARMA": "^CNXPHARMA",
+    "NIFTY REALTY": "^CNXREALTY",
+    "NIFTY FIN SERVICE": "^CNXFIN",
+    "NIFTY INDIA CONSUMPTION": "^CNXCONSUM",
+    "NIFTY INDIA DEFENCE": "MODEFENCE.NS",    // Motilal Defence ETF
+    "NIFTY EV & NEW AGE AUTOMOTIVE": "AUTOBEES.NS", // Yahoo lacks EV index, tracking base Auto
+    "NIFTY INFRASTRUCTURE": "^CNXINFRA",
+    "MCX_GOLD": "GOLDBEES.NS",                // NSE Gold ETF (INR precision)
+    "MCX_SILVER": "SILVERBEES.NS",            // NSE Silver ETF (INR precision)
+    "NIFTY 200": "^CNX200",
+    "BHARATBOND": "EBBETF0430.NS"             // Edelweiss Bharat Bond ETF
+  };
 
   async function updateLiveEstimate() {
-
     const estBox = document.getElementById('liveEstBox');
     const estVal = document.getElementById('estValue');
     const estName = document.getElementById('estIdxName');
-
-    if (!estBox || document.getElementById('liveChartModal').style.display !== 'flex')
-      return;
-
+    if (!estBox || document.getElementById('liveChartModal').style.display !== 'flex') return;
+    
     estBox.style.display = 'block';
-
+    
+    // Look up the fund -> String Name -> Yahoo Ticker
     const fundCode = document.getElementById('fundSelect').value;
-
-    const config = benchmarkMap[fundCode] || benchmarkMap.DEFAULT;
-
-    estName.textContent = config.name;
+    const benchmarkName = NSE_BENCHMARK_MAP[fundCode] || "NIFTY 50";
+    const yahooTicker = YAHOO_TICKER_MAP[benchmarkName] || "^NSEI";
+    
+    estName.textContent = benchmarkName; // Displays YOUR string name in the UI
 
     try {
+      estVal.textContent = "Change: ..."; 
+      
+      const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooTicker)}?interval=15m&range=1d`;
+      const encodedUrl = encodeURIComponent(targetUrl);
+      
+      // Proxies to bypass GitHub Pages CORS restrictions
+      const proxies = [
+        `https://corsproxy.io/?${encodedUrl}`,
+        `https://api.allorigins.win/raw?url=${encodedUrl}`
+      ];
 
-      estVal.textContent = "Change: ...";
+      let data = null;
+      for (let proxy of proxies) {
+        try {
+          const res = await fetch(proxy, { cache: "no-store" });
+          if (!res.ok) continue;
+          const json = await res.json();
+          if (json && json.chart && json.chart.result) {
+            data = json;
+            break;
+          }
+        } catch (e) {
+          continue; 
+        }
+      }
 
-      const changePct = await fetchNSE(config.index);
+      if (!data) throw new Error("Yahoo blocked connection");
+      
+      const meta = data.chart.result[0].meta;
+      const currentPrice = meta.regularMarketPrice;
+      const prevClose = meta.chartPreviousClose || meta.previousClose;
+      
+      if (!currentPrice || !prevClose) throw new Error("Pricing missing");
 
-      estVal.textContent =
-        `Change: ${changePct >= 0 ? '+' : ''}${changePct.toFixed(2)}%`;
-
-      if (changePct > 0.05)
-        estBox.style.backgroundColor = '#dcfce7';
-
-      else if (changePct < -0.05)
-        estBox.style.backgroundColor = '#fee2e2';
-
-      else
-        estBox.style.backgroundColor = '#ffedd5';
+      // Calculate % Change
+      const changePct = ((currentPrice - prevClose) / prevClose) * 100;
+      
+      estVal.textContent = `Change: ${changePct >= 0 ? '+' : ''}${changePct.toFixed(2)}%`;
+      
+      // Color
+      if (changePct > 0.05) estBox.style.backgroundColor = '#dcfce7'; 
+      else if (changePct < -0.05) estBox.style.backgroundColor = '#fee2e2'; 
+      else estBox.style.backgroundColor = '#ffedd5'; 
 
     } catch (err) {
-
-      console.warn("NSE fetch failed", err);
-
+      console.warn("Fetch Error:", err);
       estVal.textContent = "Change: N/A";
-
       estBox.style.backgroundColor = '#f2f5f9';
     }
   }
 
+  // Hook into LDv315 safely
   setTimeout(() => {
-
     const origSelectAMC = window.selectAMC;
-
     if (origSelectAMC) {
-
       window.selectAMC = function(amc, el, isInit = false) {
-
         origSelectAMC(amc, el, isInit);
-
         const sel = document.getElementById('fundSelect');
-
         if (sel) {
-
           sel.removeEventListener('change', updateLiveEstimate);
-
           sel.addEventListener('change', updateLiveEstimate);
         }
       };
     }
 
     const origInitLiveChart = window.initLiveChart;
-
     if (origInitLiveChart) {
-
       window.initLiveChart = async function() {
-
         await origInitLiveChart();
-
         updateLiveEstimate();
       };
     }
-
   }, 500);
 
   setInterval(() => {
-
-    if (
-      document.getElementById('liveChartModal') &&
-      document.getElementById('liveChartModal').style.display === 'flex'
-    ) {
+    if (document.getElementById('liveChartModal') && document.getElementById('liveChartModal').style.display === 'flex') {
       updateLiveEstimate();
     }
-
-  }, 900000);
+  }, 900000); 
 
 })();
 </script>
