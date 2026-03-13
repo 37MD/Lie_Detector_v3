@@ -2977,199 +2977,186 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').ca
 <script>
 (function() {
 
-const css = `
-#liveEstBox {
-position:absolute;bottom:6px;right:6px;
-padding:4px 6px;border-radius:4px;z-index:50;
-font-family:'Space Mono',monospace;font-size:.60rem;
-color:#c8102e;font-weight:400;border:1px solid rgba(0,0,0,0.1);
-pointer-events:none;transition:background-color .3s ease;
-text-align:right;white-space:nowrap;
-}
-#estIdxName{font-size:.45rem;color:#7090b0;display:block;margin-bottom:2px;text-transform:uppercase}
-`;
+  /* CSS — unchanged */
+  const css = `
+    #liveEstBox {
+      position: absolute; bottom: 6px; right: 6px;
+      padding: 4px 6px; border-radius: 4px; z-index: 50;
+      font-family: 'Space Mono', monospace; font-size: 0.60rem;
+      color: #c8102e; font-weight: 400; border: 1px solid rgba(0,0,0,0.1);
+      pointer-events: none; transition: background-color 0.3s ease;
+      text-align: right; white-space: nowrap;
+    }
+    #estIdxName {
+      font-size: 0.45rem; color: #7090b0;
+      display: block; margin-bottom: 2px;
+      text-transform: uppercase;
+    }
+  `;
+  const styleEl = document.createElement('style');
+  styleEl.innerHTML = css;
+  document.head.appendChild(styleEl);
+
+  /* Inject box */
+  window.addEventListener('DOMContentLoaded', () => {
+    const mainPane = document.querySelector('#liveChartModal .chart-main-pane');
+    if (mainPane) {
+      const estBox = document.createElement('div');
+      estBox.id = 'liveEstBox';
+      estBox.style.display = 'none';
+      estBox.innerHTML =
+        '<span id="estIdxName">Reference Index</span><div id="estValue">Change: --%</div>';
+      mainPane.appendChild(estBox);
+    }
+  });
+
+  /* Correct Index Mapping */
+  const benchmarkMap = {
+
+    '118989':{index:"NIFTY 500",name:"NIFTY 500"},
+    '119062':{index:"NIFTY 500",name:"NIFTY 500"},
+    '120166':{index:"NIFTY 500",name:"NIFTY 500"},
+    '120517':{index:"NIFTY 500",name:"NIFTY 500"},
+    '152778':{index:"NIFTY 500",name:"NIFTY 500"},
+
+    '118968':{index:"NIFTY 100",name:"NIFTY 100"},
+    '120377':{index:"NIFTY 100",name:"NIFTY 100"},
+    '144335':{index:"NIFTY 100",name:"NIFTY 100"},
+    '131670':{index:"NIFTY 100",name:"NIFTY 100"},
+
+    'SM008001':{index:"NIFTY 200",name:"NIFTY 200"},
+    'SM008004':{index:"NIFTY 200",name:"NIFTY 200"},
+    'SM007001':{index:"NIFTY 200",name:"NIFTY 200"},
+    'SM007004':{index:"NIFTY 200",name:"NIFTY 200"},
+    'SM005001':{index:"NIFTY 200",name:"NIFTY 200"},
+    'SM005004':{index:"NIFTY 200",name:"NIFTY 200"},
+    'SM006001':{index:"NIFTY 200",name:"NIFTY 200"},
+    'SM006004':{index:"NIFTY 200",name:"NIFTY 200"},
+
+    '150468':{index:"NIFTY IT",name:"NIFTY IT"},
+    '153097':{index:"NIFTY INDIA DIGITAL",name:"NIFTY INDIA DIGITAL"},
+    '149858':{index:"NIFTY BANK",name:"NIFTY BANK"},
+    '153679':{index:"NIFTY PRIVATE BANK",name:"NIFTY PRIVATE BANK"},
+    '150643':{index:"NIFTY AUTO",name:"NIFTY AUTO"},
+    '153394':{index:"NIFTY EV & NEW AGE AUTO",name:"NIFTY EV & NEW AGE AUTO"},
+    '150930':{index:"NIFTY PHARMA",name:"NIFTY PHARMA"},
+    '152521':{index:"NIFTY REALTY",name:"NIFTY REALTY"},
+    '152039':{index:"NIFTY REALTY",name:"NIFTY REALTY"},
+    '154179':{index:"NIFTY CONSUMPTION",name:"NIFTY CONSUMPTION"},
+    '153081':{index:"NIFTY INFRASTRUCTURE",name:"NIFTY INFRASTRUCTURE"},
+    '151911':{index:"NIFTY FINANCIAL SERVICES",name:"NIFTY FINANCIAL SERVICES"},
+
+    '153223':{index:"NIFTY SMALLCAP 250",name:"NIFTY SMALLCAP 250"},
+    '148807':{index:"NIFTY MIDCAP 150",name:"NIFTY MIDCAP 150"},
+    '152916':{index:"NIFTY MIDCAP 150",name:"NIFTY MIDCAP 150"},
+
+    '153264':{index:"NIFTY 100",name:"NIFTY 100"},
+    '152936':{index:"NIFTY 200",name:"NIFTY 200"},
+    '154145':{index:"NIFTY 200",name:"NIFTY 200"},
+    '151781':{index:"NIFTY 200",name:"NIFTY 200"},
+
+    '153736':{index:"NIFTY 500",name:"NIFTY 500"},
+    '154032':{index:"NIFTY 500",name:"NIFTY 500"},
+
+    DEFAULT:{index:"NIFTY 50",name:"NIFTY 50"}
+  };
+
+  /* Fetch Nifty Index */
+  async function fetchNiftyIndex(indexName) {
+
+    const res = await fetch(
+      "https://niftyindices.com/Backpage.aspx/getLiveIndex",
+      {
+        method:"POST",
+        headers:{ "content-type":"application/json" },
+        body:JSON.stringify({name:indexName})
+      }
+    );
+
+    const json = await res.json();
+    const data = JSON.parse(json.d);
+
+    return parseFloat(data[0].percentChange);
+  }
 
-const style=document.createElement("style");
-style.innerHTML=css;
-document.head.appendChild(style);
+  /* Update Box */
+  async function updateLiveEstimate() {
 
-window.addEventListener("DOMContentLoaded",()=>{
+    const estBox = document.getElementById('liveEstBox');
+    const estVal = document.getElementById('estValue');
+    const estName = document.getElementById('estIdxName');
 
-const mainPane=document.querySelector("#liveChartModal .chart-main-pane");
+    if (!estBox || document.getElementById('liveChartModal').style.display !== 'flex')
+      return;
 
-if(mainPane){
+    estBox.style.display = 'block';
 
-const estBox=document.createElement("div");
+    const fundCode = document.getElementById('fundSelect').value;
+    const config = benchmarkMap[fundCode] || benchmarkMap.DEFAULT;
 
-estBox.id="liveEstBox";
-estBox.style.display="none";
+    estName.textContent = config.name;
 
-estBox.innerHTML='<span id="estIdxName">Reference Index</span><div id="estValue">Change: --%</div>';
+    try {
 
-mainPane.appendChild(estBox);
+      estVal.textContent = "Change: ...";
 
-}
+      const pct = await fetchNiftyIndex(config.index);
 
-});
+      estVal.textContent =
+        `Change: ${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`;
 
-const benchmarkMap={
+      if (pct > 0.05)
+        estBox.style.backgroundColor = '#dcfce7';
+      else if (pct < -0.05)
+        estBox.style.backgroundColor = '#fee2e2';
+      else
+        estBox.style.backgroundColor = '#ffedd5';
 
-'118989':{index:"Nifty 500",name:"Nifty 500"},
-'119062':{index:"Nifty 500",name:"Nifty 500"},
-'120166':{index:"Nifty 500",name:"Nifty 500"},
-'120517':{index:"Nifty 500",name:"Nifty 500"},
-'152778':{index:"Nifty 500",name:"Nifty 500"},
+    } catch (e) {
 
-'118968':{index:"Nifty 100",name:"Nifty 100"},
-'120377':{index:"Nifty 100",name:"Nifty 100"},
-'144335':{index:"Nifty 100",name:"Nifty 100"},
-'131670':{index:"Nifty 100",name:"Nifty 100"},
+      estVal.textContent = "Change: N/A";
+      estBox.style.backgroundColor = '#f2f5f9';
 
-'SM008001':{index:"Nifty 200",name:"Nifty 200"},
-'SM008004':{index:"Nifty 200",name:"Nifty 200"},
-'SM007001':{index:"Nifty 200",name:"Nifty 200"},
-'SM007004':{index:"Nifty 200",name:"Nifty 200"},
-'SM005001':{index:"Nifty 200",name:"Nifty 200"},
-'SM005004':{index:"Nifty 200",name:"Nifty 200"},
-'SM006001':{index:"Nifty 200",name:"Nifty 200"},
-'SM006004':{index:"Nifty 200",name:"Nifty 200"},
+    }
+  }
 
-'150468':{index:"Nifty IT",name:"Nifty IT"},
-'153097':{index:"Nifty India Digital",name:"Nifty India Digital"},
-'149858':{index:"Nifty Bank",name:"Nifty Bank"},
-'153679':{index:"Nifty Private Bank",name:"Nifty Pvt Bank"},
-'150643':{index:"Nifty Auto",name:"Nifty Auto"},
-'153394':{index:"Nifty EV & New Age Auto",name:"Nifty EV Auto"},
-'150930':{index:"Nifty Pharma",name:"Nifty Pharma"},
-'152521':{index:"Nifty Realty",name:"Nifty Realty"},
-'152039':{index:"Nifty Realty",name:"Nifty Realty"},
-'154179':{index:"Nifty Consumption",name:"Nifty Consumption"},
-'153081':{index:"Nifty Infrastructure",name:"Nifty Infra"},
-'151911':{index:"Nifty Financial Services",name:"Nifty Fin Serv"},
+  /* Hook into LDv315 */
 
-'153223':{index:"Nifty Smallcap 250",name:"Nifty Smallcap 250"},
-'148807':{index:"Nifty Midcap 150",name:"Nifty Midcap 150"},
-'152916':{index:"Nifty Midcap 150",name:"Nifty Midcap 150"},
+  setTimeout(() => {
 
-'153264':{index:"Nifty 100",name:"Nifty 100"},
-'152936':{index:"Nifty 200",name:"Nifty 200"},
-'154145':{index:"Nifty 200",name:"Nifty 200"},
-'151781':{index:"Nifty 200",name:"Nifty 200"},
+    const origSelectAMC = window.selectAMC;
 
-'153736':{index:"Nifty 500",name:"Nifty 500"},
-'154032':{index:"Nifty 500",name:"Nifty 500"},
+    if (origSelectAMC) {
+      window.selectAMC = function(amc, el, isInit=false) {
+        origSelectAMC(amc, el, isInit);
 
-DEFAULT:{index:"Nifty 50",name:"Nifty 50"}
+        const sel = document.getElementById('fundSelect');
+        if (sel) {
+          sel.removeEventListener('change', updateLiveEstimate);
+          sel.addEventListener('change', updateLiveEstimate);
+        }
+      };
+    }
 
-};
+    const origInitLiveChart = window.initLiveChart;
 
-async function fetchNiftyIndex(indexName){
+    if (origInitLiveChart) {
+      window.initLiveChart = async function() {
+        await origInitLiveChart();
+        updateLiveEstimate();
+      };
+    }
 
-const res=await fetch(
-"https://niftyindices.com/Backpage.aspx/getLiveIndex",
-{
-method:"POST",
-headers:{
-"content-type":"application/json"
-},
-body:JSON.stringify({name:indexName})
-}
-);
+  },500);
 
-const json=await res.json();
-
-const data=JSON.parse(json.d);
-
-return parseFloat(data[0].percentChange);
-
-}
-
-async function updateLiveEstimate(){
-
-const estBox=document.getElementById("liveEstBox");
-const estVal=document.getElementById("estValue");
-const estName=document.getElementById("estIdxName");
-
-if(!estBox||document.getElementById("liveChartModal").style.display!=="flex")
-return;
-
-estBox.style.display="block";
-
-const fundCode=document.getElementById("fundSelect").value;
-
-const config=benchmarkMap[fundCode]||benchmarkMap.DEFAULT;
-
-estName.textContent=config.name;
-
-try{
-
-estVal.textContent="Change: ...";
-
-const pct=await fetchNiftyIndex(config.index);
-
-estVal.textContent=`Change: ${pct>=0?"+":""}${pct.toFixed(2)}%`;
-
-if(pct>0.05)
-estBox.style.backgroundColor="#dcfce7";
-else if(pct<-0.05)
-estBox.style.backgroundColor="#fee2e2";
-else
-estBox.style.backgroundColor="#ffedd5";
-
-}catch(e){
-
-estVal.textContent="Change: N/A";
-estBox.style.backgroundColor="#f2f5f9";
-
-}
-
-}
-
-setTimeout(()=>{
-
-const origSelectAMC=window.selectAMC;
-
-if(origSelectAMC){
-
-window.selectAMC=function(amc,el,isInit=false){
-
-origSelectAMC(amc,el,isInit);
-
-const sel=document.getElementById("fundSelect");
-
-if(sel){
-
-sel.removeEventListener("change",updateLiveEstimate);
-sel.addEventListener("change",updateLiveEstimate);
-
-}
-
-};
-
-}
-
-const origInitLiveChart=window.initLiveChart;
-
-if(origInitLiveChart){
-
-window.initLiveChart=async function(){
-
-await origInitLiveChart();
-
-updateLiveEstimate();
-
-};
-
-}
-
-},500);
-
-setInterval(()=>{
-
-if(document.getElementById("liveChartModal")&&document.getElementById("liveChartModal").style.display==="flex")
-updateLiveEstimate();
-
-},900000);
+  setInterval(() => {
+    if (
+      document.getElementById('liveChartModal') &&
+      document.getElementById('liveChartModal').style.display === 'flex'
+    ) {
+      updateLiveEstimate();
+    }
+  },900000);
 
 })();
 </script>
