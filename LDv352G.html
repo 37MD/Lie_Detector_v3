@@ -2976,7 +2976,7 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').ca
 
 <script>
 (function() {
-  // 1. Inject the CSS (drastically reduced font size, tucked into bottom right)
+  // 1. Inject the CSS
   const css = `
     #liveEstBox {
       position: absolute; bottom: 6px; right: 6px;
@@ -2992,7 +2992,7 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').ca
   styleEl.innerHTML = css;
   document.head.appendChild(styleEl);
 
-  // 2. Inject the HTML Box into the Live Cockpit automatically
+  // 2. Inject the HTML Box
   window.addEventListener('DOMContentLoaded', () => {
     const mainPane = document.querySelector('#liveChartModal .chart-main-pane');
     if (mainPane) {
@@ -3004,7 +3004,7 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').ca
     }
   });
 
-  // 3. Mapping and Logic
+  // 3. Benchmarks
   const benchmarkMap = {
     '153679': { ticker: '^NIFTYPVTBANK', name: 'Nifty Pvt Bank' },
     '150468': { ticker: '^CNXIT', name: 'Nifty IT' },
@@ -3033,6 +3033,21 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').ca
     'DEFAULT': { ticker: '^NSEI', name: 'Nifty 50' }
   };
 
+  // Robust Fetch function to bypass Browser blocks
+  async function fetchYahooData(ticker) {
+    const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=15m&range=1d`;
+    try {
+      // Primary Proxy: allorigins.win
+      const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`);
+      const proxyData = await res.json();
+      return JSON.parse(proxyData.contents);
+    } catch (e1) {
+      // Secondary Proxy Fallback: codetabs
+      const res2 = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}`);
+      return await res2.json();
+    }
+  }
+
   async function updateLiveEstimate() {
     const estBox = document.getElementById('liveEstBox');
     const estVal = document.getElementById('estValue');
@@ -3045,25 +3060,16 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').ca
     estName.textContent = config.name;
 
     try {
-      // Create the target URL, properly encoding the ticker (e.g. ^CNX200 becomes %5ECNX200)
-      const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(config.ticker)}?interval=15m&range=1d`;
-      
-      // Route through a free CORS proxy so the browser does not block the request
-      const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
-      
-      const response = await fetch(proxyUrl);
-      if (!response.ok) throw new Error("CORS Proxy or API failed");
-      
-      const data = await response.json();
+      estVal.textContent = "Change: ..."; // Loading state
+      const data = await fetchYahooData(config.ticker);
       const meta = data.chart.result[0].meta;
       
-      // Extract pricing safely, accommodating slight variations in Yahoo's JSON structure
       const currentPrice = meta.regularMarketPrice;
       const prevClose = meta.chartPreviousClose || meta.previousClose;
       
-      if (!currentPrice || !prevClose) throw new Error("Pricing data missing from payload");
+      if (!currentPrice || !prevClose) throw new Error("Price missing");
 
-      // ONLY calculating the % change from yesterday's close
+      // % change from yesterday's close
       const changePct = ((currentPrice - prevClose) / prevClose) * 100;
       
       estVal.textContent = `Change: ${changePct >= 0 ? '+' : ''}${changePct.toFixed(2)}%`;
@@ -3073,13 +3079,12 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').ca
       else estBox.style.backgroundColor = '#ffedd5';
       
     } catch (err) {
-      console.error("Live Estimate Error:", err);
-      estVal.textContent = "Change: --%";
+      estVal.textContent = "Change: N/A";
       estBox.style.backgroundColor = '#f2f5f9';
     }
   }
 
-  // 4. Hook into the existing LDv315 UI functions safely
+  // 4. Hook safely into LDv315
   setTimeout(() => {
     const origSelectAMC = window.selectAMC;
     if (origSelectAMC) {
