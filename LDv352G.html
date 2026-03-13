@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Lie Detector v3.52G</title>
+<title>Lie Detector v3.14 HTTP App</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-zoom/2.0.1/chartjs-plugin-zoom.min.js"></script>
@@ -177,6 +177,8 @@
   .nw-divider { width: 1px; background: var(--border); align-self: stretch; }
 
   /* ── ALERT BANNER ── */
+  /* #alertBanner: ALWAYS in flow at fixed height — prevents chart reflow on show/hide.
+     visibility:hidden keeps the 36px slot reserved; charts never resize. */
   #alertBanner {
     display: block; height: 36px; line-height: 36px; padding: 0 12px;
     text-align: center; font-weight: 700; font-size: 0.82rem;
@@ -188,6 +190,9 @@
     visibility: visible; border-bottom-color: rgba(0,0,0,0.15);
     animation: pulseAlert 1.8s ease-in-out infinite;
   }
+  /* liveAlertBanner (Analytics) and liveChartAlertBanner (Cockpit):
+     Both live inside position:fixed modal-overlays that contain Chart.js canvases (Cockpit)
+     or card layouts (Analytics). Fixed height + visibility keeps slots reserved — no reflow. */
   #liveAlertBanner, #liveChartAlertBanner {
     display: block; height: 36px; line-height: 36px; padding: 0 12px;
     text-align: center; font-weight: 700; font-size: 0.82rem;
@@ -202,6 +207,7 @@
   .alert-danger { background: var(--red); color: #fff; }
   .alert-buy { background: var(--accent); color: #021a0f; }
   .alert-profit { background: var(--accent2); color: #1a0a00; }
+  /* alert-mega: letter-spacing only — font/padding identical to base, no reflow */
   .alert-mega { letter-spacing: 0.09em; }
   @keyframes pulseAlert { 0%, 100% { opacity: 1; } 50% { opacity: 0.72; } }
 
@@ -243,6 +249,7 @@
     position: absolute;
     top: 4px;
     left: 4px;
+    /* explicit width so text-overflow:ellipsis actually fires */
     width: calc(100% - 60px);
     font-family: var(--mono);
     font-size: 0.55rem;
@@ -261,9 +268,11 @@
     padding: 2px 5px;
     border-radius: 2px;
   }
+  /* Sub-pane HUDs: sit just below the delta-label chip (≈18px tall) */
   #liveRsiHud, #liveDeltaHud, #simRsiHud, #simDeltaHud {
     top: 20px;
     font-size: 0.52rem;
+    /* narrower — right side is occupied by the static value label */
     width: calc(60% - 8px);
   }
 
@@ -279,10 +288,12 @@
       font-size: 0.95rem !important;
       padding: 2px 4px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
+    /* ── FIX: reduce chart height on mobile to free up psy-box space ── */
     .chart-container {
       height: 44vh;
       min-height: 300px;
     }
+    /* ── FIX: tighten psy-logic so all 4 lines fit comfortably ── */
     .psy-logic {
       font-size: 0.65rem;
       line-height: 1.4;
@@ -313,6 +324,7 @@
   .reg-B { color: var(--accent2); background: var(--accent2-dim); border: 1px solid rgba(245,158,11,0.3); }
   .reg-C { color: var(--red); background: var(--red-dim); border: 1px solid rgba(240,64,96,0.3); }
 
+  /* ── PSY BOX ── FIX: removed overflow-y:auto and flex-grow:1 so content always renders fully ── */
   .psy-box { padding: 4px 14px 10px 14px; background: var(--surface); flex-shrink: 0; font-size: 0.62rem; }
   .psy-logic {
     font-size: 0.70rem; color: var(--text); line-height: 1.6; font-weight: 400;
@@ -364,6 +376,7 @@
   .modal-close-btn:hover { opacity: 0.7; }
   .modal-title { font-size: 0.72rem; letter-spacing: 0.1em; font-weight: 400; }
 
+  /* ── LOG TABLE ── */
   .log-table { width: 100%; font-size: 0.75rem; text-align: left; border-collapse: collapse; font-weight: 400; }
   .log-table th { padding: 10px 8px; border-bottom: 1px solid var(--border); color: var(--muted); font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 400;}
   .log-table td { padding: 9px 8px; border-bottom: 1px solid var(--border); }
@@ -371,6 +384,9 @@
   .log-sell { color: var(--red); }
   .log-profit { color: var(--accent2); }
   .log-tax { color: var(--muted); font-size: 0.65rem; }
+
+  /* ── LIVE MODAL ── */
+  #liveAnalyticsModal .indicator-row { background: var(--surface2); }
 
   /* ── LIVE ANALYTICS CARDS ── */
   .la-card {
@@ -410,13 +426,16 @@
     cursor: pointer; transition: color 0.15s; letter-spacing: 0.06em;
     border-radius: var(--radius-sm); font-weight: 400;
   }
+  .tf-btn:hover { color: var(--text); }
   .tf-btn.active { color: var(--accent); background: var(--accent-dim); }
   .reset-zoom {
     font-size: 0.6rem; background: transparent; border: 1px solid var(--border2);
     color: var(--muted); padding: 3px 8px; border-radius: var(--radius-sm); cursor: pointer;
     font-family: var(--mono); letter-spacing: 0.06em; transition: all 0.15s; font-weight: 400;
   }
+  .reset-zoom:hover { border-color: var(--muted); color: var(--text); }
 
+  /* ── NEW REVIEW UI ── */
   .review-container { padding: 10px 14px 24px 14px; overflow-y: scroll; -webkit-overflow-scrolling: touch; flex-grow: 1; min-height: 0; }
   .score-card { background: var(--surface2); border: 1px solid var(--border); padding: 10px 14px; border-radius: var(--radius); margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;}
   .score-title { font-size: 0.55rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 400;}
@@ -435,32 +454,6 @@
   
   .remarks-box { padding: 7px 11px; border-left: 3px solid; background: rgba(0,0,0,0.2); font-size: 0.68rem; line-height: 1.4; font-weight: 400; margin-bottom: 3px; border-radius: 0 var(--radius-sm) var(--radius-sm) 0;}
   .section-title { font-size: 0.60rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 5px; border-bottom: 1px solid var(--border); padding-bottom: 4px; font-weight: 400; margin-top: 8px;}
-
-  /* ─────────────────────────────────────────────
-     ADD-ON STYLE: LDv352G Estimated Change Box
-     ───────────────────────────────────────────── */
-  .est-box {
-    position: absolute;
-    bottom: 40px;
-    right: 40px;
-    padding: 6px 12px;
-    border-radius: var(--radius-sm);
-    z-index: 50;
-    font-family: var(--mono);
-    font-size: 0.75rem; /* Matches NAV price size from Hud */
-    color: var(--red); /* Font color Red */
-    font-weight: 400; /* No Bold */
-    border: 1px solid rgba(0,0,0,0.1);
-    pointer-events: none;
-    transition: background-color 0.3s ease;
-  }
-  .est-title {
-    font-size: 0.45rem;
-    color: var(--muted2);
-    display: block;
-    margin-bottom: 2px;
-    text-transform: uppercase;
-  }
 </style>
 </head>
 <body>
@@ -469,7 +462,7 @@
 
 <div id="setupScreen">
   <div class="setup-logo">Sacred RSI Regime System</div>
-  <h1 class="setup-title">Lie Detector HTTP App <span style="color:var(--muted);font-size:0.45em;font-weight:400;">v3.52G</span></h1>
+  <h1 class="setup-title">Lie Detector HTTP App <span style="color:var(--muted);font-size:0.45em;font-weight:400;">v3.14</span></h1>
   <p class="setup-sub">Train your discipline before real money does.</p>
 
   <div class="fund-grid" id="fundGrid">
@@ -500,6 +493,7 @@
   </div>
 </div>
 
+<!-- ══ LIVE CHART MODAL (original cockpit) ══ -->
 <div id="liveChartModal" class="modal-overlay">
   <div class="modal-close">
     <div style="display:flex;gap:8px;align-items:center;">
@@ -522,6 +516,7 @@
     <div class="ind-box" style="flex:1.3;"><span class="label-sm">Regime</span><div id="liveRegimeBlock" class="ind-val">--</div></div>
   </div>
 
+  <!-- TF buttons: 1D 1W 2W 1M 3M 6M 1Y (default 1Y) -->
   <div class="tf-row" id="liveChartTfRow">
     <button class="tf-btn" onclick="updateLiveChartOnly(3,this)">3D</button>
     <button class="tf-btn" onclick="updateLiveChartOnly(5,this)">1W</button>
@@ -532,19 +527,14 @@
     <button class="tf-btn active" onclick="updateLiveChartOnly(250,this)">1Y</button>
   </div>
 
+  <!-- Returns % row -->
   <div id="cockpitReturns" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;padding:3px 8px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;"></div>
 
-  <div style="flex-grow:1;padding:4px 8px 6px;display:flex;flex-direction:column;min-height:0;position: relative;">
+  <div style="flex-grow:1;padding:4px 8px 6px;display:flex;flex-direction:column;min-height:0;">
     <div class="chart-split">
       <div class="chart-main-pane">
         <div class="chart-hud" id="liveHudMainChart"></div>
         <div class="canvas-box"><canvas id="liveChartCanvas2"></canvas></div>
-
-        <div id="liveEstBox" class="est-box" style="display: none;">
-          <span id="estIdxName" class="est-title">Reference Index</span>
-          <div id="estValue">Estimated change: --%</div>
-        </div>
-
       </div>
       <div class="chart-rsi-pane">
         <div class="delta-label">MOMENTUM RIBBON · RSI vs WMA20(RSI)</div>
@@ -562,11 +552,14 @@
 </div>
 
 <div id="liveAnalyticsModal" class="modal-overlay">
+  <!-- TOP BAR: 2 rows -->
   <div style="flex-shrink:0;background:var(--surface);border-bottom:1px solid var(--border);padding:6px 12px;">
+    <!-- Row 1: title left, close right -->
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
       <span class="modal-title" style="color:var(--accent);">LIVE ANALYTICS</span>
       <span class="modal-close-btn" onclick="closeLive()">[ X ] CLOSE</span>
     </div>
+    <!-- Row 2: fund name left, NAV right (both on same line) -->
     <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;">
       <span id="liveFundName" style="font-size:0.6rem;color:var(--text);font-family:var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:65%;"></span>
       <span style="display:flex;align-items:baseline;gap:6px;flex-shrink:0;">
@@ -575,8 +568,14 @@
       </span>
     </div>
   </div>
+
+  <!-- Alert banner -->
   <div id="liveAlertBanner"></div>
+
+  <!-- SCROLLABLE BODY -->
   <div style="flex-grow:1;overflow-y:auto;padding:3px 7px 6px;display:flex;flex-direction:column;gap:4px;min-height:0;">
+
+    <!-- VERDICT CARD — compact, no bold -->
     <div id="laVerdict" style="border-radius:var(--radius);padding:6px 10px;background:var(--surface2);border:2px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:72px;">
       <div style="flex:1;">
         <div style="font-size:0.5rem;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:1px;display:flex;align-items:baseline;gap:5px;">
@@ -588,6 +587,8 @@
       </div>
       <div id="laVerdictBadge" style="font-size:1.6rem;flex-shrink:0;"></div>
     </div>
+
+    <!-- ROW 1: Regime · W-RSI · D-RSI · Delta -->
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:4px;">
       <div class="la-card2">
         <div class="la-label">Regime</div>
@@ -610,6 +611,8 @@
         <div id="laDeltaDesc" class="la-sub2"></div>
       </div>
     </div>
+
+    <!-- ROW 2: TSL · WMA 20 · SMA 50 (TSL wider +4 chars, WMA -3, SMA -1) -->
     <div style="display:grid;grid-template-columns:1.28fr 0.79fr 0.93fr;gap:4px;">
       <div class="la-card2">
         <div class="la-label">TSL Floor</div>
@@ -627,10 +630,14 @@
         <div id="laSMADesc" class="la-sub2"></div>
       </div>
     </div>
+
+    <!-- ROW 3: Growth % (1D 1W 1M 3M 6M 1Y) -->
     <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:4px 7px;">
       <div style="font-size:0.5rem;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px;">Growth %</div>
       <div id="laGrowthRow" style="display:grid;grid-template-columns:repeat(6,1fr);gap:3px;"></div>
     </div>
+
+    <!-- ROW 4: Momentum · Structure · Velocity -->
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;">
       <div class="la-card2">
         <div class="la-label">Momentum</div>
@@ -645,10 +652,13 @@
         <div id="laVelocity" style="font-size:0.62rem;font-weight:400;line-height:1.3;color:var(--text);"></div>
       </div>
     </div>
+
+    <!-- SIGNAL CHECKLIST (at bottom) — bold labels kept -->
     <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:6px 9px;">
       <div style="font-size:0.58rem;color:var(--muted2);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:6px;font-weight:700;border-bottom:1px solid var(--border);padding-bottom:4px;">Signal Checklist</div>
       <div id="laChecklist" style="display:flex;flex-direction:column;gap:3px;"></div>
     </div>
+
   </div>
 </div>
 
@@ -691,7 +701,9 @@
         <div id="revRegimes" style="font-size:0.55rem;color:var(--muted);margin-top:2px;text-align:right;"></div>
       </div>
     </div>
+    
     <div id="auditContent"></div>
+    
     <p class="section-title">Overall Behavioral Remarks</p>
     <div id="feedbackContainer"></div>
   </div>
@@ -707,6 +719,7 @@
       <button class="btn-review" onclick="endAndReview()">END &amp; REVIEW</button>
     </div>
   </header>
+
   <div class="networth-header">
     <div class="nw-col"><span class="nw-lbl">Net Worth</span><span class="nw-val" id="nwVal" style="color:var(--accent);">₹1,00,000</span></div>
     <div class="nw-divider"></div>
@@ -714,7 +727,9 @@
     <div class="nw-divider"></div>
     <div class="nw-col"><span class="nw-lbl">Cash</span><span class="nw-val" id="cashVal">₹1,00,000</span></div>
   </div>
+
   <div id="alertBanner"></div>
+
   <main class="main-sim">
     <div class="chart-container">
       <div class="chart-header">
@@ -751,23 +766,27 @@
         <button class="tf-btn" onclick="setSimTf(999,this)">ALL</button>
       </div>
     </div>
+
     <div class="main-sim-scroll">
     <div class="indicator-row">
       <div class="ind-box" style="flex: 0.8;"><span class="label-sm">Daily RSI</span><div id="dRsi" class="ind-val">--</div></div>
       <div class="ind-box" style="flex: 0.8;"><span class="label-sm">Weekly RSI</span><div id="wRsi" class="ind-val">--</div></div>
       <div class="ind-box" style="flex: 1.4;"><span class="label-sm">Regime</span><div id="regimeBlock" class="ind-val">--</div></div>
     </div>
+
     <div class="psy-box">
       <span class="label-sm">Psychology Logic</span>
       <div id="psyMsg" class="psy-logic">Analyzing institutional flow…</div>
     </div>
     </div>
   </main>
+
   <footer class="action-bar">
     <button class="btn btn-buy"    id="btnBuy10"  onclick="trade('BUY10')">BUY 10%</button>
     <button class="btn btn-hold"               onclick="nextDay()">HOLD</button>
     <button class="btn btn-buy"    id="btnBuy25"  onclick="trade('BUY25')">BUY 25%</button>
     <button class="btn btn-buy"    id="btnBuy50"  onclick="trade('BUY50')">BUY 50%</button>
+
     <button class="btn btn-profit" id="btnProfit" onclick="trade('SELL_PROFIT')">PROFIT</button>
     <button class="btn btn-sell"   id="btnTsl"    onclick="trade('SELL_TSL')">TSL</button>
     <button class="btn btn-sell"   id="btnRegime" onclick="trade('SELL_REGIME')">REGIME</button>
@@ -776,7 +795,9 @@
 </div>
 
 <script>
-// (Full LDv315 Script Content below)
+// ─────────────────────────────────────────────
+//  DATA 
+// ─────────────────────────────────────────────
 const amcFunds = {
   'HDFC': [
     { name: 'HDFC Flexi Cap - Growth',              code: '118989' },
@@ -848,6 +869,7 @@ function saveFundSelection() {
   const sel = document.getElementById('fundSelect');
   const profitIn = document.getElementById('profitDeltaIn');
   const buyIn = document.getElementById('buyDeltaIn');
+  
   if (activeBtn && sel && sel.value) {
     localStorage.setItem('ld_v3_amc', activeBtn.textContent.trim());
     localStorage.setItem('ld_v3_fund', sel.value);
@@ -873,15 +895,18 @@ window.addEventListener('DOMContentLoaded', () => {
   const savedFund = localStorage.getItem('ld_v3_fund');
   const savedProfit = localStorage.getItem('ld_v3_profit_delta');
   const savedBuy = localStorage.getItem('ld_v3_buy_delta');
+
   const boxes = Array.from(document.querySelectorAll('.fund-box'));
   let targetBox = boxes.find(b => b.textContent.trim() === savedAMC);
   if (!targetBox) targetBox = boxes[1]; 
   selectAMC(savedAMC, targetBox, true);
+  
   const sel = document.getElementById('fundSelect');
   if (savedFund) {
     sel.value = savedFund;
     if (sel.selectedIndex === -1) sel.selectedIndex = 0; 
   }
+  
   if (savedProfit !== null) document.getElementById('profitDeltaIn').value = savedProfit;
   if (savedBuy !== null) document.getElementById('buyDeltaIn').value = savedBuy;
 });
@@ -893,18 +918,24 @@ function getBriefFundName() {
   return name.replace(/\[NPS\] | - Growth| - Direct/gi, '').trim();
 }
 
+// ─────────────────────────────────────────────
+//  STATE
+// ─────────────────────────────────────────────
 let fullHistory = [], globalLiveData = [];
-let globalWeeklyRsiCache = [];
-let globalDailyRsiCache  = [];
-let simWeeklyRsiCache    = [];
-let simDailyRsiCache     = [];
+// Pre-computed W-RSI cache — eliminates O(n²) recalculation per bar
+// Indexed by full-history position: globalWeeklyRsiCache[i] = W-RSI up to bar i
+let globalWeeklyRsiCache = [];  // Live W-RSI cache
+let globalDailyRsiCache  = [];  // Live daily RSI cache
+let simWeeklyRsiCache    = [];  // Sim W-RSI cache
+let simDailyRsiCache     = [];  // Sim daily RSI cache
 let currentIdx = 0, simStartIdx = 0;
 let chart = null, deltaChart = null, rsiChart = null, liveChart = null, liveDeltaChart = null, liveRsiChart = null;
 let cash = 100000, tranches = [], tradeLog = [];
 let prevRegime = null, prevNav = null, currentRegimeLog = 'A';
 let totalTaxPaid = 0, peakNetWorth = 100000, maxDrawdown = 0;
 let profitDeltaLevel = 15, buyDeltaLevel = -15;
-let simChartWindow = 999;
+let simChartWindow = 999; // 999 = show all visible
+
 let simHoverIdx = null, liveHoverIdx = null;
 
 function setSimTf(n, btn) {
@@ -914,6 +945,9 @@ function setSimTf(n, btn) {
   updateDisplay();
 }
 
+// ─────────────────────────────────────────────
+//  MATH HELPERS
+// ─────────────────────────────────────────────
 function formatShortDate(dateStr) {
   if (!dateStr) return '';
   const parts = dateStr.split('-');
@@ -963,6 +997,7 @@ const universalAnnotationsPlugin = {
     if (!meta.data || meta.data.length === 0) return;
     const isLive = ci.canvas.id.includes('live');
     const activeIdx = isLive ? liveHoverIdx : simHoverIdx;
+    
     if (activeIdx !== null && meta.data[activeIdx]) {
       const ax = meta.data[activeIdx].x;
       ctx.save();
@@ -971,13 +1006,17 @@ const universalAnnotationsPlugin = {
       ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(148,163,184,0.6)'; ctx.stroke();
       ctx.restore();
     }
-    if (ci.canvas.id.includes('liveChartCanvas2') || ci.canvas.id === 'mainChart') {
+
+    if (ci.canvas.id === 'liveChartCanvas' || ci.canvas.id === 'liveChartCanvas2' || ci.canvas.id === 'mainChart') {
       const data = ci.data.datasets[0].data;
+      const wma  = ci.data.datasets[1] ? ci.data.datasets[1].data : [];
       if (!data || data.length === 0) return;
       ctx.save();
       const startX = meta.data[0].x;
       const endX   = meta.data[data.length - 1].x;
-      let sLows = [], sHighs = [];
+      
+      let sLows = [];
+      let sHighs = [];
       for (let i = data.length - 3; i >= 2; i--) {
         if (data[i] <= data[i-1] && data[i] < data[i-2] && data[i] <= data[i+1] && data[i] < data[i+2]) {
           if (sLows.length === 0 || (sLows[sLows.length-1].idx - i) > 4) sLows.push({ idx: i, val: data[i] });
@@ -986,28 +1025,115 @@ const universalAnnotationsPlugin = {
           if (sHighs.length === 0 || (sHighs[sHighs.length-1].idx - i) > 4) sHighs.push({ idx: i, val: data[i] });
         }
       }
+      
       if (sLows.length > 0) {
         ctx.lineWidth = 1; ctx.setLineDash([3, 3]); ctx.font = '9px "Space Mono"';
         const lastVal = data[data.length - 1];
+        
+        let reclaimed = false;
+        if (sHighs.length >= 2 && lastVal > sHighs[0].val && lastVal > sHighs[1].val) {
+            reclaimed = true;
+        }
+
         let targetLow = sLows[0];
-        const reclaimed = sHighs.length >= 2 && lastVal > sHighs[0].val && lastVal > sHighs[1].val;
-        if (!reclaimed && sLows.length > 1 && sLows[1].val < sLows[0].val) targetLow = sLows[1];
+        if (!reclaimed && sLows.length > 1 && sLows[1].val < sLows[0].val) {
+            targetLow = sLows[1];
+        }
+
         const isBreached = lastVal < targetLow.val;
+        
         const yPos1 = ci.scales.y.getPixelForValue(targetLow.val);
-        ctx.beginPath(); ctx.strokeStyle = isBreached ? '#f04060' : '#f59e0b';
-        ctx.fillStyle = ctx.strokeStyle; ctx.moveTo(startX, yPos1); ctx.lineTo(endX, yPos1); ctx.stroke();
-        ctx.textAlign = 'left'; ctx.fillText(isBreached ? `TSL BREACHED: ₹${targetLow.val.toFixed(2)}` : `TSL: ₹${targetLow.val.toFixed(2)}`, startX + 5, yPos1 - 5);
+        ctx.beginPath();
+        ctx.strokeStyle = isBreached ? '#f04060' : '#f59e0b';
+        ctx.fillStyle   = ctx.strokeStyle;
+        ctx.moveTo(startX, yPos1); ctx.lineTo(endX, yPos1); ctx.stroke();
+        ctx.textAlign = 'left';
+        
+        const lbl1 = isBreached ? `TSL BREACHED: ₹${targetLow.val.toFixed(2)}` : `TSL: ₹${targetLow.val.toFixed(2)}`;
+        ctx.fillText(lbl1, startX + 5, yPos1 - 5);
+
+        if (isBreached) {
+          let untestedLow = null;
+          for (let i = 0; i < sLows.length; i++) {
+            if (sLows[i].val < lastVal) {
+              untestedLow = sLows[i];
+              break;
+            }
+          }
+          if (untestedLow) {
+            const yPos2 = ci.scales.y.getPixelForValue(untestedLow.val);
+            ctx.beginPath();
+            ctx.strokeStyle = 'rgba(245, 158, 11, 0.6)'; 
+            ctx.fillStyle   = ctx.strokeStyle;
+            ctx.moveTo(startX, yPos2); ctx.lineTo(endX, yPos2); ctx.stroke();
+            ctx.fillText(`NEW TSL: ₹${untestedLow.val.toFixed(2)}`, startX + 5, yPos2 - 5);
+          }
+        }
+      }
+      
+      if (wma.length > 0) {
+        ctx.font = '8px "Space Mono"'; ctx.textAlign = 'center'; ctx.setLineDash([]);
+        let lastLabelIdx = -50;
+        for (let i = 50; i < data.length; i++) {
+          if (i - lastLabelIdx < 8) continue;
+          const window5 = data.slice(i-5, i+1);
+          const bMax = Math.max(...window5), bMin = Math.min(...window5);
+          const preBox = data.slice(i-50, i-5);
+          const preMax = preBox.length ? Math.max(...preBox) : 0;
+          const preMin = preBox.length ? Math.min(...preBox) : 0;
+          
+          if ((bMax - bMin) / bMin < 0.015 && wma[i] != null) {
+            const isDeclining = preMax > bMax * 1.02;
+            const isAdvancing = preMin < bMin * 0.98;
+            
+            if (meta.data[i-2] && meta.data[i-2].x !== undefined) {
+              const x = meta.data[i-2].x;
+              if (isDeclining && data[i] > wma[i]) {
+                ctx.fillStyle = '#00e8a2';
+                ctx.fillText('PC', x, ci.scales.y.getPixelForValue(bMin) + 12);
+                lastLabelIdx = i;
+              } else if (isAdvancing && data[i] < wma[i]) {
+                ctx.fillStyle = '#f04060';
+                ctx.fillText('NC', x, ci.scales.y.getPixelForValue(bMax) - 5);
+                lastLabelIdx = i;
+              }
+            }
+          }
+        }
       }
       const lastVal = data[data.length - 1];
-      const lastY = ci.scales.y.getPixelForValue(lastVal);
-      ctx.beginPath(); ctx.setLineDash([2, 4]); ctx.strokeStyle = '#00e8a2'; ctx.fillStyle = '#00e8a2';
+      const lastY   = ci.scales.y.getPixelForValue(lastVal);
+      ctx.beginPath(); ctx.setLineDash([2, 4]);
+      ctx.strokeStyle = '#00e8a2'; ctx.fillStyle = '#00e8a2';
       ctx.moveTo(startX, lastY); ctx.lineTo(endX, lastY); ctx.stroke();
-      ctx.textAlign = 'right'; ctx.font = '9px "Space Mono"'; ctx.fillText(`NOW: ₹${lastVal.toFixed(2)}`, endX - 5, lastY - 5);
+      ctx.textAlign = 'right'; ctx.font = '9px "Space Mono"';
+      ctx.fillText(`NOW: ₹${lastVal.toFixed(2)}`, endX - 5, lastY - 5);
+      ctx.restore();
+    }
+
+    if (ci.canvas.id === 'liveDeltaCanvas' || ci.canvas.id === 'liveDeltaCanvas2' || ci.canvas.id === 'deltaChart') {
+      const yProfit = ci.scales.y.getPixelForValue(profitDeltaLevel);
+      const yBuy = ci.scales.y.getPixelForValue(buyDeltaLevel);
+      const endX = ci.chartArea.right;
+
+      ctx.save();
+      ctx.font = '9px "Space Mono"';
+      ctx.textAlign = 'right';
+      
+      ctx.fillStyle = 'rgba(240, 64, 96, 0.9)';
+      ctx.fillText(`PROFIT DELTA: ${profitDeltaLevel}`, endX - 5, yProfit - 4);
+      
+      ctx.fillStyle = 'rgba(0, 232, 162, 0.9)';
+      ctx.fillText(`SCOUT BUY: ${buyDeltaLevel}`, endX - 5, yBuy - 4);
       ctx.restore();
     }
   }
 };
 
+// ── syncCharts: cross-chart hover synchronisation ────────────────────────────
+// Stores the hovered index into simHoverIdx / liveHoverIdx so the
+// universalAnnotationsPlugin can draw the crosshair on all panes at once.
+// Called from every onHover handler on every chart canvas.
 function syncCharts(charts, activeElements, isLive) {
   if (activeElements && activeElements.length) {
     const idx = activeElements[0].index;
@@ -1018,6 +1144,35 @@ function syncCharts(charts, activeElements, isLive) {
   charts.forEach(c => { if(c) c.update('none'); });
 }
 
+// ── Zoom sync: when one sim chart zooms/pans, apply same x range to siblings ─
+let _syncingZoom = false;
+function syncSimZoom(sourceChart) {
+  if (_syncingZoom) return;
+  _syncingZoom = true;
+  try {
+    const { min, max } = sourceChart.scales.x;
+    [chart, rsiChart, deltaChart].forEach(c => {
+      if (c && c !== sourceChart) c.zoomScale('x', { min, max }, 'none');
+    });
+  } finally {
+    _syncingZoom = false;
+  }
+}
+
+// ── Shared W-RSI Vector helper (The Auditor's Tide Algorithm) ────────────────
+// Classifies the Weekly RSI slope into one of 5 tide phases using a 4-week
+// (Δ20 trading-day) lookback — the "Goldilocks" window capturing one full
+// institutional monthly rebalancing cycle.
+//
+// Phase mapping (matches the 3-Stage Declining W-RSI framework):
+//   🌊 RISING  : W-RSI ≥ 60 AND Δ4W ≥ 0  → GREEN LIGHT, full size
+//   🟢 COOLING : W-RSI ≥ 60 AND Δ4W < 0  → GREEN LIGHT, standard cooldown
+//   ⚠️ WARNING : 50 ≤ W-RSI < 60 AND Δ4W ≤ −5 → YELLOW, truncate to 50%
+//   🟡 FLAT    : 50 ≤ W-RSI < 60 AND Δ4W > −5 → YELLOW caution
+//   🔴 DEAD    : W-RSI < 50              → RED ABORT, Daily RSI rule invalid
+//
+// Returns { html, arrow (↑↘→↓), color, label } used by all 3 HUD builders
+// and the static RSI pane right-side labels.
 function calcTideHTML(wrsiArr, idx) {
   const wv   = wrsiArr[idx];
   const wv4w = idx >= 20 ? wrsiArr[idx - 20] : wrsiArr[0];
@@ -1037,84 +1192,179 @@ function calcTideHTML(wrsiArr, idx) {
     badge = '🔴 TIDE: DEAD';
     arrow = '↓';
   }
-  return { html: `<span style="color:${color};font-weight:700;">${badge}&nbsp;&nbsp;W-RSI ${Math.round(wv)} | Δ4W ${sign}${dW.toFixed(1)}</span>`, arrow, color, label: badge };
+  const html = `<span style="color:${color};font-weight:700;">${badge}&nbsp;&nbsp;W-RSI ${Math.round(wv)} | Δ4W ${sign}${dW.toFixed(1)}</span>`;
+  return { html, arrow, color, label: badge };
 }
 
+// ── calcVectorClass: W-RSI 4-Week Slope → Execution Rule ─────────────────────
+// For buying Daily-RSI 40–50 dips in Regime A.  Three exclusive tiers:
+//   🟢 Rising_100% Size       : Δ4W > 0  (vector pointing up)
+//   🟠 Healthy Cooldown_50%   : |Δ4W| ≤ 5 AND W-RSI ≥ 60  (slowing but intact)
+//   🔴 Regime Death_Hard Abort: Δ4W ≤ −5  (institutional sellers taking over)
+// Returns { text, color, sizeRule, dW }
 function calcVectorClass(wrsiArr, idx) {
   const wv  = wrsiArr[idx];
   const wv4 = idx >= 20 ? wrsiArr[idx - 20] : wrsiArr[0];
   const dW  = wv - wv4;
-  if (dW <= -5) return { text: '🔴 Regime Death_Hard Abort', color: '#f04060', sizeRule: 'ABORT', dW };
-  if (dW > 0) return { text: '🟢 Rising_100% Size', color: '#00e8a2', sizeRule: '100%', dW };
-  if (wv >= 60) return { text: '🟠 Healthy Cooldown_50% Size', color: '#f59e0b', sizeRule: '50%', dW };
+  if (dW <= -5) {
+    return { text: '🔴 Regime Death_Hard Abort', color: '#f04060', sizeRule: 'ABORT', dW };
+  }
+  if (dW > 0) {
+    return { text: '🟢 Rising_100% Size', color: '#00e8a2', sizeRule: '100%', dW };
+  }
+  // dW in (-5, 0]
+  if (wv >= 60) {
+    return { text: '🟠 Healthy Cooldown_50% Size', color: '#f59e0b', sizeRule: '50%', dW };
+  }
+  // W-RSI < 60 and slightly negative — treat conservatively
   return { text: '🔴 Regime Death_Hard Abort', color: '#f04060', sizeRule: 'ABORT', dW };
 }
 
+// ── wrsiSegColor: W-RSI line segment colorizer ───────────────────────────────
+// Used as the Chart.js segment.borderColor callback on the W-RSI dashed line
+// overlay on all 3 RSI/Momentum panes (cockpit, analytics, simulator).
+// Colors the line green/amber/red to show live tide phase at each data point.
+function wrsiSegColor(wrsiArr) {
+  return ctx => {
+    const wr = wrsiArr[ctx.p1DataIndex];
+    return wr >= 60 ? 'rgba(0,232,162,0.75)' : wr >= 50 ? 'rgba(245,158,11,0.75)' : 'rgba(240,64,96,0.75)';
+  };
+}
+
+// ── fetchFundData: hardened with timeout, lock, HTTP-status check, NaN filter ──
+let _fetchLock = false; // HIGH-3: prevents concurrent fetches on rapid button taps
 async function fetchFundData() {
+  if (_fetchLock) return [];                           // lock: ignore re-entry
+  _fetchLock = true;
   const code = document.getElementById('fundSelect').value;
   const ovEl = document.getElementById('ov');
   const ovTxt = document.getElementById('ovTxt');
   ovTxt.textContent = 'FETCHING DATA...';
+  ovTxt.style.color = 'var(--accent)';
   ovEl.style.display = 'flex';
-  const url = code.startsWith('SM') ? `https://npsnav.in/api/historical/${code}` : `https://api.mfapi.in/mf/${code}`;
+  const url = code.startsWith('SM')
+    ? `https://npsnav.in/api/historical/${code}`
+    : `https://api.mfapi.in/mf/${code}`;
+  // CRITICAL-1: 12-second timeout — if API hangs, app recovers cleanly
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 12000);
   try {
-    const res = await fetch(url);
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timer);
+    // HIGH-4: check HTTP status before parsing JSON
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     ovEl.style.display = 'none';
-    if (!data || !data.data) return [];
-    return data.data.map(d => ({ nav: parseFloat(d.nav), date: d.date })).reverse();
-  } catch(e) { ovEl.style.display = 'none'; return []; }
+    if (!data || !data.data || !Array.isArray(data.data)) return [];
+    // MED-5: filter out any rows with NaN or zero nav
+    return data.data
+      .map(d => ({ nav: parseFloat(d.nav), date: d.date }))
+      .filter(d => Number.isFinite(d.nav) && d.nav > 0)
+      .reverse();
+  } catch(e) {
+    clearTimeout(timer);
+    const msg = e.name === 'AbortError' ? 'API TIMEOUT (12s) — RETRY' : `NETWORK ERROR: ${e.message}`;
+    ovTxt.textContent = msg;
+    ovTxt.style.color = 'var(--red)';
+    setTimeout(() => { ovEl.style.display = 'none'; }, 2500);
+    return [];
+  } finally {
+    _fetchLock = false;                                // always release lock
+  }
 }
 
+
+// ── buildDailyRsiCache: O(n) daily RSI pre-computation — call once per fund load ──
+// Returns array[i] = RSI(prices[0..i], 14) using incremental Wilder smoothing.
 function buildDailyRsiCache(allPrices, period = 14) {
   const cache = new Array(allPrices.length).fill(50);
+  if (allPrices.length < 2) return cache;
   let ag = 0, al = 0, primed = false;
   for (let i = 1; i < allPrices.length; i++) {
     const d = allPrices[i] - allPrices[i - 1];
-    if (!primed) { ag += (d > 0 ? d : 0); al += (d < 0 ? -d : 0); if (i === period) { ag /= period; al /= period; primed = true; } cache[i] = 50; continue; }
-    ag = (ag * (period - 1) + (d > 0 ? d : 0)) / period; al = (al * (period - 1) + (d < 0 ? -d : 0)) / period;
+    if (!primed) {
+      // Accumulate seed averages for first 'period' changes
+      ag += (d > 0 ? d : 0);
+      al += (d < 0 ? -d : 0);
+      if (i === period) {
+        ag /= period; al /= period; primed = true;
+      }
+      cache[i] = 50; continue;
+    }
+    ag = (ag * (period - 1) + (d > 0 ? d : 0)) / period;
+    al = (al * (period - 1) + (d < 0 ? -d : 0)) / period;
+    if (ag === 0 && al === 0) { cache[i] = 50; continue; }
     cache[i] = al === 0 ? 100 : 100 - (100 / (1 + ag / al));
   }
   return cache;
 }
 
+// ── buildWeeklyRsiCache: O(n) pre-computation — call once per fund load ──────
+// Wilder's smoothed RSI applied once across ALL history.
+// Returns array indexed [0..prices.length-1], value = W-RSI at that bar.
 function buildWeeklyRsiCache(allPrices, period = 14) {
   const cache = new Array(allPrices.length).fill(50);
-  const weekly = []; let ag = 0, al = 0, primed = false;
+  const weekly = [];  // weekly nav values accumulated as we walk forward
+  let ag = 0, al = 0, primed = false;
   for (let i = 0; i < allPrices.length; i++) {
-    if (i % 5 === 0) weekly.push(allPrices[i]); if (weekly.length < 2) continue;
+    if (i % 5 === 0) weekly.push(allPrices[i]);  // sample every 5th bar (1 week)
+    if (weekly.length < 2) { cache[i] = 50; continue; }
     const wLen = weekly.length;
     if (!primed && wLen >= period + 1) {
-      let g = 0, l = 0; for (let k = 1; k <= period; k++) { const d = weekly[k] - weekly[k-1]; d > 0 ? g += d : l -= d; }
+      // Seed Wilder averages with first 'period' changes
+      let g = 0, l = 0;
+      for (let k = 1; k <= period; k++) {
+        const d = weekly[k] - weekly[k-1];
+        d > 0 ? g += d : l -= d;
+      }
       ag = g / period; al = l / period; primed = true;
     }
+    // Only update Wilder averages when a new weekly bar is added (every 5 daily bars)
     if (primed && wLen > period && i % 5 === 0) {
-      const d = weekly[wLen-1] - weekly[wLen-2]; ag = (ag * (period-1) + (d > 0 ? d : 0)) / period; al = (al * (period-1) + (d < 0 ? -d : 0)) / period;
+      const d = weekly[wLen-1] - weekly[wLen-2];
+      ag = (ag * (period-1) + (d > 0 ? d : 0)) / period;
+      al = (al * (period-1) + (d < 0 ? -d : 0)) / period;
     }
-    if (primed) cache[i] = al === 0 ? 100 : 100 - (100 / (1 + ag / al));
+    if (!primed) { cache[i] = 50; continue; }
+    if (ag === 0 && al === 0) { cache[i] = 50; continue; }
+    cache[i] = al === 0 ? 100 : 100 - (100 / (1 + ag / al));
   }
   return cache;
 }
 
+// ── LIVE ENGINE ──
 async function initLiveChart() {
   saveFundSelection();
   document.getElementById('liveChartFundName').textContent = getBriefFundName();
+  // Clear stale banner from previous fund
+  const _cpBanner = document.getElementById('liveChartAlertBanner'); _cpBanner.textContent = ''; _cpBanner.className = '';
+  profitDeltaLevel = parseFloat(document.getElementById('profitDeltaIn').value) || 15;
+  buyDeltaLevel    = parseFloat(document.getElementById('buyDeltaIn').value)    || -15;
   globalLiveData = await fetchFundData();
   if (!globalLiveData.length) return;
+  if (globalLiveData.length < 50) { alert("INSUFFICIENT DATA\n\nThis fund is too new to plot Live moving averages."); return; }
+  // Pre-compute W-RSI cache once — eliminates O(n²) per-bar RSI in chart builders
   globalWeeklyRsiCache = buildWeeklyRsiCache(globalLiveData.map(d => d.nav));
   globalDailyRsiCache  = buildDailyRsiCache(globalLiveData.map(d => d.nav));
   document.getElementById('setupScreen').style.display = 'none';
   document.getElementById('liveChartModal').style.display = 'flex';
+  const btns = document.getElementById('liveChartTfRow').children;
+  for (const b of btns) b.classList.remove('active');
+  btns[6].classList.add('active');
   updateLiveChartOnly(250);
-  // ADD-ON HOOK
-  updateLiveEstimate();
 }
 
 async function initLiveAnalytics() {
   saveFundSelection();
   document.getElementById('liveFundName').textContent = getBriefFundName();
+  // Clear stale banner from previous fund
+  const _anBanner = document.getElementById('liveAlertBanner'); _anBanner.textContent = ''; _anBanner.className = '';
+  profitDeltaLevel = parseFloat(document.getElementById('profitDeltaIn').value) || 15;
+  buyDeltaLevel    = parseFloat(document.getElementById('buyDeltaIn').value)    || -15;
   globalLiveData = await fetchFundData();
   if (!globalLiveData.length) return;
+  if (globalLiveData.length < 50) { alert("INSUFFICIENT DATA\n\nThis fund is too new to plot Live moving averages."); return; }
+  // Pre-compute W-RSI cache once — eliminates O(n²) per-bar RSI in chart builders
   globalWeeklyRsiCache = buildWeeklyRsiCache(globalLiveData.map(d => d.nav));
   globalDailyRsiCache  = buildDailyRsiCache(globalLiveData.map(d => d.nav));
   document.getElementById('setupScreen').style.display = 'none';
@@ -1122,130 +1372,1728 @@ async function initLiveAnalytics() {
   updateLiveChart(250);
 }
 
+// Legacy alias — kept so any stray references still work
+async function initLive() { return initLiveAnalytics(); }
+
+// ── updateLiveChartOnly: drives the original cockpit canvas (separate canvases) ──
 function updateLiveChartOnly(days, btnEl) {
-  if (btnEl) { for (const b of document.getElementById('liveChartTfRow').children) b.classList.remove('active'); btnEl.classList.add('active'); }
+  if (btnEl) {
+    for (const b of document.getElementById('liveChartTfRow').children) b.classList.remove('active');
+    btnEl.classList.add('active');
+  }
+  liveHoverIdx = null;
   const dataSlice = globalLiveData.slice(-days);
-  const wmaSlice  = dataSlice.map((_, i) => { const ai = globalLiveData.length - dataSlice.length + i; return calculateWMA(globalLiveData.slice(Math.max(0, ai-19), ai+1).map(h => h.nav), 20); });
-  const smaSlice = dataSlice.map((_, i) => { const ai = globalLiveData.length - dataSlice.length + i; return calculateSMA(globalLiveData.slice(Math.max(0, ai-49), ai+1).map(h => h.nav), 50); });
-  const drsiArr = dataSlice.map((_, i) => globalDailyRsiCache[globalLiveData.length - dataSlice.length + i]);
-  const wrsiArr = dataSlice.map((_, i) => globalWeeklyRsiCache[globalLiveData.length - dataSlice.length + i]);
-  const lastNav = globalLiveData[globalLiveData.length-1].nav, lastDRsi = drsiArr[drsiArr.length-1], lastWRsi = wrsiArr[wrsiArr.length-1];
-  const lastRegime = lastWRsi >= 50 ? 'A' : (lastWRsi >= 40 ? 'B' : 'C');
-  document.getElementById('liveNav').textContent = `₹${lastNav.toFixed(2)}`;
-  document.getElementById('liveDRsi').textContent = Math.round(lastDRsi);
-  document.getElementById('liveWRsi').textContent = Math.round(lastWRsi);
-  document.getElementById('liveRegimeBlock').textContent = `Regime ${lastRegime}`;
-  document.getElementById('liveRegimeBlock').className = 'ind-val ' + (lastRegime==='A'?'reg-A':(lastRegime==='B'?'reg-B':'reg-C'));
-  if (liveChart) liveChart.destroy();
-  liveChart = new Chart(document.getElementById('liveChartCanvas2').getContext('2d'), {
-    type:'line', plugins:[universalAnnotationsPlugin],
-    data:{ labels:dataSlice.map(d=>d.date), datasets:[{data:dataSlice.map(d=>d.nav), borderColor:'#00e8a2', pointRadius:0, fill:true}] },
-    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{x:{display:false}, y:{position:'right', afterFit:s=>s.width=40}} }
+  const wmaSlice  = dataSlice.map((_, i) => {
+    const ai = globalLiveData.length - dataSlice.length + i;
+    return calculateWMA(globalLiveData.slice(Math.max(0, ai-19), ai+1).map(h => h.nav), 20);
+  });
+  const smaSlice = dataSlice.map((_, i) => {
+    const ai = globalLiveData.length - dataSlice.length + i;
+    return calculateSMA(globalLiveData.slice(Math.max(0, ai-49), ai+1).map(h => h.nav), 50);
+  });
+  const reqRsi = dataSlice.length + 20;
+  const recentDrsi2 = [];
+  for (let i = 0; i < reqRsi; i++) {
+    const ei = globalLiveData.length - reqRsi + i;
+    // Daily RSI from pre-computed cache (O(n) not O(n²))
+    recentDrsi2.push(ei < 0 ? 50 : (globalDailyRsiCache[ei] ?? 50));
+  }
+  const drsiWma2 = [];
+  for (let i = 0; i < dataSlice.length; i++) drsiWma2.push(calculateWMA(recentDrsi2.slice(i, i+20), 20));
+  const drsiArr2 = recentDrsi2.slice(20);
+
+  const latestPrices = globalLiveData.map(d => d.nav);
+  const lastNav   = latestPrices[latestPrices.length-1];
+  const lastDate  = globalLiveData[globalLiveData.length-1].date;
+  const lastDRsi  = drsiArr2[drsiArr2.length-1];
+  const lastWRsi  = globalWeeklyRsiCache[globalLiveData.length-1] ??
+                    calculateRSI(latestPrices.filter((_,i)=>i%5===0), 14);
+  const lastRegime= lastWRsi>=50?'A':(lastWRsi>=40?'B':'C');
+  const lastDelta = lastDRsi - lastWRsi;
+
+  document.getElementById('liveNavDate').textContent = `NAV (${lastDate})`;
+  document.getElementById('liveNav').textContent     = `₹${lastNav.toFixed(2)}`;
+  const dEl = document.getElementById('liveDRsi');
+  dEl.textContent = Math.round(lastDRsi);
+  dEl.style.color = lastDRsi>=50?'var(--accent)':(lastDRsi>=40?'var(--accent2)':'var(--red)');
+  const wEl = document.getElementById('liveWRsi');
+  wEl.textContent = Math.round(lastWRsi);
+  wEl.style.color = lastWRsi>=50?'var(--accent)':(lastWRsi>=40?'var(--accent2)':'var(--red)');
+  const rEl = document.getElementById('liveRegimeBlock');
+  rEl.textContent = `Regime ${lastRegime}`;
+  rEl.className = 'ind-val '+(lastRegime==='A'?'reg-A':(lastRegime==='B'?'reg-B':'reg-C'));
+
+  // Build alert for cockpit
+  let prevRegimeLive2 = null;
+  if (latestPrices.length > 20) {
+    const pv = latestPrices.slice(0,-1); const pvW = calculateRSI(pv.filter((_,i)=>i%5===0),14);
+    prevRegimeLive2 = pvW>=50?'A':(pvW>=40?'B':'C');
+  }
+  let tslVal2=0, sLows2=[], sHighs2=[];
+  for (let i=latestPrices.length-3;i>=2;i--) {
+    const d=latestPrices;
+    if(d[i]<=d[i-1]&&d[i]<d[i-2]&&d[i]<=d[i+1]&&d[i]<d[i+2]){if(sLows2.length===0||(sLows2[sLows2.length-1].idx-i)>4)sLows2.push({idx:i,val:d[i]});}
+    if(d[i]>=d[i-1]&&d[i]>d[i-2]&&d[i]>=d[i+1]&&d[i]>d[i+2]){if(sHighs2.length===0||(sHighs2[sHighs2.length-1].idx-i)>4)sHighs2.push({idx:i,val:d[i]});}
+  }
+  const reclaimed2 = sHighs2.length>=2 && lastNav>sHighs2[0].val && lastNav>sHighs2[1].val;
+  if(sLows2.length>0){let t=sLows2[0];if(!reclaimed2&&sLows2.length>1&&sLows2[1].val<sLows2[0].val)t=sLows2[1];tslVal2=t.val;}
+  const tslHit2 = tslVal2>0 && lastNav<tslVal2;
+
+  let pcAlert2=false, ncAlert2=false;
+  if(latestPrices.length>=56){const box=latestPrices.slice(-6,-1);const bMax=Math.max(...box),bMin=Math.min(...box);const pre=latestPrices.slice(-56,-6);const pMax=Math.max(...pre),pMin=Math.min(...pre);const bWma=calculateWMA(latestPrices.slice(0,-1),20);if((bMax-bMin)/bMin<=0.02&&(bWma?Math.abs(bMin-bWma)/bWma<=0.04:false)){if(pMax>bMax*1.02&&lastNav>bMax)pcAlert2=true;if(pMin<bMin*0.98&&lastNav<bMin)ncAlert2=true;}}
+
+  const rgDown2 = prevRegimeLive2&&((prevRegimeLive2==='A'&&(lastRegime==='B'||lastRegime==='C'))||(prevRegimeLive2==='B'&&lastRegime==='C'));
+  const rgUp2   = prevRegimeLive2&&((prevRegimeLive2==='C'&&(lastRegime==='B'||lastRegime==='A'))||(prevRegimeLive2==='B'&&lastRegime==='A'));
+  const banner2 = document.getElementById('liveChartAlertBanner');
+
+  // Build per-bar arrays — W-RSI from pre-computed cache (O(n) not O(n²))
+  const deltaData2=[], deltaColors2=[], wmaRegimes2=[], wrsiArr2=[];
+  for(let i=0;i<dataSlice.length;i++){
+    const ei=globalLiveData.length-dataSlice.length+i;
+    const wr = (globalWeeklyRsiCache && globalWeeklyRsiCache[ei] !== undefined)
+      ? globalWeeklyRsiCache[ei]
+      : calculateRSI(globalLiveData.slice(0,ei+1).map(h=>h.nav).filter((_,j)=>j%5===0),14);
+    const d=drsiArr2[i]-wr;
+    deltaData2.push(d);
+    if(d>=20)deltaColors2.push('rgba(0,232,162,1)');else if(d<=-20)deltaColors2.push('rgba(240,64,96,1)');else if(d>0)deltaColors2.push('rgba(0,232,162,0.25)');else deltaColors2.push('rgba(240,64,96,0.25)');
+    wmaRegimes2.push(wr>=50?'A':(wr>=40?'B':'C'));
+    wrsiArr2.push(wr);
+  }
+
+  // Vector classification — now wrsiArr2 is fully populated
+  const vecLive2 = calcVectorClass(wrsiArr2, wrsiArr2.length - 1);
+
+  // Alert banner — vecLive2 is safe to use here
+  let aText='', aCls='';
+  if(tslHit2){aText='🚨 TSL BREACHED ➔ EXECUTE TSL SELL';aCls='alert-danger alert-mega';}
+  else if(rgDown2){aText=lastRegime==='C'?`🚨 REGIME CRASH: ${prevRegimeLive2} ➔ C ➔ SELL ALL`:`⚠️ REGIME DOWNGRADE: ${prevRegimeLive2} ➔ B ➔ HALT BUYING`;aCls='alert-danger';}
+  else if(ncAlert2){aText=vecLive2.sizeRule==='ABORT'?'🚨 NC BREAKDOWN + VECTOR FALLING ➔ HARD ABORT':'🚨 NC BREAKDOWN ➔ DO NOT BUY';aCls='alert-danger';}
+  else if(rgUp2){
+    if(lastRegime==='A'){
+      if(vecLive2.sizeRule==='ABORT'){aText='⚠️ REGIME A RESTORED but VECTOR DECLINING ➔ WAIT FOR SLOPE UPTURN';aCls='alert-danger';}
+      else{aText=`🟢 REGIME A RESTORED ➔ RESUME BUYING [${vecLive2.sizeRule}]`;aCls='alert-buy alert-mega';}
+    } else {aText='🟢 REGIME UPGRADE: C ➔ B ➔ PREPARE TO BUY';aCls='alert-buy';}
+  }
+  else if(lastRegime==='A'){
+    const vArrow2 = vecLive2.sizeRule==='100%'?'↑ RISING':'↘ COOLING';
+    if(vecLive2.sizeRule==='ABORT'){aText=`🔴 VECTOR DECLINING: W-RSI Slope ↓ ➔ NO NEW BUYS (${vecLive2.text})`;aCls='alert-danger';}
+    else if(pcAlert2){aText=`🟢 PC BREAKOUT + VECTOR ${vArrow2} ➔ BUY TRANCHE [${vecLive2.sizeRule}]`;aCls='alert-buy';}
+    else if(lastDRsi<40){aText=`🟢 OVERSOLD RSI<40 + VECTOR ${vArrow2} ➔ BUY TRANCHE [${vecLive2.sizeRule}]`;aCls='alert-buy';}
+    else if(lastDelta<buyDeltaLevel){aText=`🟢 SLINGSHOT Δ<${buyDeltaLevel} + VECTOR ${vArrow2} ➔ BUY TRANCHE [${vecLive2.sizeRule}]`;aCls='alert-buy';}
+    else if(lastDRsi<=50){aText=`🟢 DIP ZONE RSI≤50 + VECTOR ${vArrow2} ➔ WATCH ENTRY [${vecLive2.sizeRule}]`;aCls='alert-buy';}
+  }
+  if(!aText&&lastDelta>profitDeltaLevel){aText=`🟠 OVERHEATED (Delta > ${profitDeltaLevel}) ➔ PULL OUT SOME PROFITS`;aCls='alert-profit';}
+  banner2.textContent = aText || '';
+  banner2.className = aText ? aCls : '';
+  if (aText) { banner2.classList.add('banner-on'); } else { banner2.classList.remove('banner-on'); }
+  const clearCockpitHuds = () => {
+    ['liveHudMainChart','liveRsiHud','liveDeltaHud'].forEach(id=>{
+      const el=document.getElementById(id); if(el) el.innerHTML='';
+    });
+  };
+
+  const hudFn2 = (activeElements) => {
+    const hm = document.getElementById('liveHudMainChart');
+    if(!activeElements||!activeElements.length){clearCockpitHuds();return;}
+    const i=activeElements[0].index;
+    const reg=wmaRegimes2[i];const regC=reg==='A'?'#00e8a2':(reg==='B'?'#f59e0b':'#f04060');
+    const wt=wmaSlice[i]?wmaSlice[i].toFixed(2):'--';const st=smaSlice[i]?smaSlice[i].toFixed(2):'--';
+    const dt=formatShortDate(dataSlice[i].date);
+    const dA=dataSlice.map(x=>x.nav);let lH=null,lL=null;
+    for(let k=i-2;k>=2;k--){if(!lL&&dA[k]<=dA[k-1]&&dA[k]<dA[k-2]&&dA[k]<=dA[k+1]&&dA[k]<dA[k+2])lL=dA[k];if(!lH&&dA[k]>=dA[k-1]&&dA[k]>dA[k-2]&&dA[k]>=dA[k+1]&&dA[k]>dA[k+2])lH=dA[k];if(lL&&lH)break;}
+    const cP=dA[i];let chBadge='';
+    if(lH&&cP>lH)chBadge='<span style="color:#00e8a2;font-weight:700;">[🟢 CHOCH: BULL]</span>';
+    else if(lL&&cP<lL)chBadge='<span style="color:#f04060;font-weight:700;">[🔴 CHOCH: BEAR]</span>';
+    else chBadge='<span style="color:var(--muted);font-weight:700;">[➖ STRUCT: INSIDE]</span>';
+    const pP=i>0?dA[i-1]:cP;const cR=drsiArr2[i];const rW=drsiWma2[i];
+    let mBadge='',mColor='';
+    if(rW){if(cR>rW){if(cP<pP){mBadge='[🛡️ MOM: HIDDEN BUYING]';mColor='#00e8a2';}else{mBadge='[⚡ MOM: ACCELERATING]';mColor='#00e8a2';}}else{if(cP>=pP){mBadge='[⚠️ MOM: FAKE RALLY]';mColor='#f59e0b';}else{mBadge='[📉 MOM: DECELERATING]';mColor='#f04060';}}}
+    const tide2 = calcTideHTML(wrsiArr2, i);
+    const vec2  = calcVectorClass(wrsiArr2, i);
+    // ── Price pane: date · NAV · WMA · SMA50 · CHOCH ─────────────────────────
+    hm.innerHTML =
+      `<span style="color:var(--gold);font-weight:700;">[${dt}]</span> NAV:${dataSlice[i].nav.toFixed(2)} WMA:<span style="color:${regC};">${wt}</span> SMA:${st} ${chBadge}`;
+    // ── Momentum/RSI pane: MOM badge · Vector classification · Tide ──────────
+    const rsiHud = document.getElementById('liveRsiHud');
+    if(rsiHud) rsiHud.innerHTML =
+      `<span style="color:${mColor};">${mBadge}</span>&nbsp;&nbsp;<span style="color:${vec2.color};font-weight:700;">${vec2.text}</span>&nbsp;&nbsp;${tide2.html}`;
+    // ── Delta pane: D.RSI · W.RSI · Δ value ──────────────────────────────────
+    const dltHud = document.getElementById('liveDeltaHud');
+    if(dltHud) dltHud.innerHTML = `D.RSI:<b>${Math.round(cR)}</b> W.RSI:<b>${Math.round(wrsiArr2[i])}</b> <span style="color:${deltaData2[i]>=0?'#00e8a2':'#f04060'};font-weight:700;">Δ${deltaData2[i]>=0?'+':''}${deltaData2[i].toFixed(1)}</span>`;
+  };
+
+  if(liveChart)liveChart.destroy();
+  if(liveRsiChart)liveRsiChart.destroy();
+  if(liveDeltaChart)liveDeltaChart.destroy();
+
+  liveChart = new Chart(document.getElementById('liveChartCanvas2').getContext('2d'),{
+    type:'line',plugins:[universalAnnotationsPlugin],
+    data:{labels:dataSlice.map(d=>d.date),datasets:[
+      {data:dataSlice.map(d=>d.nav),borderColor:'#00e8a2',borderWidth:1.5,pointRadius:0,fill:true,backgroundColor:'rgba(0,158,112,0.06)'},
+      {data:wmaSlice,borderWidth:1.5,borderDash:[4,4],pointRadius:0,fill:false,segment:{borderColor:ctx=>{const r=wmaRegimes2[ctx.p1DataIndex];return r==='A'?'#00e8a2':(r==='B'?'#f59e0b':'#f04060');}}},
+      {data:smaSlice,borderWidth:1,pointRadius:0,fill:false,segment:{borderColor:ctx=>{const i=ctx.p1DataIndex;return dataSlice[i].nav>smaSlice[i]?'rgba(0,232,162,0.8)':'rgba(240,64,96,0.8)';}}}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,animation:false,layout:{padding:{top:32,bottom:4,left:0,right:0}},interaction:{mode:'index',intersect:false},
+      onHover:(event,ae)=>{syncCharts([liveChart,liveRsiChart,liveDeltaChart],ae,true);hudFn2(ae);},
+      plugins:{legend:{display:false},tooltip:{enabled:false},zoom:{zoom:{wheel:{enabled:true},pinch:{enabled:true},mode:'x'},pan:{enabled:true,mode:'x'}}},
+      scales:{x:{display:false,offset:true},y:{position:'right',grid:{color:'rgba(150,170,190,0.5)'},ticks:{display:true,color:'#000000',font:{size:9,family:'"Space Mono"'},maxTicksLimit:6},afterFit:(s)=>{s.width=40;}}}}
+  });
+  liveRsiChart = new Chart(document.getElementById('liveRsiCanvas2').getContext('2d'),{
+    type:'line',plugins:[universalAnnotationsPlugin],
+    data:{labels:dataSlice.map(d=>d.date),datasets:[
+      {data:drsiWma2,borderColor:'rgba(128,153,187,0.8)',borderWidth:1,borderDash:[2,2],pointRadius:0,fill:false},
+      {data:drsiArr2,borderColor:'#1a2a6c',borderWidth:1.5,pointRadius:0,fill:{target:0,above:'rgba(0,158,112,0.15)',below:'rgba(200,16,46,0.15)'}},
+      {data:wrsiArr2,borderWidth:2,pointRadius:0,fill:false,borderDash:[5,3],
+       segment:{borderColor:wrsiSegColor(wrsiArr2)}}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,animation:false,layout:{padding:{top:4,bottom:4,left:0,right:0}},interaction:{mode:'index',intersect:false},
+      onHover:(event,ae)=>{syncCharts([liveChart,liveRsiChart,liveDeltaChart],ae,true);hudFn2(ae);},
+      plugins:{legend:{display:false},tooltip:{enabled:false}},
+      scales:{x:{display:false,offset:true},y:{position:'right',grid:{color:'rgba(150,170,190,0.5)'},ticks:{display:false},afterFit:(s)=>{s.width=40;},min:10,max:100}}}
+  });
+  liveDeltaChart = new Chart(document.getElementById('liveDeltaCanvas2').getContext('2d'),{
+    type:'bar',plugins:[universalAnnotationsPlugin],
+    data:{labels:dataSlice.map(d=>d.date),datasets:[
+      {type:'bar',data:deltaData2,backgroundColor:deltaColors2,barPercentage:1.0,categoryPercentage:1.0},
+      {type:'line',data:Array(dataSlice.length).fill(profitDeltaLevel),borderColor:'#f04060',borderDash:[2,2],pointRadius:0,borderWidth:1},
+      {type:'line',data:Array(dataSlice.length).fill(buyDeltaLevel),borderColor:'#00e8a2',borderDash:[2,2],pointRadius:0,borderWidth:1},
+      {type:'line',data:Array(dataSlice.length).fill(0),borderColor:'rgba(255,255,255,0.3)',borderDash:[4,4],pointRadius:0,borderWidth:1}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,animation:false,layout:{padding:{top:4,bottom:4,left:0,right:0}},interaction:{mode:'index',intersect:false},
+      onHover:(event,ae)=>{syncCharts([liveChart,liveRsiChart,liveDeltaChart],ae,true);hudFn2(ae);},
+      plugins:{legend:{display:false},tooltip:{enabled:false}},
+      scales:{x:{display:false,offset:true},y:{position:'right',grid:{color:'rgba(160,180,200,0.5)'},border:{dash:[2,4]},min:-35,max:35,ticks:{display:false},afterFit:(s)=>{s.width=40;}}}}
+  });
+
+  // ── Populate cockpit Returns % row ──────────────────────────────────
+  const latestNav = globalLiveData[globalLiveData.length-1].nav;
+  const tfRets = [{l:'3D',d:3},{l:'1W',d:5},{l:'2W',d:10},{l:'1M',d:21},{l:'3M',d:63},{l:'6M',d:125},{l:'1Y',d:250}];
+  document.getElementById('cockpitReturns').innerHTML = tfRets.map(tf => {
+    const ri = globalLiveData.length - 1 - tf.d;
+    if(ri<0) return `<div style="text-align:center;"><div style="font-size:0.48rem;color:var(--muted);">${tf.l}</div><div style="font-size:0.65rem;color:var(--muted);">--</div></div>`;
+    const pct = (latestNav - globalLiveData[ri].nav) / globalLiveData[ri].nav * 100;
+    const col = pct>=0?'var(--accent)':'var(--red)';
+    return `<div style="text-align:center;"><div style="font-size:0.48rem;color:var(--muted);text-transform:uppercase;">${tf.l}</div><div style="font-size:0.65rem;font-weight:400;color:${col};">${pct>=0?'+':''}${pct.toFixed(1)}%</div></div>`;
+  }).join('');
+
+  // ── RSI ribbon right-side label (latest values) ──────────────────────
+  const rsiLblEl = document.getElementById('liveRsiLabel');
+  if(rsiLblEl) {
+    const tideStatic = calcTideHTML(wrsiArr2, wrsiArr2.length - 1);
+    rsiLblEl.innerHTML = `RSI ${Math.round(lastDRsi)}&nbsp;&nbsp;WMA ${Math.round(drsiWma2[drsiWma2.length-1]||0)}&nbsp;&nbsp;<span style="color:${tideStatic.color};font-weight:700;">${tideStatic.arrow}</span>`;
+  }
+}
+
+function openLiveAnalyticsFromCockpit() {
+  document.getElementById('liveChartModal').style.display = 'none';
+  document.getElementById('liveAnalyticsModal').style.display = 'flex';
+  // data already loaded, just refresh analytics view
+  updateLiveChart(250);
+}
+
+// ── updateLiveChart: drives Live Analytics modal (numbers dashboard) ─────────
+// Computes all indicators for the selected time window, populates the verdict
+// card, signal checklist, indicator row, and all 3 mini chart canvases.
+// Implements W-RSI Vector (tide phase) via calcTideHTML() on the RSI pane.
+function updateLiveChart(days, btnEl) {
+  liveHoverIdx = null;
+  const dataSlice = globalLiveData.slice(-days);
+  const wmaSlice  = dataSlice.map((_, i) => {
+    const ai = globalLiveData.length - dataSlice.length + i;
+    return calculateWMA(globalLiveData.slice(Math.max(0, ai - 19), ai + 1).map(h => h.nav), 20);
+  });
+  const smaSlice = dataSlice.map((_, i) => {
+    const ai = globalLiveData.length - dataSlice.length + i;
+    return calculateSMA(globalLiveData.slice(Math.max(0, ai - 49), ai + 1).map(h => h.nav), 50);
+  });
+
+  const requiredRsiDaysLive = dataSlice.length + 20;
+  const recentDrsiLive = [];
+  for (let i = 0; i < requiredRsiDaysLive; i++) {
+      const ei = globalLiveData.length - requiredRsiDaysLive + i;
+      // Daily RSI from pre-computed cache (O(n) not O(n²))
+      recentDrsiLive.push(ei < 0 ? 50 : (globalDailyRsiCache[ei] ?? 50));
+  }
+  const drsiWmaHud = [];
+  for (let i = 0; i < dataSlice.length; i++) {
+      drsiWmaHud.push(calculateWMA(recentDrsiLive.slice(i, i + 20), 20));
+  }
+  const drsiArrHud = recentDrsiLive.slice(20);
+
+  const latestPrices = globalLiveData.map(d => d.nav);
+  const lastNav      = latestPrices[latestPrices.length - 1];
+  const lastDate     = globalLiveData[globalLiveData.length - 1].date;
+  const lastDRsi     = drsiArrHud[drsiArrHud.length - 1];
+  const lastWRsi  = globalWeeklyRsiCache[globalLiveData.length-1] ??
+                   calculateRSI(latestPrices.filter((_,j)=>j%5===0),14);
+  const lastRegime   = lastWRsi >= 50 ? 'A' : (lastWRsi >= 40 ? 'B' : 'C');
+  const lastDelta    = lastDRsi - lastWRsi;
+  
+  document.getElementById('liveNavDate') && (document.getElementById('liveNavDate').textContent = `NAV (${lastDate})`);
+
+  let prevRegimeLive = null;
+  if (globalLiveData.length > 1) {
+    // Use cache for previous bar — O(1) lookup instead of full RSI recompute
+    const pvW = globalWeeklyRsiCache[globalLiveData.length - 2] ?? lastWRsi;
+    prevRegimeLive = pvW >= 50 ? 'A' : (pvW >= 40 ? 'B' : 'C');
+  }
+
+  let pcAlert = false, ncAlert = false;
+  if (latestPrices.length >= 56) {
+    const box = latestPrices.slice(-6, -1);
+    const boxMax = Math.max(...box), boxMin = Math.min(...box);
+    const preBox = latestPrices.slice(-56, -6);
+    const preMax = Math.max(...preBox);
+    const preMin = Math.min(...preBox);
+    const boxWma = calculateWMA(latestPrices.slice(0, -1), 20);
+    if ((boxMax - boxMin) / boxMin <= 0.02 && (boxWma ? Math.abs(boxMin - boxWma) / boxWma <= 0.04 : false)) {
+      if (preMax > boxMax * 1.02 && lastNav > boxMax) pcAlert = true;
+      if (preMin < boxMin * 0.98 && lastNav < boxMin) ncAlert = true;
+    }
+  }
+
+  let tslVal = 0;
+  let sLows = [];
+  let sHighs = [];
+  for (let i = latestPrices.length - 3; i >= 2; i--) {
+    let d = latestPrices;
+    if (d[i] <= d[i-1] && d[i] < d[i-2] && d[i] <= d[i+1] && d[i] < d[i+2]) {
+      if (sLows.length === 0 || (sLows[sLows.length-1].idx - i) > 4) sLows.push({idx: i, val: d[i]});
+    }
+    if (d[i] >= d[i-1] && d[i] > d[i-2] && d[i] >= d[i+1] && d[i] > d[i+2]) {
+      if (sHighs.length === 0 || (sHighs[sHighs.length-1].idx - i) > 4) sHighs.push({idx: i, val: d[i]});
+    }
+  }
+  
+  let reclaimed = false;
+  if (sHighs.length >= 2 && lastNav > sHighs[0].val && lastNav > sHighs[1].val) {
+      reclaimed = true;
+  }
+  
+  if (sLows.length > 0) {
+      let targetLow = sLows[0];
+      if (!reclaimed && sLows.length > 1 && sLows[1].val < sLows[0].val) targetLow = sLows[1];
+      tslVal = targetLow.val;
+  }
+  const tslHit = tslVal > 0 && lastNav < tslVal;
+
+  const regimeDowngrade = prevRegimeLive && ((prevRegimeLive === 'A' && (lastRegime === 'B' || lastRegime === 'C')) || (prevRegimeLive === 'B' && lastRegime === 'C'));
+  const regimeUpgrade = prevRegimeLive && ((prevRegimeLive === 'C' && (lastRegime === 'B' || lastRegime === 'A')) || (prevRegimeLive === 'B' && lastRegime === 'A'));
+
+  const banner = document.getElementById('liveAlertBanner');
+  // Vector classification — use cache array for consistent 20-bar (4W) lookback
+  const vecLive = calcVectorClass(globalWeeklyRsiCache, globalLiveData.length - 1);
+  let alertText = '', alertClass = '';
+
+  if (tslHit) { 
+      alertText = '🚨 TSL BREACHED ➔ EXECUTE TSL SELL'; 
+      alertClass = 'alert-danger alert-mega'; 
+  } else if (regimeDowngrade) {
+      if (lastRegime === 'C') {
+          alertText = `🚨 REGIME CRASH: ${prevRegimeLive} ➔ C ➔ SELL ALL`;
+          alertClass = 'alert-danger';
+      } else {
+          alertText = `⚠️ REGIME DOWNGRADE: ${prevRegimeLive} ➔ B ➔ HALT BUYING`;
+          alertClass = 'alert-danger';
+      }
+  } else if (ncAlert) {
+      alertText = vecLive.sizeRule === 'ABORT' ? '🚨 NC BREAKDOWN + VECTOR FALLING ➔ HARD ABORT' : '🚨 NC BREAKDOWN ➔ DO NOT BUY';
+      alertClass = 'alert-danger';
+  } else if (regimeUpgrade) {
+      if (lastRegime === 'A') {
+        if (vecLive.sizeRule === 'ABORT') {
+          alertText = '⚠️ REGIME A RESTORED but VECTOR DECLINING ➔ WAIT FOR SLOPE UPTURN';
+          alertClass = 'alert-danger';
+        } else {
+          alertText = `🟢 REGIME A RESTORED ➔ RESUME BUYING [${vecLive.sizeRule}]`;
+          alertClass = 'alert-buy alert-mega';
+        }
+      } else {
+          alertText = '🟢 REGIME UPGRADE: C ➔ B ➔ PREPARE TO BUY';
+          alertClass = 'alert-buy';
+      }
+  } else if (lastRegime === 'A') {
+      const vArrow = vecLive.sizeRule === '100%' ? '↑ RISING' : '↘ COOLING';
+      if (vecLive.sizeRule === 'ABORT') {
+          alertText = `🔴 VECTOR DECLINING: W-RSI Slope ↓ ➔ NO NEW BUYS (${vecLive.text})`;
+          alertClass = 'alert-danger';
+      } else if (pcAlert) {
+          alertText = `🟢 PC BREAKOUT + VECTOR ${vArrow} ➔ BUY TRANCHE [${vecLive.sizeRule}]`;
+          alertClass = 'alert-buy';
+      } else if (lastDRsi < 40) {
+          alertText = `🟢 OVERSOLD RSI<40 + VECTOR ${vArrow} ➔ BUY TRANCHE [${vecLive.sizeRule}]`;
+          alertClass = 'alert-buy';
+      } else if (lastDelta < buyDeltaLevel) {
+          alertText = `🟢 SLINGSHOT Δ<${buyDeltaLevel} + VECTOR ${vArrow} ➔ BUY TRANCHE [${vecLive.sizeRule}]`;
+          alertClass = 'alert-buy';
+      } else if (lastDRsi <= 50) {
+          alertText = `🟢 DIP ZONE RSI≤50 + VECTOR ${vArrow} ➔ WATCH ENTRY [${vecLive.sizeRule}]`;
+          alertClass = 'alert-buy';
+      }
+  }
+
+  if (!alertText && lastDelta > profitDeltaLevel) { 
+      alertText = `🟠 OVERHEATED (Delta > ${profitDeltaLevel}) ➔ PULL OUT SOME PROFITS`; 
+      alertClass = 'alert-profit'; 
+  }
+
+  banner.textContent = alertText || '';
+  banner.className = alertText ? alertClass : '';
+  if (alertText) { banner.classList.add('banner-on'); } else { banner.classList.remove('banner-on'); }
+
+  // ── LIVE ANALYTICS POPULATION ──────────────────────────────────────────
+  const lastWMA  = calculateWMA(latestPrices, 20);
+  const lastSMA  = calculateSMA(latestPrices, 50);
+  const regColor = lastRegime === 'A' ? 'var(--accent)' : (lastRegime === 'B' ? 'var(--accent2)' : 'var(--red)');
+  const regLabel = lastRegime === 'A' ? 'Structural Bull' : (lastRegime === 'B' ? 'Chop / Transition' : 'Structural Bear');
+  
+  // RSI interpretations
+  const drsiDesc = lastDRsi < 30 ? 'Extremely Oversold' : lastDRsi < 40 ? 'Oversold — Buy Zone' : lastDRsi < 50 ? 'Dip Zone — Entry OK' : lastDRsi < 60 ? 'Neutral / Extended' : lastDRsi < 70 ? 'Overbought' : 'Extremely Overbought';
+  const wrsiDesc = lastWRsi < 40 ? 'Bear Regime' : lastWRsi < 50 ? 'Transition Regime' : lastWRsi < 60 ? 'Mild Bull' : 'Strong Bull';
+  
+  // Delta interpretation
+  const deltaState = lastDelta >= 20 ? 'Ignition 🔥' : lastDelta > 0 ? 'Bull Drift 🟢' : lastDelta > -20 ? 'Bear Drift 🔴' : 'Collapse 💀';
+  const deltaColor = lastDelta >= 20 ? 'var(--accent)' : lastDelta > 0 ? 'rgba(0,232,162,0.7)' : lastDelta > -20 ? 'rgba(240,64,96,0.7)' : 'var(--red)';
+  
+  // TSL
+  const tslDist = tslVal > 0 ? ((lastNav - tslVal) / tslVal * 100) : null;
+  const tslColor = tslHit ? 'var(--red)' : tslDist !== null && tslDist < 3 ? 'var(--accent2)' : 'var(--accent)';
+  const tslDesc = tslHit ? '🚨 BREACHED — Floor Gone' : tslVal === 0 ? 'No TSL detected' : tslDist < 2 ? `⚠️ Only ${tslDist.toFixed(1)}% above TSL` : tslDist < 5 ? `${tslDist.toFixed(1)}% above TSL — Watch closely` : `${tslDist.toFixed(1)}% above TSL — Safe`;
+
+  // WMA / SMA
+  const wmaDist = lastWMA ? ((lastNav - lastWMA) / lastWMA * 100) : null;
+  const smaDist = lastSMA ? ((lastNav - lastSMA) / lastSMA * 100) : null;
+  const wmaColor = wmaDist === null ? 'var(--muted)' : wmaDist > 0 ? 'var(--accent)' : 'var(--red)';
+  const smaColor = smaDist === null ? 'var(--muted)' : smaDist > 0 ? 'var(--accent)' : 'var(--red)';
+  const wmaDesc = wmaDist === null ? '--' : `${wmaDist > 0 ? '+' : ''}${wmaDist.toFixed(1)}% ${wmaDist > 0 ? 'above WMA' : 'below WMA'}`;
+  const smaDesc = smaDist === null ? '--' : `${smaDist > 0 ? '+' : ''}${smaDist.toFixed(1)}% ${smaDist > 0 ? 'above SMA50' : 'below SMA50'}`;
+
+  // Momentum badge
+  const curDRsiWma = calculateWMA(latestPrices.slice(-20).map((_, i, a) => {
+    return calculateRSI(latestPrices.slice(0, latestPrices.length - 19 + i), 14);
+  }), 20);
+  const momAbove = lastDRsi > (curDRsiWma || lastDRsi);
+  const priceRising = latestPrices.length > 1 && lastNav > latestPrices[latestPrices.length - 2];
+  let momText, momColor2;
+  if (momAbove) {
+    if (!priceRising) { momText = '🛡️ HIDDEN BUYING'; momColor2 = 'var(--accent)'; }
+    else { momText = '⚡ ACCELERATING'; momColor2 = 'var(--accent)'; }
+  } else {
+    if (priceRising) { momText = '⚠️ FAKE RALLY'; momColor2 = 'var(--accent2)'; }
+    else { momText = '📉 DECELERATING'; momColor2 = 'var(--red)'; }
+  }
+
+  // CHoCH structure
+  let chochText, chochColor;
+  if (sHighs.length > 0 && lastNav > sHighs[0].val) { chochText = '🟢 BULL BREAK'; chochColor = 'var(--accent)'; }
+  else if (sLows.length > 0 && lastNav < sLows[0].val) { chochText = '🔴 BEAR BREAK'; chochColor = 'var(--red)'; }
+  else { chochText = '➖ INSIDE STRUCT'; chochColor = 'var(--muted2)'; }
+
+  // Slingshot
+  const slingshotActive = lastDelta < buyDeltaLevel;
+
+  // ── Verdict logic ──────────────────────────────────────────────────────
+  let verdictText, verdictReason, verdictBadge, verdictBorder;
+  if (tslHit) {
+    verdictText = lastRegime === 'A' ? 'SMART TSL → SELL 50%' : 'TSL SELL → SELL 100%';
+    verdictReason = lastRegime === 'A' ? 'TSL breached in Regime A. Possible liquidity sweep. Sell half, watch WMA.' : 'TSL breached in bear regime. Full exit required. Protect capital.';
+    verdictBadge = '⚠️'; verdictBorder = 'var(--red)';
+  } else if (lastRegime === 'C') {
+    verdictText = 'HOLD CASH — DO NOT BUY';
+    verdictReason = 'Regime C: Institutional floor gone. Weekly RSI below 40. Zero new positions.';
+    verdictBadge = '🔴'; verdictBorder = 'var(--red)';
+  } else if (regimeDowngrade) {
+    verdictText = 'HALT BUYING — TIGHTEN TSL';
+    verdictReason = `Regime downgraded to ${lastRegime}. No new entries. Manage existing positions with strict TSL.`;
+    verdictBadge = '🟡'; verdictBorder = 'var(--accent2)';
+  } else if (lastDelta > profitDeltaLevel) {
+    verdictText = 'PROFIT HARVEST — SELL TOP LAYER';
+    verdictReason = `Delta ${lastDelta.toFixed(1)} is overheated (>${profitDeltaLevel}). Market exhausted. Trim profits, keep core position.`;
+    verdictBadge = '🟠'; verdictBorder = 'var(--accent2)';
+  } else if (lastRegime === 'A') {
+    if (vecLive.sizeRule === 'ABORT') {
+      verdictText = 'ABORT BUYING — VECTOR DEATH';
+      verdictReason = `${vecLive.text}. W-RSI slope is falling hard. No new positions even in Regime A until vector recovers.`;
+      verdictBadge = '🔴'; verdictBorder = 'var(--red)';
+    } else if (pcAlert) {
+      verdictText = 'BUY 25–50% — PC BREAKOUT';
+      verdictReason = `Price consolidated at WMA and just broke out. Highest-probability entry signal. Position size: ${vecLive.sizeRule}.`;
+      verdictBadge = '🟢'; verdictBorder = 'var(--accent)';
+    } else if (lastDRsi < 40 || slingshotActive) {
+      verdictText = `BUY ${vecLive.sizeRule} — CONFIRMED DIP`;
+      verdictReason = lastDRsi < 40 ? `Oversold RSI in Regime A. Buy the bounce, not the fall. Position size: ${vecLive.sizeRule}.` : `Slingshot active (Delta ${lastDelta.toFixed(1)} < ${buyDeltaLevel}). Rubber-band snap pending. Position size: ${vecLive.sizeRule}.`;
+      verdictBadge = '🟢'; verdictBorder = 'var(--accent)';
+    } else if (lastDRsi <= 50) {
+      verdictText = `BUY ${vecLive.sizeRule} — DIP ENTRY WINDOW`;
+      verdictReason = `Regime A + Daily RSI ≤ 50. Classic dip-buy opportunity. Check TSL before entry. Position size: ${vecLive.sizeRule}.`;
+      verdictBadge = '🟢'; verdictBorder = 'var(--accent)';
+    } else if (ncAlert) {
+      verdictText = 'HOLD — NC BREAKDOWN TRAP';
+      verdictReason = 'Price broke below a consolidation at the bottom. Do not buy. Wait for recovery.';
+      verdictBadge = '⚠️'; verdictBorder = 'var(--red)';
+    } else {
+      verdictText = 'HOLD — WAIT FOR DIP';
+      verdictReason = `Regime A but Daily RSI ${Math.round(lastDRsi)} > 50 and no signal active. Do nothing. Let it compound.`;
+      verdictBadge = '⏸️'; verdictBorder = 'var(--border2)';
+    }
+  } else { // Regime B
+    verdictText = 'HOLD — REGIME B CHOP';
+    verdictReason = 'Choppy transition. No new buying. Quick profits only. Honour TSL strictly.';
+    verdictBadge = '🟡'; verdictBorder = 'var(--accent2)';
+  }
+
+  // Populate DOM
+  const vCard = document.getElementById('laVerdict');
+  vCard.style.borderColor = verdictBorder;
+  document.getElementById('laVerdictText').textContent = verdictText;
+  document.getElementById('laVerdictText').style.color = verdictBorder;
+  // Vector classification shown as first bold line in reason block
+  document.getElementById('laVerdictReason').innerHTML =
+    `<span style="color:${vecLive.color};font-weight:700;font-size:0.58rem;">${vecLive.text}</span>` +
+    `<br><span style="color:var(--muted2);">${verdictReason}</span>`;
+  document.getElementById('laVerdictBadge').textContent = verdictBadge;
+  const ftag = document.getElementById('laVerdictFundTag');
+  if (ftag) ftag.textContent = '— ' + getBriefFundName();
+
+  const rg = document.getElementById('laRegime');
+  rg.textContent = lastRegime; rg.style.color = regColor;
+  document.getElementById('laRegimeDesc').textContent = regLabel;
+
+  const wr2 = document.getElementById('laWRsi');
+  wr2.textContent = Math.round(lastWRsi); wr2.style.color = regColor;
+  document.getElementById('laWRsiDesc').textContent = wrsiDesc;
+
+  const dr2 = document.getElementById('laDRsi');
+  dr2.textContent = Math.round(lastDRsi);
+  dr2.style.color = lastDRsi < 40 ? 'var(--accent)' : lastDRsi < 50 ? 'rgba(0,232,162,0.7)' : lastDRsi > 70 ? 'var(--red)' : 'var(--muted2)';
+  document.getElementById('laDRsiDesc').textContent = drsiDesc;
+
+  const dl2 = document.getElementById('laDelta');
+  dl2.textContent = lastDelta.toFixed(1); dl2.style.color = deltaColor;
+  document.getElementById('laDeltaDesc').textContent = deltaState;
+
+  const tslEl = document.getElementById('laTSL');
+  tslEl.textContent = tslVal > 0 ? `₹${tslVal.toFixed(2)}` : 'N/A'; tslEl.style.color = tslColor;
+  document.getElementById('laTSLDesc').textContent = tslDesc;
+
+  const wmaEl = document.getElementById('laWMA');
+  wmaEl.textContent = lastWMA ? `₹${lastWMA.toFixed(2)}` : '--'; wmaEl.style.color = wmaColor;
+  document.getElementById('laWMADesc').textContent = wmaDesc;
+
+  const smaEl = document.getElementById('laSMA');
+  smaEl.textContent = lastSMA ? `₹${lastSMA.toFixed(2)}` : '--'; smaEl.style.color = smaColor;
+  document.getElementById('laSMADesc').textContent = smaDesc;
+
+  const navEl2 = document.getElementById('laNav');
+  const last1Y = globalLiveData.length >= 250 ? globalLiveData[globalLiveData.length - 250].nav : globalLiveData[0].nav;
+  const navPct = ((lastNav - last1Y) / last1Y * 100);
+  navEl2.textContent = `₹${lastNav.toFixed(2)}`; navEl2.style.color = 'var(--text)';
+  document.getElementById('laNavDesc').textContent = `${navPct >= 0 ? '+' : ''}${navPct.toFixed(1)}% vs 1Y ago`;
+
+  // Growth % for all timeframes
+  const tfDefs = [{lbl:'1D',d:1},{lbl:'1W',d:5},{lbl:'1M',d:21},{lbl:'3M',d:63},{lbl:'6M',d:125},{lbl:'1Y',d:250}];
+  const growthHTML = tfDefs.map(tf => {
+    const refIdx = globalLiveData.length - 1 - tf.d;
+    if (refIdx < 0) return `<div style="text-align:center;"><div style="font-size:0.52rem;color:var(--muted);">${tf.lbl}</div><div style="font-size:0.72rem;color:var(--muted);">--</div></div>`;
+    const refNav = globalLiveData[refIdx].nav;
+    const pct = ((lastNav - refNav) / refNav * 100);
+    const col = pct >= 0 ? 'var(--accent)' : 'var(--red)';
+    return `<div style="text-align:center;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:4px 2px;">
+      <div style="font-size:0.5rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;">${tf.lbl}</div>
+      <div style="font-size:0.78rem;font-weight:700;color:${col};">${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%</div>
+    </div>`;
+  }).join('');
+  document.getElementById('laGrowthRow').innerHTML = growthHTML;
+
+  document.getElementById('laMomentum').textContent = momText;  document.getElementById('laMomentum').style.color = momColor2;
+  document.getElementById('laChoch').textContent = chochText;
+  document.getElementById('laChoch').style.color = chochColor;
+  document.getElementById('laVelocity').textContent = deltaState;
+  document.getElementById('laVelocity').style.color = deltaColor;
+
+  // Timeframe label update
+  const tfLabels = {1:'1D',5:'1W',10:'2W',21:'1M',63:'3M',125:'6M',250:'1Y'};
+  // chart label removed (mini chart removed)
+
+  // Signal Checklist
+  const vecCheck = vecLive.sizeRule !== 'ABORT';
+  const vecCheckIcon = vecLive.sizeRule === 'ABORT' ? '🚨' : vecLive.sizeRule === '100%' ? '✅' : '🟠';
+  const checks = [
+    { icon: lastRegime === 'A' ? '✅' : '❌', text: `Regime A (W-RSI ≥ 50)`, val: `${Math.round(lastWRsi)}`, pass: lastRegime === 'A' },
+    { icon: vecCheckIcon, text: `W-RSI Vector Slope (Regime A upslope)`, val: `${vecLive.text.split('_')[0].trim()} | ${vecLive.sizeRule}`, pass: vecCheck },
+    { icon: lastDRsi <= 50 ? '✅' : '❌', text: `Daily RSI ≤ 50 (dip window)`, val: `${Math.round(lastDRsi)}`, pass: lastDRsi <= 50 },
+    { icon: !tslHit ? '✅' : '🚨', text: `TSL intact (floor not breached)`, val: tslHit ? 'BREACHED' : 'SAFE', pass: !tslHit },
+    { icon: slingshotActive ? '✅' : '❌', text: `Slingshot (Delta < ${buyDeltaLevel})`, val: `${lastDelta.toFixed(1)}`, pass: slingshotActive },
+    { icon: lastDRsi < 40 ? '✅' : '❌', text: `Oversold (RSI < 40)`, val: `${Math.round(lastDRsi)}`, pass: lastDRsi < 40 },
+    { icon: pcAlert ? '✅' : '❌', text: `PC Breakout active`, val: pcAlert ? 'YES' : 'NO', pass: pcAlert },
+    { icon: !ncAlert ? '✅' : '🚨', text: `No NC Breakdown trap`, val: ncAlert ? 'NC ACTIVE' : 'CLEAR', pass: !ncAlert },
+    { icon: (momAbove) ? '✅' : '❌', text: `Momentum: Accelerating or Hidden Buying`, val: momText, pass: momAbove },
+    { icon: lastDelta < profitDeltaLevel ? '✅' : '🟠', text: `Delta < Profit Limit (${profitDeltaLevel})`, val: `${lastDelta.toFixed(1)}`, pass: lastDelta < profitDeltaLevel },
+    { icon: wmaDist !== null && wmaDist > 0 ? '✅' : '❌', text: `Price above WMA 20`, val: wmaDesc, pass: wmaDist > 0 },
+    { icon: smaDist !== null && smaDist > 0 ? '✅' : '❌', text: `Price above SMA 50`, val: smaDesc, pass: smaDist > 0 },
+  ];
+  const cl = document.getElementById('laChecklist');
+  cl.innerHTML = checks.map(c => `
+    <div class="la-check">
+      <span class="la-check-icon">${c.icon}</span>
+      <span class="la-check-text" style="color:${c.pass ? 'var(--text)' : 'var(--muted2)'}">${c.text}</span>
+      <span class="la-check-val">${c.val}</span>
+    </div>
+  `).join('');
+
+  // ── Per-bar arrays: W-RSI, Daily-Weekly delta, momentum, regime color ────
+  const deltaData = [], deltaColors = [], wmaRegimes = [], wrsiArrHud = [];
+  for (let i = 0; i < dataSlice.length; i++) {
+    const ei = globalLiveData.length - dataSlice.length + i;
+    // W-RSI from pre-computed cache (O(n) not O(n²))
+    const wr = (globalWeeklyRsiCache && globalWeeklyRsiCache[ei] !== undefined)
+      ? globalWeeklyRsiCache[ei]
+      : calculateRSI(globalLiveData.slice(0, ei + 1).map(h => h.nav).filter((_, j) => j % 5 === 0), 14);
+    const d = drsiArrHud[i] - wr;
+    deltaData.push(d);
+    
+    if (d >= 20) deltaColors.push('rgba(0, 232, 162, 1)'); 
+    else if (d <= -20) deltaColors.push('rgba(240, 64, 96, 1)');
+    else if (d > 0) deltaColors.push('rgba(0, 232, 162, 0.25)');
+    else deltaColors.push('rgba(240, 64, 96, 0.25)');
+
+    wmaRegimes.push(wr >= 50 ? 'A' : (wr >= 40 ? 'B' : 'C'));
+    wrsiArrHud.push(wr);
+  }
+
+  const updateLocalLiveHud = (activeElements) => {
+    const hm = document.getElementById('liveHudMain');
+    if (!hm) return;
+    if (!activeElements || !activeElements.length) {
+      hm.innerHTML = "";
+      const r=document.getElementById('liveRsiHud'); if(r) r.innerHTML='';
+      const d=document.getElementById('liveDeltaHud'); if(d) d.innerHTML='';
+      return;
+    }
+    const i = activeElements[0].index;
+    const reg = wmaRegimes[i];
+    const regColor = reg === 'A' ? '#00e8a2' : (reg === 'B' ? '#f59e0b' : '#f04060');
+    const wmaText = wmaSlice[i] ? wmaSlice[i].toFixed(2) : '--';
+    const smaText = smaSlice[i] ? smaSlice[i].toFixed(2) : '--';
+    const shortDt = formatShortDate(dataSlice[i].date);
+    
+    const dArr = dataSlice.map(x => x.nav);
+    let lastHigh = null, lastLow = null;
+    for (let k = i - 2; k >= 2; k--) {
+        if (!lastLow && dArr[k] <= dArr[k-1] && dArr[k] < dArr[k-2] && dArr[k] <= dArr[k+1] && dArr[k] < dArr[k+2]) lastLow = dArr[k];
+        if (!lastHigh && dArr[k] >= dArr[k-1] && dArr[k] > dArr[k-2] && dArr[k] >= dArr[k+1] && dArr[k] > dArr[k+2]) lastHigh = dArr[k];
+        if (lastLow && lastHigh) break;
+    }
+    const currP = dArr[i];
+    let chochBadge = '';
+    if (lastHigh && currP > lastHigh) chochBadge = '<span style="color:#00e8a2;font-weight:700;">[🟢 CHOCH: BULL]</span>';
+    else if (lastLow && currP < lastLow) chochBadge = '<span style="color:#f04060;font-weight:700;">[🔴 CHOCH: BEAR]</span>';
+    else chochBadge = '<span style="color:var(--muted);font-weight:700;">[➖ STRUCT: INSIDE]</span>';
+
+    const prevP = i > 0 ? dArr[i-1] : currP;
+    const currR = drsiArrHud[i];
+    const rWma  = drsiWmaHud[i];
+    let momBadge = '', momColor = '';
+    if (rWma) {
+        if (currR > rWma) {
+            if (currP < prevP) { momBadge = '[🛡️ MOM: HIDDEN BUYING]'; momColor = '#00e8a2'; }
+            else { momBadge = '[⚡ MOM: ACCELERATING]'; momColor = '#00e8a2'; }
+        } else {
+            if (currP >= prevP) { momBadge = '[⚠️ MOM: FAKE RALLY]'; momColor = '#f59e0b'; }
+            else { momBadge = '[📉 MOM: DECELERATING]'; momColor = '#f04060'; }
+        }
+    }
+
+    const tideA = calcTideHTML(wrsiArrHud, i);
+    const vecA  = calcVectorClass(wrsiArrHud, i);
+    // Price pane: date · NAV · WMA · SMA50 · CHOCH
+    hm.innerHTML =
+      `<span style="color:var(--gold);font-weight:700;">[${shortDt}]</span> NAV:${dataSlice[i].nav.toFixed(2)} WMA:<span style="color:${regColor};">${wmaText}</span> SMA:${smaText} ${chochBadge}`;
+    // Momentum/RSI pane: MOM badge · Vector classification · Tide
+    const laRsiHud = document.getElementById('liveRsiHud');
+    if (laRsiHud) laRsiHud.innerHTML =
+      `<span style="color:${momColor};">${momBadge}</span>&nbsp;&nbsp;<span style="color:${vecA.color};font-weight:700;">${vecA.text}</span>&nbsp;&nbsp;${tideA.html}`;
+    // Delta pane: D.RSI · W.RSI · Δ value
+    const laDeltaHud = document.getElementById('liveDeltaHud');
+    if (laDeltaHud) laDeltaHud.innerHTML = `D.RSI:<b>${Math.round(currR)}</b> W.RSI:<b>${Math.round(wrsiArrHud[i])}</b> <span style="color:${deltaData[i]>=0?'#00e8a2':'#f04060'};font-weight:700;">Δ${deltaData[i]>=0?'+':''}${deltaData[i].toFixed(1)}</span>`;
+
+  };
+
+  if (liveChart) { liveChart.destroy(); liveChart = null; }
+  if (liveRsiChart) { liveRsiChart.destroy(); liveRsiChart = null; }
+  if (liveDeltaChart) { liveDeltaChart.destroy(); liveDeltaChart = null; }
+
+  // Mini chart canvases removed from analytics page — skip chart creation
+  const _lc = document.getElementById('liveChartCanvas');
+  if (!_lc) return;
+
+  liveChart = new Chart(document.getElementById('liveChartCanvas').getContext('2d'), {
+    type: 'line', plugins: [universalAnnotationsPlugin],
+    data: {
+      labels: dataSlice.map(d => d.date),
+      datasets: [
+        { data: dataSlice.map(d => d.nav), borderColor: '#00e8a2', borderWidth: 1.5, pointRadius: 0, fill: true, backgroundColor: 'rgba(0,158,112,0.06)' },
+        { data: wmaSlice, borderWidth: 1.5, borderDash: [4, 4], pointRadius: 0, fill: false, segment: { borderColor: ctx => { const r = wmaRegimes[ctx.p1DataIndex]; return r==='A'?'#00e8a2':r==='B'?'#f59e0b':'#f04060'; } } },
+        { 
+          data: smaSlice, 
+          borderWidth: 1, 
+          pointRadius: 0, 
+          fill: false, 
+          segment: { borderColor: ctx => { const i = ctx.p1DataIndex; return dataSlice[i].nav > smaSlice[i] ? 'rgba(0,232,162,0.8)' : 'rgba(240,64,96,0.8)'; } } 
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      layout: { padding: { top: 32, bottom: 4, left: 0, right: 0 } },
+      interaction: { mode: 'index', intersect: false },
+      onHover: (event, activeElements) => { syncCharts([liveChart, liveRsiChart, liveDeltaChart], activeElements, true); updateLocalLiveHud(activeElements); },
+      plugins: { legend: { display: false }, tooltip: { enabled: false }, zoom: { zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' }, pan: { enabled: true, mode: 'x' } } },
+      scales: { 
+        x: { display: false, offset: true }, 
+        y: { 
+          position: 'right',
+          grid: { color: 'rgba(150,170,190,0.5)' }, 
+          ticks: { display: true, color: '#000000', font: { size: 9, family: '"Space Mono"' }, maxTicksLimit: 6 },
+          afterFit: (scale) => { scale.width = 40; } 
+        } 
+      }
+    }
+  });
+
+  liveRsiChart = new Chart(document.getElementById('liveRsiCanvas').getContext('2d'), {
+    type: 'line', plugins: [universalAnnotationsPlugin],
+    data: {
+      labels: dataSlice.map(d => d.date),
+      datasets: [
+        { data: drsiWmaHud, borderColor: 'rgba(128,153,187,0.8)', borderWidth: 1, borderDash: [2,2], pointRadius: 0, fill: false },
+        { data: drsiArrHud, borderColor: '#1a2a6c', borderWidth: 1.5, pointRadius: 0, fill: { target: 0, above: 'rgba(0, 158, 112, 0.15)', below: 'rgba(200, 16, 46, 0.15)' } },
+        { data: wrsiArrHud, borderWidth: 2, pointRadius: 0, fill: false, borderDash: [5,3],
+          segment: { borderColor: wrsiSegColor(wrsiArrHud) } }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      layout: { padding: { top: 4, bottom: 4, left: 0, right: 0 } },
+      interaction: { mode: 'index', intersect: false },
+      onHover: (event, activeElements) => { syncCharts([liveChart, liveRsiChart, liveDeltaChart], activeElements, true); updateLocalLiveHud(activeElements); },
+      plugins: { legend: { display: false }, tooltip: { enabled: false } },
+      scales: { 
+        x: { display: false, offset: true }, 
+        y: { 
+          position: 'right',
+          grid: { color: 'rgba(150,170,190,0.5)' }, 
+          ticks: { display: false },
+          afterFit: (scale) => { scale.width = 40; },
+          min: 10, max: 100
+        } 
+      }
+    }
+  });
+
+  liveDeltaChart = new Chart(document.getElementById('liveDeltaCanvas').getContext('2d'), {
+    type: 'bar', plugins: [universalAnnotationsPlugin],
+    data: {
+      labels: dataSlice.map(d => d.date),
+      datasets: [
+        { type: 'bar',  data: deltaData, backgroundColor: deltaColors, barPercentage: 1.0, categoryPercentage: 1.0 },
+        { type: 'line', data: Array(dataSlice.length).fill(profitDeltaLevel), borderColor: '#f04060', borderDash: [2,2], pointRadius: 0, borderWidth: 1 },
+        { type: 'line', data: Array(dataSlice.length).fill(buyDeltaLevel), borderColor: '#00e8a2', borderDash: [2,2], pointRadius: 0, borderWidth: 1 },
+        { type: 'line', data: Array(dataSlice.length).fill(0), borderColor: 'rgba(255,255,255,0.3)', borderDash: [4,4], pointRadius: 0, borderWidth: 1 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      layout: { padding: { top: 4, bottom: 4, left: 0, right: 0 } },
+      interaction: { mode: 'index', intersect: false },
+      onHover: (event, activeElements) => { syncCharts([liveChart, liveRsiChart, liveDeltaChart], activeElements, true); updateLocalLiveHud(activeElements); },
+      plugins: { legend: { display: false }, tooltip: { enabled: false } },
+      scales: { 
+        x: { display: false, offset: true }, 
+        y: { 
+          position: 'right',
+          grid: { color: 'rgba(160,180,200,0.5)' }, 
+          border: { dash: [2,4] }, 
+          min: -35, max: 35, 
+          ticks: { display: false },
+          afterFit: (scale) => { scale.width = 40; } 
+        }
+      }
+    }
   });
 }
 
-function updateLiveChart(days) {
-  const dataSlice = globalLiveData.slice(-days);
-  const lastNav = dataSlice[dataSlice.length-1].nav;
-  document.getElementById('laNav').textContent = `₹${lastNav.toFixed(2)}`;
-}
+function resetLiveZoom() { if (liveChart) liveChart.resetZoom(); }
+function closeLive() { document.getElementById('liveAnalyticsModal').style.display = 'none'; document.getElementById('setupScreen').style.display = 'flex'; }
 
+// ── SIM ENGINE ──────────────────────────────────────────────────────────────
+// initGame(mode): entry point for Simulator and Recent Simulator buttons.
+//   mode='random' — picks a random 18-month window from full history.
+//   mode='wave'   — always starts ~18 months ago (recent history challenge).
+// Fetches fund data, initialises game state, calls updateDisplay() for day 0.
 async function initGame(mode) {
-  saveFundSelection();
+  saveFundSelection(); 
+  document.getElementById('simFundName').textContent = getBriefFundName();
+  // Clear stale banner from previous fund
+  const _simBanner = document.getElementById('alertBanner'); _simBanner.textContent = ''; _simBanner.className = '';
+  document.getElementById('simModeTag').textContent = mode === 'wave' ? 'RECENT SIM' : 'SIMULATOR';
+  profitDeltaLevel = parseFloat(document.getElementById('profitDeltaIn').value) || 15;
+  buyDeltaLevel    = parseFloat(document.getElementById('buyDeltaIn').value)    || -15;
   fullHistory = await fetchFundData();
   if (!fullHistory.length) return;
-  simWeeklyRsiCache = buildWeeklyRsiCache(fullHistory.map(d=>d.nav));
-  simDailyRsiCache = buildDailyRsiCache(fullHistory.map(d=>d.nav));
-  simStartIdx = Math.floor(Math.random() * (fullHistory.length - 450)) + 200;
+  // Pre-compute simulator W-RSI cache — eliminates O(n²) per-bar RSI in updateDisplay
+  simWeeklyRsiCache = buildWeeklyRsiCache(fullHistory.map(d => d.nav));
+  simDailyRsiCache  = buildDailyRsiCache(fullHistory.map(d => d.nav));
+  
+  if (fullHistory.length < 80) {
+      alert("INSUFFICIENT DATA\n\nThis fund is too new. It requires at least 80 days of historical data to generate the simulation charts.");
+      document.getElementById('ov').style.display = 'none';
+      return;
+  }
+  
+  const minRequired = 20;
+  if (mode === 'wave') {
+    const cutoff = new Date();
+    cutoff.setMonth(cutoff.getMonth() - 18);
+    const cutoffStr = `${cutoff.getFullYear()}-${String(cutoff.getMonth()+1).padStart(2,'0')}-${String(cutoff.getDate()).padStart(2,'0')}`;
+    const waveIdx = fullHistory.findIndex(item => item.date >= cutoffStr);
+    simStartIdx = (waveIdx !== -1 && waveIdx > 20) ? waveIdx : Math.max(20, fullHistory.length - 450);
+  } else {
+    simStartIdx = Math.floor(Math.random() * (fullHistory.length - 450)) + 200;
+  }
+  if (simStartIdx < minRequired) simStartIdx = minRequired;
   currentIdx = simStartIdx;
+  tradeLog = []; cash = 100000; tranches = [];
+  prevRegime = null; prevNav = null;
+  totalTaxPaid = 0; peakNetWorth = 100000; maxDrawdown = 0;
+  simHoverIdx = null; simChartWindow = 250;
+  // Reset TF button to 1Y (index 4)
+  const tfBtns = document.getElementById('simTfRow');
+  if (tfBtns) { for (const b of tfBtns.children) b.classList.remove('active'); tfBtns.children[4].classList.add('active'); }
   document.getElementById('setupScreen').style.display = 'none';
   document.getElementById('gameUI').style.display = 'flex';
   updateDisplay();
 }
 
+// ── updateDisplay: master render for the Simulator ───────────────────────────
+// Called after every HOLD/BUY/SELL action and on initial load.
+// Rebuilds all 3 chart panes (price+WMA+SMA, RSI ribbon+W-RSI slope,
+// velocity delta), updates the HUD, regime block, psychology logic,
+// net-worth/drawdown display, and action-bar button states.
+// W-RSI Vector (tide phase) injected via calcTideHTML() into HUD line 3
+// and into the simRsiLabel right-side pane overlay.
 function updateDisplay() {
   const visible = fullHistory.slice(0, currentIdx + 1);
-  const currentNav = visible[visible.length-1].nav;
-  document.getElementById('nwVal').textContent = `₹${Math.round(currentNav).toLocaleString('en-IN')}`;
-}
-
-function nextDay() { currentIdx++; updateDisplay(); }
-function trade(act) { nextDay(); }
-function closeLive() { document.getElementById('liveAnalyticsModal').style.display='none'; document.getElementById('setupScreen').style.display='flex'; }
-
-// ─────────────────────────────────────────────
-//  LDv352G ADD-ON: LIVE INDEX TRACKING ENGINE
-// ─────────────────────────────────────────────
-
-const benchmarkMap = {
-  // NPS Equity -> Nifty 200
-  'SM008001': { ticker: '^CNX200', name: 'Nifty 200' }, 
-  'SM008004': { ticker: '^CNX200', name: 'Nifty 200' },
-  'SM007001': { ticker: '^CNX200', name: 'Nifty 200' }, 
-  'SM007004': { ticker: '^CNX200', name: 'Nifty 200' },
-  'SM005001': { ticker: '^CNX200', name: 'Nifty 200' }, 
-  'SM005004': { ticker: '^CNX200', name: 'Nifty 200' },
-  'SM006001': { ticker: '^CNX200', name: 'Nifty 200' }, 
-  'SM006004': { ticker: '^CNX200', name: 'Nifty 200' },
-  // NPS Corporate/Debt -> Nifty Corporate Bond
-  'SM008002': { ticker: '^NIFTY_CORP_BOND', name: 'Corp Bond Index' }, 
-  'SM007002': { ticker: '^NIFTY_CORP_BOND', name: 'Corp Bond Index' },
-  // Gold & Silver ETFs (NSE Tickers)
-  '119132': { ticker: 'GOLDBEES.NS', name: 'NSE Gold ETF' }, 
-  '150737': { ticker: 'SILVERBEES.NS', name: 'NSE Silver ETF' },
-  '153921': { ticker: 'GOLDBEES.NS', name: 'NSE Gold ETF' }, 
-  '151603': { ticker: 'SILVERBEES.NS', name: 'NSE Silver ETF' },
-  // Bank/IT
-  '150468': { ticker: '^CNXIT', name: 'Nifty IT' },
-  '149858': { ticker: '^NSEBANK', name: 'Nifty Bank' },
-  // Fallback
-  'DEFAULT': { ticker: '^NSEI', name: 'Nifty 50' }
-};
-
-async function updateLiveEstimate() {
-  const estBox = document.getElementById('liveEstBox');
-  const estVal = document.getElementById('estValue');
-  const estName = document.getElementById('estIdxName');
+  const currentNav = visible[visible.length - 1].nav;
+  const currentWma = calculateWMA(visible.map(v => v.nav), 20);
+  const prices = visible.map(v => v.nav);
+  // Current-bar RSI from cache — O(1) lookup
+  const dRsi = simDailyRsiCache[currentIdx]  ?? calculateRSI(prices, 14);
+  const wRsi = simWeeklyRsiCache[currentIdx] ?? calculateRSI(prices.filter((_, i) => i % 5 === 0), 14);
+  const delta = dRsi - wRsi;
+  const dayNum = currentIdx - simStartIdx;
   
-  if (document.getElementById('liveChartModal').style.display !== 'flex') return;
+  document.getElementById('simDay').textContent = `Day ${dayNum}`;
+  document.getElementById('simNav').textContent = `NAV: ₹${currentNav.toFixed(2)}`;
   
-  estBox.style.display = 'block';
-  const fundCode = document.getElementById('fundSelect').value;
-  const config = benchmarkMap[fundCode] || benchmarkMap['DEFAULT'];
-  estName.textContent = config.name;
+  const colorFor = v => v >= 50 ? 'var(--accent)' : (v >= 40 ? 'var(--accent2)' : 'var(--red)');
+  document.getElementById('dRsi').textContent = Math.round(dRsi);
+  document.getElementById('dRsi').style.color = colorFor(dRsi);
+  document.getElementById('wRsi').textContent = Math.round(wRsi);
+  document.getElementById('wRsi').style.color = colorFor(wRsi);
 
-  try {
-    // Note: Yahoo Finance fetch usually requires a proxy in local browser environments.
-    // This logic assumes environment access or uses a fallback simulation if blocked.
-    const response = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${config.ticker}?interval=15m&range=1d`);
-    const data = await response.json();
-    const meta = data.chart.result[0].meta;
-    const changePct = ((meta.regularMarketPrice - meta.previousClose) / meta.previousClose) * 100;
-    
-    estVal.textContent = `Estimated change: ${changePct >= 0 ? '+' : ''}${changePct.toFixed(2)}%`;
-    
-    // Background Color Logic: Green (Up), Orange (Flat), Red (Down)
-    if (changePct > 0.1) {
-      estBox.style.backgroundColor = '#dcfce7'; // Green
-    } else if (changePct < -0.1) {
-      estBox.style.backgroundColor = '#fee2e2'; // Red
-    } else {
-      estBox.style.backgroundColor = '#ffedd5'; // Orange
+  const currentRegime = wRsi >= 50 ? 'A' : (wRsi >= 40 ? 'B' : 'C');
+  currentRegimeLog = currentRegime;
+  const rBlock = document.getElementById('regimeBlock');
+  rBlock.className = 'ind-val ' + (currentRegime === 'A' ? 'reg-A' : (currentRegime === 'B' ? 'reg-B' : 'reg-C'));
+  rBlock.textContent = `Regime ${currentRegime}`;
+
+  const totalUnits = tranches.reduce((s, t) => s + t.units, 0);
+  const currentNW = cash + totalUnits * currentNav;
+  if (currentNW > peakNetWorth) peakNetWorth = currentNW;
+  const currentDD = peakNetWorth > 0 ? (peakNetWorth - currentNW) / peakNetWorth * 100 : 0;
+  if (currentDD > maxDrawdown) maxDrawdown = currentDD;
+  document.getElementById('cashVal').textContent = `₹${Math.round(cash).toLocaleString('en-IN')}`;
+  document.getElementById('nwVal').textContent = `₹${Math.round(currentNW).toLocaleString('en-IN')}`;
+  document.getElementById('ddVal').textContent = `-${currentDD.toFixed(1)}%`;
+
+  const chartData = visible.slice(-Math.min(simChartWindow, visible.length));
+  const wmaData = chartData.map((_, i) => calculateWMA(fullHistory.slice(0, currentIdx - (chartData.length - 1) + i + 1).map(h => h.nav), 20));
+  const smaData = chartData.map((_, i) => calculateSMA(fullHistory.slice(0, currentIdx - (chartData.length - 1) + i + 1).map(h => h.nav), 50));
+  
+  const requiredRsiDays = chartData.length + 20; 
+  const recentDrsi = [];
+  for (let i = 0; i < requiredRsiDays; i++) {
+      const ei = currentIdx - requiredRsiDays + 1 + i;
+      // Daily RSI from pre-computed cache (O(n) not O(n²))
+      recentDrsi.push(ei < 0 ? 50 : (simDailyRsiCache[ei] ?? 50));
+  }
+  const drsiWmaHud = [];
+  for (let i = 0; i < chartData.length; i++) {
+      drsiWmaHud.push(calculateWMA(recentDrsi.slice(i, i + 20), 20));
+  }
+  const drsiArrHud = recentDrsi.slice(20);
+
+  let pcAlert = false, ncAlert = false;
+  if (prices.length >= 56) {
+    const box = prices.slice(-6, -1);
+    const boxMax = Math.max(...box), boxMin = Math.min(...box);
+    const preBox = prices.slice(-56, -6);
+    const preMax = Math.max(...preBox);
+    const preMin = Math.min(...preBox);
+    const boxWma = calculateWMA(prices.slice(0, -1), 20);
+    if ((boxMax - boxMin) / boxMin <= 0.02 && (boxWma ? Math.abs(boxMin - boxWma) / boxWma <= 0.04 : false)) {
+      if (preMax > boxMax * 1.02 && currentNav > boxMax) pcAlert = true;
+      if (preMin < boxMin * 0.98 && currentNav < boxMin) ncAlert = true;
     }
-  } catch (err) {
-    console.warn("Live Estimate Fetch Error - Using Fallback update UI");
-    estVal.textContent = "Estimated change: Tracking...";
-    estBox.style.backgroundColor = '#f2f5f9';
+  }
+
+  let tslVal = 0;
+  let sLows = [];
+  let sHighs = [];
+  const d = chartData.map(x=>x.nav);
+  for (let i = d.length - 3; i >= 2; i--) {
+      if (d[i] <= d[i-1] && d[i] < d[i-2] && d[i] <= d[i+1] && d[i] < d[i+2]) {
+          if (sLows.length === 0 || (sLows[sLows.length-1].idx - i) > 4) sLows.push({idx: i, val: d[i]});
+      }
+      if (d[i] >= d[i-1] && d[i] > d[i-2] && d[i] >= d[i+1] && d[i] > d[i+2]) {
+          if (sHighs.length === 0 || (sHighs[sHighs.length-1].idx - i) > 4) sHighs.push({idx: i, val: d[i]});
+      }
+  }
+  let reclaimed = false;
+  if (sHighs.length >= 2 && currentNav > sHighs[0].val && currentNav > sHighs[1].val) {
+      reclaimed = true;
+  }
+  if (sLows.length > 0) {
+      let targetLow = sLows[0];
+      if (!reclaimed && sLows.length > 1 && sLows[1].val < sLows[0].val) targetLow = sLows[1];
+      tslVal = targetLow.val;
+  }
+  const tslHit = tslVal > 0 && currentNav < tslVal;
+
+  const regimeDowngrade = prevRegime && ((prevRegime === 'A' && (currentRegime === 'B' || currentRegime === 'C')) || (prevRegime === 'B' && currentRegime === 'C'));
+  const regimeUpgrade = prevRegime && ((prevRegime === 'C' && (currentRegime === 'B' || currentRegime === 'A')) || (prevRegime === 'B' && currentRegime === 'A'));
+
+  // Vector slope for psychology filter (re-use simWeeklyRsiCache)
+  const _psyVec = calcVectorClass(simWeeklyRsiCache, currentIdx);
+  let lines = currentRegime === 'A'
+    ? (_psyVec.sizeRule === 'ABORT'
+        ? ['W-RSI slope is declining — vector abort.', 'Smart money reducing exposure.', 'Do NOT add new positions.', 'Existing holdings: keep tight TSL.', 'Wait for W-RSI slope to turn up.']
+        : dRsi <= 50
+          ? ['Optimal Entry Window.', `Vector ${_psyVec.text.split('_')[0]} — ${_psyVec.sizeRule} position.`, 'Daily RSI dipping — execute tranche.', 'Trust the Weekly RSI floor.', 'Respect the TSL at all times.']
+          : ['Structural Bull Trend.', `Vector ${_psyVec.text.split('_')[0]} — momentum intact.`, 'Do not add yet — wait for RSI ≤ 50 dip.', 'Wait for Daily RSI to dip below 50.', 'Keep trailing the TSL upward.'])
+    : currentRegime === 'B'
+    ? ['Regime B Fatigue.', 'Smart money stepping back.', 'Market chopping — no clear direction.', 'Halt all buying immediately.', 'Manage existing positions with TSL.']
+    : ['Trust Cycle Broken.', 'Institutional distribution underway.', 'Do not catch a falling knife.', 'Preserve capital — stay in cash.', 'Wait for Regime A to be restored.'];
+
+  const banner = document.getElementById('alertBanner');
+  let alertText = '', alertClass = '';
+  // Compute W-RSI vector ONCE for this bar — used across all alert tiers
+  const simVec = calcVectorClass(simWeeklyRsiCache, currentIdx);
+  
+  if (currentIdx > simStartIdx) {
+    if (tslHit) { 
+        alertText = '🚨 TSL BREACHED ➔ EXECUTE TSL SELL'; 
+        alertClass = 'alert-danger alert-mega'; 
+        lines = [
+           'TSL Line Broken — floor is gone.',
+           'Do not rationalise — act now.',
+           'Free-fall markets accelerate fast.',
+           'Following new untested swing low.',
+           'Capital preservation is the only goal.'
+        ];
+    }
+    else if (regimeDowngrade) {
+      if (currentRegime === 'C') {
+          alertText = `🚨 REGIME CRASH: ${prevRegime} ➔ C ➔ SELL ALL`;
+          alertClass = 'alert-danger';
+      } else {
+          alertText = `⚠️ REGIME DOWNGRADE: ${prevRegime} ➔ B ➔ HALT BUYING`;
+          alertClass = 'alert-danger';
+      }
+    }
+    else if (ncAlert) {
+        // NC breakdown — compound with vector if also falling
+        alertText = simVec.sizeRule === 'ABORT'
+          ? '🚨 NC BREAKDOWN + VECTOR FALLING ➔ HARD ABORT'
+          : '🚨 NC BREAKDOWN ➔ DO NOT BUY';
+        alertClass = 'alert-danger';
+    }
+    else if (regimeUpgrade) {
+      if (currentRegime === 'A') {
+        if (simVec.sizeRule === 'ABORT') {
+          // W-RSI crossed 50 but slope still declining — false dawn
+          alertText = '⚠️ REGIME A RESTORED but VECTOR DECLINING ➔ WAIT FOR SLOPE UPTURN';
+          alertClass = 'alert-danger';
+        } else {
+          alertText = `🟢 REGIME A RESTORED ➔ RESUME BUYING [${simVec.sizeRule}]`;
+          alertClass = 'alert-buy alert-mega';
+        }
+      } else {
+          alertText = '🟢 REGIME UPGRADE: C ➔ B ➔ PREPARE TO BUY';
+          alertClass = 'alert-buy';
+      }
+    }
+    else if (currentRegime === 'A') {
+      // ── Regime A Buy Ladder — Vector slope gates every entry ──────────────────
+      // Priority: VectorAbort > PC Breakout > Oversold > Slingshot > DipZone
+      if (simVec.sizeRule === 'ABORT') {
+        alertText = `🔴 VECTOR DECLINING: W-RSI Slope ↓ ➔ NO NEW BUYS (${simVec.text})`;
+        alertClass = 'alert-danger';
+      } else if (pcAlert) {
+        alertText = `🟢 PC BREAKOUT + VECTOR ${simVec.sizeRule === '100%' ? '↑ RISING' : '↘ COOLING'} ➔ BUY TRANCHE [${simVec.sizeRule}]`;
+        alertClass = 'alert-buy';
+      } else if (dRsi < 40) {
+        alertText = `🟢 OVERSOLD RSI<40 + VECTOR ${simVec.sizeRule === '100%' ? '↑ RISING' : '↘ COOLING'} ➔ BUY TRANCHE [${simVec.sizeRule}]`;
+        alertClass = 'alert-buy';
+      } else if (delta < buyDeltaLevel) {
+        alertText = `🟢 SLINGSHOT Δ<${buyDeltaLevel} + VECTOR ${simVec.sizeRule === '100%' ? '↑ RISING' : '↘ COOLING'} ➔ BUY TRANCHE [${simVec.sizeRule}]`;
+        alertClass = 'alert-buy';
+      } else if (dRsi <= 50) {
+        alertText = `🟢 DIP ZONE RSI≤50 + VECTOR ${simVec.sizeRule === '100%' ? '↑ RISING' : '↘ COOLING'} ➔ WATCH ENTRY [${simVec.sizeRule}]`;
+        alertClass = 'alert-buy';
+      }
+    }
+    
+    if (!alertText && delta > profitDeltaLevel) { 
+        alertText = `🟠 OVERHEATED (Delta > ${profitDeltaLevel}) ➔ PULL OUT SOME PROFITS`; 
+        alertClass = 'alert-profit'; 
+    }
+  }
+  
+  document.getElementById('psyMsg').innerHTML = lines.map((l, i) => `<div class="psy-line">(${i+1}) ${l}</div>`).join('');
+  banner.textContent = alertText || '';
+  banner.className = alertText ? alertClass : '';
+  if (alertText) { banner.classList.add('banner-on'); } else { banner.classList.remove('banner-on'); }
+
+  prevRegime = currentRegime; prevNav = currentNav;
+
+  const b10 = document.getElementById('btnBuy10'), b25 = document.getElementById('btnBuy25'), b50 = document.getElementById('btnBuy50');
+  const sellBtns = [document.getElementById('btnProfit'), document.getElementById('btnTsl'), document.getElementById('btnRegime'), document.getElementById('btnAll')];
+  
+  b10.disabled = false; b10.textContent = 'BUY 10%';
+  b25.disabled = false; b25.textContent = 'BUY 25%';
+  b50.disabled = false; b50.textContent = 'BUY 50%';
+  sellBtns.forEach(btn => { btn.disabled = false; });
+  document.getElementById('btnAll').textContent = 'SELL ALL';
+
+  const deltaData = [], deltaColors = [], wmaRegimes = [], wrsiArrHud = [];
+  for (let i = 0; i < chartData.length; i++) {
+    const ei = currentIdx - (chartData.length - 1) + i;
+    // W-RSI from pre-computed cache (O(n) not O(n²))
+    const wr = (simWeeklyRsiCache && simWeeklyRsiCache[ei] !== undefined)
+      ? simWeeklyRsiCache[ei]
+      : calculateRSI(fullHistory.slice(0, ei + 1).map(h => h.nav).filter((_, j) => j % 5 === 0), 14);
+    const d = drsiArrHud[i] - wr;
+    deltaData.push(d);
+    
+    if (d >= 20) deltaColors.push('rgba(0, 232, 162, 1)'); 
+    else if (d <= -20) deltaColors.push('rgba(240, 64, 96, 1)');
+    else if (d > 0) deltaColors.push('rgba(0, 232, 162, 0.25)');
+    else deltaColors.push('rgba(240, 64, 96, 0.25)');
+    
+    wmaRegimes.push(wr >= 50 ? 'A' : (wr >= 40 ? 'B' : 'C'));
+    wrsiArrHud.push(wr);
+  }
+
+  const updateLocalSimHud = (activeElements) => {
+    const hm = document.getElementById('simHudMain');
+    if (!activeElements || !activeElements.length) {
+      hm.innerHTML = "";
+      const r=document.getElementById('simRsiHud'); if(r) r.innerHTML='';
+      const d=document.getElementById('simDeltaHud'); if(d) d.innerHTML='';
+      return;
+    }
+    const i = activeElements[0].index;
+    const reg = wmaRegimes[i];
+    const regColor = reg === 'A' ? '#00e8a2' : (reg === 'B' ? '#f59e0b' : '#f04060');
+    const wmaText = wmaData[i] ? wmaData[i].toFixed(2) : '--';
+    const smaText = smaData[i] ? smaData[i].toFixed(2) : '--';
+    const shortDt = formatShortDate(chartData[i].date);
+    
+    const dArr = chartData.map(x => x.nav);
+    let lastHigh = null, lastLow = null;
+    for (let k = i - 2; k >= 2; k--) {
+        if (!lastLow && dArr[k] <= dArr[k-1] && dArr[k] < dArr[k-2] && dArr[k] <= dArr[k+1] && dArr[k] < dArr[k+2]) lastLow = dArr[k];
+        if (!lastHigh && dArr[k] >= dArr[k-1] && dArr[k] > dArr[k-2] && dArr[k] >= dArr[k+1] && dArr[k] > dArr[k+2]) lastHigh = dArr[k];
+        if (lastLow && lastHigh) break;
+    }
+    const currP = dArr[i];
+    let chochBadge = '';
+    if (lastHigh && currP > lastHigh) chochBadge = '<span style="color:#00e8a2;font-weight:700;">[🟢 CHOCH: BULL]</span>';
+    else if (lastLow && currP < lastLow) chochBadge = '<span style="color:#f04060;font-weight:700;">[🔴 CHOCH: BEAR]</span>';
+    else chochBadge = '<span style="color:var(--muted);font-weight:700;">[➖ STRUCT: INSIDE]</span>';
+
+    const prevP = i > 0 ? dArr[i-1] : currP;
+    const currR = drsiArrHud[i];
+    const rWma  = drsiWmaHud[i];
+    let momBadge = '', momColor = '';
+    if (rWma) {
+        if (currR > rWma) {
+            if (currP < prevP) { momBadge = '[🛡️ MOM: HIDDEN BUYING]'; momColor = '#00e8a2'; }
+            else { momBadge = '[⚡ MOM: ACCELERATING]'; momColor = '#00e8a2'; }
+        } else {
+            if (currP >= prevP) { momBadge = '[⚠️ MOM: FAKE RALLY]'; momColor = '#f59e0b'; }
+            else { momBadge = '[📉 MOM: DECELERATING]'; momColor = '#f04060'; }
+        }
+    }
+
+    const dv = deltaData[i];
+    const dvCol = dv >= 0 ? '#00e8a2' : '#f04060';
+    const tideS = calcTideHTML(wrsiArrHud, i);
+    const vecS  = calcVectorClass(wrsiArrHud, i);
+    // Price pane: date · NAV · WMA · SMA50 · CHOCH
+    hm.innerHTML =
+      `<span style="color:var(--gold);font-weight:700;">[${shortDt}]</span> N:${currP.toFixed(2)} WMA:<span style="color:${regColor};">${wmaText}</span> SMA:${smaText} ${chochBadge}`;
+    // Momentum/RSI pane: MOM badge · Vector classification · Tide
+    const sRsiHud = document.getElementById('simRsiHud');
+    if (sRsiHud) sRsiHud.innerHTML =
+      `<span style="color:${momColor};">${momBadge}</span>&nbsp;&nbsp;<span style="color:${vecS.color};font-weight:700;">${vecS.text}</span>&nbsp;&nbsp;${tideS.html}`;
+    // Delta pane: D.RSI · W.RSI · Δ value
+    const sDeltaHud = document.getElementById('simDeltaHud');
+    if (sDeltaHud) sDeltaHud.innerHTML = `D.RSI:<b>${Math.round(currR)}</b> W.RSI:<b>${Math.round(wrsiArrHud[i])}</b> <span style="color:${dvCol};font-weight:700;">Δ${dv>=0?'+':''}${dv.toFixed(1)}</span>`;
+
+    // Update right-side labels on hover
+    const rv = drsiArrHud[i];
+    const wv = drsiWmaHud[i] || rv;
+    const px = rv - wv;
+    const pxCol = px >= 0 ? '#00e8a2' : '#f04060';
+    const rsiLbl = document.getElementById('simRsiLabel');
+    if (rsiLbl) rsiLbl.innerHTML =
+      `<span style="color:#000000">RSI <b>${Math.round(rv)}</b></span>` +
+      `<span style="color:#f59e0b;margin-left:6px">WMA <b>${Math.round(wv)}</b></span>` +
+      `<span style="color:${pxCol};margin-left:6px">(${px>=0?'+':''}${px.toFixed(1)})</span>` +
+      `<span style="color:${tideS.color};margin-left:6px;font-size:0.48rem;">${tideS.arrow} ${tideS.label}</span>`;
+    const dLbl = document.getElementById('simDeltaLabel');
+    if (dLbl) { const dc=dv>=0?'#00e8a2':'#f04060'; dLbl.innerHTML=`<span style="color:${dc};font-weight:700;">Δ ${dv>=0?'+':''}${dv.toFixed(1)}</span>`; }
+  };
+
+  if (chart) chart.destroy();
+  if (rsiChart) rsiChart.destroy();
+  if (deltaChart) deltaChart.destroy();
+
+  // ── Main price chart (with zoom) ────────────────────────────────────────
+  chart = new Chart(document.getElementById('mainChart').getContext('2d'), {
+    type: 'line', plugins: [universalAnnotationsPlugin],
+    data: {
+      labels: chartData.map((_, i) => i),
+      datasets: [
+        { data: chartData.map(d => d.nav), borderColor: '#00e8a2', borderWidth: 1.5, pointRadius: 0, fill: true, backgroundColor: 'rgba(0,158,112,0.06)' },
+        { data: wmaData, borderWidth: 1.5, borderDash: [4,4], pointRadius: 0, fill: false, segment: { borderColor: ctx => { const r = wmaRegimes[ctx.p1DataIndex]; return r==='A'?'#00e8a2':r==='B'?'#f59e0b':'#f04060'; } } },
+        { data: smaData, borderWidth: 1, pointRadius: 0, fill: false,
+          segment: { borderColor: ctx => { const i = ctx.p1DataIndex; return chartData[i].nav > smaData[i] ? 'rgba(0,232,162,0.8)' : 'rgba(240,64,96,0.8)'; } } }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      layout: { padding: { top: 32, bottom: 4, left: 0, right: 0 } },
+      interaction: { mode: 'index', intersect: false },
+      onHover: (event, activeElements) => { syncCharts([chart, rsiChart, deltaChart], activeElements, false); updateLocalSimHud(activeElements); },
+      plugins: {
+        legend: { display: false }, tooltip: { enabled: false },
+        zoom: {
+          zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x',
+                  onZoom: ({ chart: c }) => syncSimZoom(c),
+                  onZoomComplete: ({ chart: c }) => syncSimZoom(c) },
+          pan:  { enabled: true, mode: 'x',
+                  onPan: ({ chart: c }) => syncSimZoom(c),
+                  onPanComplete: ({ chart: c }) => syncSimZoom(c) }
+        }
+      },
+      scales: {
+        x: { display: false, offset: true },
+        y: { position: 'right', grid: { color: 'rgba(150,170,190,0.5)' },
+             ticks: { display: true, color: '#000000', font: { size: 9, family: '"Space Mono"' }, maxTicksLimit: 5 },
+             afterFit: s => { s.width = 40; } }
+      }
+    }
+  });
+
+  // ── RSI Momentum chart: RSI line + WMA line + W-RSI slope + vector slope band ──
+  // Vector slope band: horizontal line at y=50 (regime boundary), segment-colored:
+  //   Green  = W-RSI rising    (Δ4W > 0)
+  //   Orange = Cooling / flat  (Δ4W ≤ 0 but W-RSI ≥ 50)
+  //   Red    = Dead / falling  (W-RSI < 50)
+  const vectorSlopeColor = ctx => {
+    const i = ctx.p1DataIndex;
+    const delta4w = (i >= 20) ? wrsiArrHud[i] - wrsiArrHud[i - 20] : 0;
+    const wr = wrsiArrHud[i] ?? 50;
+    if (wr >= 50 && delta4w > 0)  return 'rgba(0,158,112,1.0)';   // Green: Rising
+    if (wr >= 50 && delta4w <= 0) return 'rgba(201,122,0,1.0)';   // Orange: Cooling
+    return 'rgba(200,16,46,1.0)';                                   // Red: Dead
+  };
+  // Thick band: draw the slope line at y=50 with high borderWidth for visibility
+  const vectorBandData = Array(chartData.length).fill(50);
+
+  rsiChart = new Chart(document.getElementById('rsiChart').getContext('2d'), {
+    type: 'line', plugins: [universalAnnotationsPlugin],
+    data: {
+      labels: chartData.map((_, i) => i),
+      datasets: [
+        // RSI vector slope band — thick horizontal line at y=50, colored by slope
+        { type: 'line', data: vectorBandData, borderWidth: 6, pointRadius: 0, fill: false,
+          yAxisID: 'yRsi', segment: { borderColor: vectorSlopeColor } },
+        // WMA20(RSI) dashed line
+        { type: 'line', data: drsiWmaHud, borderColor: 'rgba(201,122,0,0.85)',
+          borderWidth: 1.5, borderDash: [3,2], pointRadius: 0, fill: false, yAxisID: 'yRsi' },
+        // Daily RSI line
+        { type: 'line', data: drsiArrHud, borderColor: 'rgba(26,42,108,0.9)',
+          borderWidth: 1.5, pointRadius: 0,
+          fill: { target: { value: 50 }, above: 'rgba(0,158,112,0.12)', below: 'rgba(200,16,46,0.12)' },
+          yAxisID: 'yRsi' },
+        // W-RSI slope line (tide phase coloring)
+        { type: 'line', data: wrsiArrHud, borderWidth: 2, pointRadius: 0, fill: false,
+          borderDash: [5,3], yAxisID: 'yRsi',
+          segment: { borderColor: wrsiSegColor(wrsiArrHud) } }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      layout: { padding: { top: 4, bottom: 4, left: 0, right: 0 } },
+      interaction: { mode: 'index', intersect: false },
+      onHover: (event, activeElements) => { syncCharts([chart, rsiChart, deltaChart], activeElements, false); updateLocalSimHud(activeElements); },
+      plugins: {
+        legend: { display: false }, tooltip: { enabled: false },
+        zoom: {
+          zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x',
+                  onZoom: ({ chart: c }) => syncSimZoom(c),
+                  onZoomComplete: ({ chart: c }) => syncSimZoom(c) },
+          pan:  { enabled: true, mode: 'x',
+                  onPan: ({ chart: c }) => syncSimZoom(c),
+                  onPanComplete: ({ chart: c }) => syncSimZoom(c) }
+        }
+      },
+      scales: {
+        x: { display: false, offset: false },
+        yRsi: {
+          position: 'right', display: true,
+          grid: { color: 'rgba(150,170,190,0.5)' },
+          ticks: { color: '#000000', font: { size: 8, family: '"Space Mono"' }, maxTicksLimit: 3 },
+          min: 10, max: 100,
+          afterFit: s => { s.width = 40; }
+        }
+      }
+    }
+  });
+
+  // ── Delta histogram (zoom) ───────────────────────────────────────────────
+  deltaChart = new Chart(document.getElementById('deltaChart').getContext('2d'), {
+    type: 'bar', plugins: [universalAnnotationsPlugin],
+    data: {
+      labels: chartData.map((_, i) => i),
+      datasets: [
+        { type: 'bar',  data: deltaData, backgroundColor: deltaColors, barPercentage: 1.0, categoryPercentage: 1.0 },
+        { type: 'line', data: Array(chartData.length).fill(profitDeltaLevel),  borderColor: 'rgba(240,64,96,0.7)',   borderDash: [2,2], pointRadius: 0, borderWidth: 1 },
+        { type: 'line', data: Array(chartData.length).fill(-Math.abs(buyDeltaLevel)), borderColor: 'rgba(0,232,162,0.7)', borderDash: [2,2], pointRadius: 0, borderWidth: 1 },
+        { type: 'line', data: Array(chartData.length).fill(0), borderColor: 'rgba(0,0,0,0.20)', borderDash: [4,4], pointRadius: 0, borderWidth: 1 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      layout: { padding: { top: 4, bottom: 4, left: 0, right: 0 } },
+      interaction: { mode: 'index', intersect: false },
+      onHover: (event, activeElements) => { syncCharts([chart, rsiChart, deltaChart], activeElements, false); updateLocalSimHud(activeElements); },
+      plugins: {
+        legend: { display: false }, tooltip: { enabled: false },
+        zoom: {
+          zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x',
+                  onZoom: ({ chart: c }) => syncSimZoom(c),
+                  onZoomComplete: ({ chart: c }) => syncSimZoom(c) },
+          pan:  { enabled: true, mode: 'x',
+                  onPan: ({ chart: c }) => syncSimZoom(c),
+                  onPanComplete: ({ chart: c }) => syncSimZoom(c) }
+        }
+      },
+      scales: {
+        x: { display: false, offset: true },
+        y: {
+          position: 'right',
+          grid: { color: 'rgba(160,180,200,0.5)' }, border: { dash: [2,4] },
+          min: -35, max: 35,
+          ticks: { display: true, color: '#000000', font: { size: 8, family: '"Space Mono"' }, maxTicksLimit: 3 },
+          afterFit: s => { s.width = 40; }
+        }
+      }
+    }
+  });
+
+  // ── Populate RSI and Delta right-side labels ─────────────────────────────
+  const latestDRsi    = drsiArrHud[drsiArrHud.length - 1];
+  const latestWmaRsi  = drsiWmaHud[drsiWmaHud.length - 1];
+  const latestProxy   = latestDRsi - latestWmaRsi;
+  const latestDelta   = deltaData[deltaData.length - 1];
+  const tideStatic = calcTideHTML(wrsiArrHud, wrsiArrHud.length - 1);
+  const tideArrowSpan = `<span style="color:${tideStatic.color};margin-left:6px;font-size:0.50rem;font-weight:700;">${tideStatic.arrow} ${tideStatic.label}</span>`;
+  const rsiLabelEl    = document.getElementById('simRsiLabel');
+  const deltaLabelEl  = document.getElementById('simDeltaLabel');
+  if (rsiLabelEl) {
+    const proxyCol = latestProxy >= 0 ? '#00e8a2' : '#f04060';
+    rsiLabelEl.innerHTML =
+      `<span style="color:#000000">RSI <b>${Math.round(latestDRsi)}</b></span>` +
+      `<span style="color:#f59e0b;margin-left:6px">WMA <b>${Math.round(latestWmaRsi)}</b></span>` +
+      `<span style="color:${proxyCol};margin-left:6px">(${latestProxy >= 0 ? '+' : ''}${latestProxy.toFixed(1)})</span>` +
+      tideArrowSpan;
+  }
+  if (deltaLabelEl) {
+    const dCol = latestDelta >= 0 ? '#00e8a2' : '#f04060';
+    deltaLabelEl.innerHTML =
+      `<span style="color:${dCol};font-weight:700;">Δ ${latestDelta >= 0 ? '+' : ''}${latestDelta.toFixed(1)}</span>`;
+  }
+
+} // end updateDisplay
+
+function flashBanner(text, cls, ms = 1800) {
+  const b = document.getElementById('alertBanner');
+  b.textContent = text; b.className = cls + ' banner-on';
+  setTimeout(() => { b.textContent = ''; b.className = ''; }, ms);
+}
+
+function trade(action) {
+  if (document.getElementById('btnBuy10').disabled) return;
+
+  const nav = fullHistory[currentIdx].nav;
+  if (!nav || nav <= 0) return;             // MED-6: guard against zero/invalid NAV
+  const dayNum = currentIdx - simStartIdx;
+  
+  if (action.includes('BUY')) {
+    const pct = action.includes('10') ? 0.1 : (action.includes('25') ? 0.25 : 0.5);
+    const amt = cash * pct;
+    if (amt > 10) { tranches.push({ day: dayNum, units: amt / nav, price: nav, regime: currentRegimeLog }); cash -= amt; }
+    else { flashBanner('⚠️ INSUFFICIENT CASH TO BUY', 'alert-danger', 1500); return; }
+  } else if (action === 'SELLALL') {
+    const totalUnits = tranches.reduce((s, t) => s + t.units, 0);
+    if (totalUnits < 0.001) { flashBanner('⚠️ NOTHING TO SELL', 'alert-danger', 1500); return; }
+    executeSell(totalUnits, nav, dayNum, 'SELL ALL');
+  } else if (action === 'SELL_PROFIT') {
+    const totalUnits = tranches.reduce((s, t) => s + t.units, 0);
+    const totalCost = tranches.reduce((s, t) => s + t.units * t.price, 0);
+    const profit = totalUnits * nav - totalCost;
+    if (profit <= 10) { flashBanner('⚠️ NO PROFIT TO BOOK YET', 'alert-danger', 1500); return; }
+    executeSell(profit / nav, nav, dayNum, 'SELL PROFIT');
+  } else if (action === 'SELL_TSL') { 
+    const totalUnits = tranches.reduce((s, t) => s + t.units, 0);
+    if (totalUnits < 0.001) { flashBanner('⚠️ NO POSITION HELD', 'alert-danger', 1500); return; }
+    const r = currentRegimeLog === 'A' ? 0.5 : 1.0; 
+    executeSell(totalUnits * r, nav, dayNum, `SELL TSL (${r*100}%)`); 
+  } else if (action === 'SELL_REGIME') { 
+    const totalUnits = tranches.reduce((s, t) => s + t.units, 0);
+    if (totalUnits < 0.001) { flashBanner('⚠️ NO POSITION HELD', 'alert-danger', 1500); return; }
+    executeSell(totalUnits, nav, dayNum, 'SELL REGIME'); 
+  }
+  
+  const _ab = document.getElementById('alertBanner'); _ab.textContent = ''; _ab.className = '';
+
+  if (currentIdx < fullHistory.length - 1) {
+    nextDay();
+  } else {
+    updateDisplay();
+    alert("🏁 SIMULATION COMPLETE\n\nYou have reached today's date. There is no more historical data available for this fund.\n\nPlease click 'END & REVIEW' to generate your final Process Audit.");
+    const btns = document.querySelectorAll('.action-bar .btn');
+    btns.forEach(b => b.disabled = true);
   }
 }
 
-// 15 Minute Data Refresh Loop
-setInterval(() => {
-  if (document.getElementById('liveChartModal').style.display === 'flex') {
-    updateLiveEstimate();
+function executeSell(unitsToSell, nav, dayNum, actionName) {
+  if (unitsToSell <= 0) return;
+  let remaining = unitsToSell, totalCash = 0, taxIncurred = 0, actualSold = 0;
+  for (let i = 0; i < tranches.length; i++) {
+    if (remaining <= 0) break;
+    const t = tranches[i];
+    const chunk = Math.min(t.units, remaining);
+    t.units -= chunk; remaining -= chunk; actualSold += chunk;
+    const profit = (nav - t.price) * chunk;
+    const tax    = (profit > 0 && (dayNum - t.day < 220)) ? profit * 0.20 : 0;
+    taxIncurred += tax; totalCash += nav * chunk - tax;
   }
-}, 900000);
+  tranches = tranches.filter(t => t.units > 0.001);
+  if (actualSold > 0.001) {
+    cash += totalCash; totalTaxPaid += taxIncurred;
+    tradeLog.push({ day: dayNum, action: actionName, nav, units: actualSold, tax: taxIncurred, regime: currentRegimeLog });
+  }
+}
 
+function nextDay() { 
+  if (currentIdx < fullHistory.length - 1) { 
+    currentIdx++; 
+    updateDisplay(); 
+  } else {
+    alert("🏁 SIMULATION COMPLETE\n\nYou have reached today's date. There is no more historical data available for this fund.\n\nPlease click 'END & REVIEW' to generate your final Process Audit.");
+    const btns = document.querySelectorAll('.action-bar .btn');
+    btns.forEach(b => b.disabled = true);
+  }
+}
+
+function showLog() { 
+  const tbody = document.getElementById('logBody');
+  tbody.innerHTML = '';
+  if (!tradeLog.length) {
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:24px 8px;color:var(--muted);">
+      No trades executed yet.<br>
+      <span style="font-size:0.6rem;color:var(--border2);margin-top:6px;display:block;">Close this and use the action buttons below ↓</span>
+    </td></tr>`;
+  } else {
+    tradeLog.forEach(t => {
+      const cls = t.action.includes('BUY') ? 'log-buy' : t.action.includes('PROFIT') ? 'log-profit' : 'log-sell';
+      const reg = t.regime || '?';
+      const regCls = reg === 'A' ? 'color:var(--accent)' : reg === 'B' ? 'color:var(--accent2)' : 'color:var(--red)';
+      tbody.innerHTML += `<tr>
+        <td>Day ${t.day}</td>
+        <td class="${cls}">${t.action}</td>
+        <td>₹${t.nav.toFixed(2)}</td>
+        <td style="font-weight:700;${regCls}">${reg}</td>
+        <td class="log-tax">₹${Math.round(t.tax)}</td>
+      </tr>`;
+    });
+  }
+  document.getElementById('logModal').style.display = 'flex'; 
+}
+function closeLog() { document.getElementById('logModal').style.display = 'none'; }
+
+function endAndReview() { 
+  let scoreEntry = 0, scoreExit = 0, scoreProfit = 0;
+  let goodBuys = 0, badBuys = 0, missedBuyEvents = 0, prematureBuys = 0;
+  let successfulExits = 0, panicSells = 0, daysTslBreachHeld = 0, daysRegimeCHeld = 0;
+  let profitExits = 0, missedProfitEvents = 0;
+  let runningUnits = 0;
+  let regimeADays = 0, regimeBDays = 0, regimeCDays = 0;
+
+  // ── Regime C holding cap tracking ──
+  let regimeCBlock = 0, regimeCPenalty = 0;
+  // ── Missed buy cluster deduplication ──
+  let lastMissedBuyDay = -10;
+  // ── Recent profit tracking to avoid double-count ──
+  let lastProfitDay = -10;
+  // ── Missed overheated cluster deduplication ──
+  let lastMissedProfitDay = -10;
+
+  const totalDays = currentIdx - simStartIdx;
+
+  for (let i = simStartIdx; i <= currentIdx; i++) {
+    const sp      = fullHistory.slice(0, i + 1).map(h => h.nav);
+    const currNav = sp[sp.length - 1];
+    // RSI from caches (O(1)) — sp kept only for PC/TSL structural calculations
+    const dr      = simDailyRsiCache[i]  ?? 50;
+    const wr      = simWeeklyRsiCache[i] ?? 50;
+    const regime  = wr >= 50 ? 'A' : wr >= 40 ? 'B' : 'C';
+    const d       = dr - wr;
+    const dayNum  = i - simStartIdx;
+
+    if (regime === 'A') regimeADays++;
+    else if (regime === 'B') regimeBDays++;
+    else regimeCDays++;
+
+    // ── PC alert (same logic as display) ──
+    let pcAlert = false;
+    if (sp.length >= 56) {
+      const box = sp.slice(-6, -1);
+      const boxMax = Math.max(...box), boxMin = Math.min(...box);
+      const preBox = sp.slice(-56, -6);
+      const preMax = Math.max(...preBox);
+      const boxWma = calculateWMA(sp.slice(0, -1), 20);
+      if ((boxMax - boxMin) / boxMin <= 0.02 && (boxWma ? Math.abs(boxMin - boxWma) / boxWma <= 0.04 : false)) {
+        if (preMax > boxMax * 1.02 && currNav > boxMax) pcAlert = true;
+      }
+    }
+
+    // ── TSL ──
+    const chartData = sp.slice(-80);
+    let tslVal = 0, sLows = [], sHighs = [];
+    for (let k = chartData.length - 3; k >= 2; k--) {
+      if (chartData[k] <= chartData[k-1] && chartData[k] < chartData[k-2] && chartData[k] <= chartData[k+1] && chartData[k] < chartData[k+2]) {
+        if (sLows.length === 0 || (sLows[sLows.length-1].idx - k) > 4) sLows.push({idx: k, val: chartData[k]});
+      }
+      if (chartData[k] >= chartData[k-1] && chartData[k] > chartData[k-2] && chartData[k] >= chartData[k+1] && chartData[k] > chartData[k+2]) {
+        if (sHighs.length === 0 || (sHighs[sHighs.length-1].idx - k) > 4) sHighs.push({idx: k, val: chartData[k]});
+      }
+    }
+    let reclaimed = false;
+    if (sHighs.length >= 2 && currNav > sHighs[0].val && currNav > sHighs[1].val) reclaimed = true;
+    if (sLows.length > 0) {
+      let targetLow = sLows[0];
+      if (!reclaimed && sLows.length > 1 && sLows[1].val < sLows[0].val) targetLow = sLows[1];
+      tslVal = targetLow.val;
+    }
+    const tslHit = tslVal > 0 && currNav < tslVal;
+
+    const dayT = tradeLog.filter(t => t.day === dayNum);
+    let hasBuy = false, hasProfit = false, hasSell = false;
+
+    dayT.forEach(t => {
+      if (t.action.includes('BUY')) {
+        hasBuy = true;
+        runningUnits += t.units;
+        if (regime === 'A') {
+          // Fix 8: use <= 50 consistently; Fix 2: neutral premature buys
+          if (dr <= 50 || pcAlert || d < buyDeltaLevel) {
+            scoreEntry += 20; goodBuys++;
+          } else {
+            // Premature buy — above RSI 50, no signal
+            scoreEntry -= 5; prematureBuys++;
+          }
+        } else if (regime === 'C') {
+          if (pcAlert) { goodBuys++; }
+          else { scoreEntry -= 20; badBuys++; }
+        } else if (regime === 'B') {
+          scoreEntry -= 10; badBuys++;
+        }
+      } else if (t.action.includes('SELL')) {
+        hasSell = true;
+        runningUnits = Math.max(0, runningUnits - t.units);
+        if (t.action.includes('TSL') || t.action.includes('REGIME')) {
+          // Fix 5: penalise panic selling TSL/REGIME in healthy Regime A
+          if (regime === 'A' && wr > 60 && !tslHit) {
+            scoreExit -= 15; panicSells++;
+          } else {
+            scoreExit += 30; successfulExits++;
+          }
+        }
+        if (t.action.includes('PROFIT')) {
+          scoreProfit += 5; profitExits++; hasProfit = true; lastProfitDay = dayNum;
+        }
+        // Fix 5: SELL ALL in Regime A when no TSL breach = panic
+        if (t.action === 'SELL ALL' && regime === 'A' && wr > 55 && !tslHit) {
+          scoreExit -= 20; panicSells++;
+        }
+      }
+    });
+
+    // ── TSL / Regime C holding penalties ──
+    if (runningUnits > 0.001) {
+      if (tslHit) { daysTslBreachHeld++; scoreExit -= 10; }
+      // Fix 4: Cap Regime C penalty per continuous block at -100
+      if (regime === 'C') {
+        daysRegimeCHeld++;
+        regimeCBlock++;
+        const blockPenalty = Math.min(regimeCBlock * 20, 100);
+        const prevBlockPenalty = Math.min((regimeCBlock - 1) * 20, 100);
+        scoreExit -= (blockPenalty - prevBlockPenalty);
+      } else {
+        regimeCBlock = 0; // reset when regime improves
+      }
+    } else {
+      regimeCBlock = 0;
+    }
+
+    // Fix 1: Missed buy — cluster events, not individual days (5-day cooldown)
+    const isBuySignal = regime === 'A' && (dr < 40 || d < buyDeltaLevel || pcAlert);
+    if (isBuySignal && !hasBuy && (dayNum - lastMissedBuyDay) > 5) {
+      missedBuyEvents++; scoreEntry -= 10; lastMissedBuyDay = dayNum;
+    }
+
+    // Fix 3: Missed profit — cluster with 3-day grace after a profit sell
+    const isOverheated = d > profitDeltaLevel;
+    if (isOverheated && !hasProfit && runningUnits > 0.001 && (dayNum - lastProfitDay) > 3 && (dayNum - lastMissedProfitDay) > 5) {
+      missedProfitEvents++; scoreProfit -= 2; lastMissedProfitDay = dayNum;
+    }
+  }
+
+  const totalScore  = scoreEntry + scoreExit + scoreProfit;
+  const totalUnits  = tranches.reduce((s, t) => s + t.units, 0);
+  const finalNW     = cash + totalUnits * fullHistory[currentIdx].nav;
+  const returnPct   = ((finalNW - 100000) / 100000 * 100).toFixed(1);
+  const returnColor = finalNW >= 100000 ? 'var(--accent)' : 'var(--red)';
+  const returnSign  = finalNW >= 100000 ? '+' : '';
+
+  document.getElementById('totalScore').textContent = totalScore;
+  document.getElementById('totalScore').style.color = totalScore > 0 ? 'var(--accent)' : 'var(--red)';
+  document.getElementById('revNW2').textContent = `₹${Math.round(finalNW).toLocaleString('en-IN')}`;
+  document.getElementById('revNW2').style.color = returnColor;
+  document.getElementById('revReturn').textContent = `${returnSign}${returnPct}% return`;
+  document.getElementById('revReturn').style.color = returnColor;
+  document.getElementById('revDD').textContent = `-${maxDrawdown.toFixed(1)}%`;
+  document.getElementById('revDays').textContent = `${totalDays} days played`;
+  document.getElementById('revRegimes').textContent = `A:${regimeADays} B:${regimeBDays} C:${regimeCDays}`;
+
+  const fmtScore = (v) => `<span class="audit-score ${v >= 0 ? 'pos-score' : 'neg-score'}">${v > 0 ? '+'+v : v}</span>`;
+
+  document.getElementById('auditContent').innerHTML = `
+    <div class="audit-section">
+      <div class="audit-header">
+        <span class="audit-title" style="color:var(--accent);">Entry · The Hunter</span>
+        ${fmtScore(scoreEntry)}
+      </div>
+      <div class="audit-expected">Expected: Buy Regime A dips (RSI ≤ 50), Slingshots &amp; PC Breakouts. Avoid premature or contra-trend buys.</div>
+      <div class="audit-stat-row"><span>Good Buys (Signal/Dip)</span><span class="audit-stat-val pos-score">${goodBuys}</span></div>
+      <div class="audit-stat-row"><span>Premature Buys (No signal)</span><span class="audit-stat-val neg-score">${prematureBuys}</span></div>
+      <div class="audit-stat-row"><span>Bad Buys (Knives / Wrong Regime)</span><span class="audit-stat-val neg-score">${badBuys}</span></div>
+      <div class="audit-stat-row"><span>Missed Signal Events</span><span class="audit-stat-val neg-score">${missedBuyEvents}</span></div>
+    </div>
+    <div class="audit-section">
+      <div class="audit-header">
+        <span class="audit-title" style="color:var(--red);">Exit · The Defender</span>
+        ${fmtScore(scoreExit)}
+      </div>
+      <div class="audit-expected">Expected: Execute TSL instantly on breach. Sell all on Regime C crash. Never panic-sell in healthy Regime A.</div>
+      <div class="audit-stat-row"><span>Disciplined Exits</span><span class="audit-stat-val pos-score">${successfulExits}</span></div>
+      <div class="audit-stat-row"><span>Panic Sells (Regime A, no breach)</span><span class="audit-stat-val neg-score">${panicSells}</span></div>
+      <div class="audit-stat-row"><span>Days held in TSL Breach</span><span class="audit-stat-val neg-score">${daysTslBreachHeld} (-${daysTslBreachHeld * 10})</span></div>
+      <div class="audit-stat-row"><span>Days held in Regime C (capped)</span><span class="audit-stat-val neg-score">${daysRegimeCHeld} (-${Math.min(daysRegimeCHeld * 20, 100)})</span></div>
+    </div>
+    <div class="audit-section">
+      <div class="audit-header">
+        <span class="audit-title" style="color:var(--accent2);">Profit · The Sniper</span>
+        ${fmtScore(scoreProfit)}
+      </div>
+      <div class="audit-expected">Expected: Pull profits when Overheated (Delta &gt; Limit). One action per event is enough.</div>
+      <div class="audit-stat-row"><span>Profit Exits Executed</span><span class="audit-stat-val pos-score">${profitExits}</span></div>
+      <div class="audit-stat-row"><span>Overheated Events Ignored</span><span class="audit-stat-val neg-score">${missedProfitEvents}</span></div>
+    </div>
+  `;
+
+  // ── Fix 9: Ghost player remark ──
+  let remarks = "";
+  if (tradeLog.length === 0) {
+    remarks = `<div class="remarks-box" style="border-color: var(--muted);">👻 <strong>Ghost Player:</strong> You watched ${totalDays} days of market action and made zero trades. Observation is good — paralysis is not. Next time, trust at least one signal.</div>`;
+  } else {
+    if (daysRegimeCHeld > 2 || daysTslBreachHeld > 2) {
+      remarks += `<div class="remarks-box" style="border-color: var(--red);">🚨 <strong>Critical Risk Failure:</strong> You held a position for ${daysRegimeCHeld + daysTslBreachHeld} days while Danger alerts were active. In live markets, this hesitation causes catastrophic ruin. You must respect the broken floor — no exceptions.</div>`;
+    } else if (scoreExit > 0 && maxDrawdown < 15) {
+      remarks += `<div class="remarks-box" style="border-color: var(--accent);">🟢 <strong>Excellent Defense:</strong> You respected structural stops and kept drawdowns below 15%. This is the hallmark of a disciplined operator.</div>`;
+    }
+    if (panicSells >= 1) {
+      remarks += `<div class="remarks-box" style="border-color: var(--red);">⚠️ <strong>Panic Exit Detected:</strong> You exited ${panicSells} time(s) in a healthy Regime A with no TSL breach. Selling into strength destroys compounding. Trust the regime — hold unless a rule says otherwise.</div>`;
+    }
+    if (badBuys >= 2) {
+      remarks += `<div class="remarks-box" style="border-color: var(--accent2);">⚠️ <strong>Reckless Hunting:</strong> You caught falling knives ${badBuys} times by buying in negative regimes without a PC Breakout. The system only buys with structure — wait for it.</div>`;
+    }
+    if (prematureBuys >= 2) {
+      remarks += `<div class="remarks-box" style="border-color: var(--accent2);">⚠️ <strong>Trigger Happiness:</strong> You bought ${prematureBuys} time(s) in Regime A without a valid signal (RSI above 50, no slingshot, no PC). Patience between signals is a position too.</div>`;
+    }
+    if (missedBuyEvents >= 3) {
+      remarks += `<div class="remarks-box" style="border-color: var(--accent2);">⚠️ <strong>Hesitation Detected:</strong> You missed ${missedBuyEvents} high-probability entry signals. When the engine flashes green in Regime A, that is an instruction — not a suggestion.</div>`;
+    }
+    if (remarks === "") {
+      remarks = `<div class="remarks-box" style="border-color: var(--accent);">✅ <strong>Disciplined Process:</strong> Clean, mechanical execution across ${totalDays} days. You followed the algorithmic rules with consistency. This is exactly how the system is meant to be played.</div>`;
+    }
+  }
+
+  document.getElementById('feedbackContainer').innerHTML = remarks;
+  document.getElementById('reviewModal').style.display = 'flex'; 
+}
+
+if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(() => {}); }
 </script>
+
+<script>
+(function() {
+  // 1. Inject the CSS (drastically reduced font size, tucked into bottom right)
+  const css = `
+    #liveEstBox {
+      position: absolute; bottom: 6px; right: 6px;
+      padding: 4px 6px; border-radius: 4px; z-index: 50;
+      font-family: 'Space Mono', monospace; font-size: 0.60rem;
+      color: #c8102e; font-weight: 400; border: 1px solid rgba(0,0,0,0.1);
+      pointer-events: none; transition: background-color 0.3s ease;
+      text-align: right; white-space: nowrap;
+    }
+    #estIdxName { font-size: 0.45rem; color: #7090b0; display: block; margin-bottom: 2px; text-transform: uppercase; }
+  `;
+  const styleEl = document.createElement('style');
+  styleEl.innerHTML = css;
+  document.head.appendChild(styleEl);
+
+  // 2. Inject the HTML Box into the Live Cockpit automatically
+  window.addEventListener('DOMContentLoaded', () => {
+    const mainPane = document.querySelector('#liveChartModal .chart-main-pane');
+    if (mainPane) {
+      const estBox = document.createElement('div');
+      estBox.id = 'liveEstBox';
+      estBox.style.display = 'none';
+      estBox.innerHTML = '<span id="estIdxName">Reference Index</span><div id="estValue">Change: --%</div>';
+      mainPane.appendChild(estBox);
+    }
+  });
+
+  // 3. Mapping and Logic
+  const benchmarkMap = {
+    '153679': { ticker: '^NIFTYPVTBANK', name: 'Nifty Pvt Bank' },
+    '150468': { ticker: '^CNXIT', name: 'Nifty IT' },
+    '149858': { ticker: '^NSEBANK', name: 'Nifty Bank' },
+    '150643': { ticker: '^CNXAUTO', name: 'Nifty Auto' },
+    '150930': { ticker: '^CNXPHARMA', name: 'Nifty Pharma' },
+    '152521': { ticker: '^CNXREALTY', name: 'Nifty Realty' },
+    '153097': { ticker: '^CNXIT', name: 'Nifty IT' },
+    '154179': { ticker: '^CNXCONSUM', name: 'Nifty Consumption' },
+    '119132': { ticker: 'GOLDBEES.NS', name: 'NSE Gold ETF' }, 
+    '150737': { ticker: 'SILVERBEES.NS', name: 'NSE Silver ETF' },
+    '153921': { ticker: 'GOLDBEES.NS', name: 'NSE Gold ETF' }, 
+    '151603': { ticker: 'SILVERBEES.NS', name: 'NSE Silver ETF' },
+    '119781': { ticker: 'GOLDBEES.NS', name: 'NSE Gold ETF' }, 
+    '149780': { ticker: 'SILVERBEES.NS', name: 'NSE Silver ETF' },
+    '120546': { ticker: 'GOLDBEES.NS', name: 'NSE Gold ETF' },
+    'SM008001': { ticker: '^CNX200', name: 'Nifty 200' }, 'SM008004': { ticker: '^CNX200', name: 'Nifty 200' },
+    'SM007001': { ticker: '^CNX200', name: 'Nifty 200' }, 'SM007004': { ticker: '^CNX200', name: 'Nifty 200' },
+    'SM005001': { ticker: '^CNX200', name: 'Nifty 200' }, 'SM005004': { ticker: '^CNX200', name: 'Nifty 200' },
+    'SM006001': { ticker: '^CNX200', name: 'Nifty 200' }, 'SM006004': { ticker: '^CNX200', name: 'Nifty 200' },
+    'SM008002': { ticker: '^NIFTY_CORP_BOND', name: 'Corp Bond Index' }, 
+    'SM007002': { ticker: '^NIFTY_CORP_BOND', name: 'Corp Bond Index' },
+    '153223': { ticker: '^CNXSMALLCAP', name: 'Nifty SmallCap 250' },
+    '148807': { ticker: '^CNXMIDCAP', name: 'Nifty Midcap 150' },
+    '152916': { ticker: '^CNXMIDCAP', name: 'Nifty Midcap 150' },
+    'DEFAULT': { ticker: '^NSEI', name: 'Nifty 50' }
+  };
+
+  async function updateLiveEstimate() {
+    const estBox = document.getElementById('liveEstBox');
+    const estVal = document.getElementById('estValue');
+    const estName = document.getElementById('estIdxName');
+    if (!estBox || document.getElementById('liveChartModal').style.display !== 'flex') return;
+    
+    estBox.style.display = 'block';
+    const fundCode = document.getElementById('fundSelect').value;
+    const config = benchmarkMap[fundCode] || benchmarkMap['DEFAULT'];
+    estName.textContent = config.name;
+
+    try {
+      const response = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${config.ticker}?interval=15m&range=1d`);
+      const data = await response.json();
+      const meta = data.chart.result[0].meta;
+      
+      // ONLY calculating the % change from yesterday's close
+      const changePct = ((meta.regularMarketPrice - meta.previousClose) / meta.previousClose) * 100;
+      
+      estVal.textContent = `Change: ${changePct >= 0 ? '+' : ''}${changePct.toFixed(2)}%`;
+      
+      if (changePct > 0.05) estBox.style.backgroundColor = '#dcfce7';
+      else if (changePct < -0.05) estBox.style.backgroundColor = '#fee2e2';
+      else estBox.style.backgroundColor = '#ffedd5';
+    } catch (err) {
+      estVal.textContent = "Change: --%";
+      estBox.style.backgroundColor = '#f2f5f9';
+    }
+  }
+
+  // 4. Hook into the existing LDv315 UI functions safely
+  setTimeout(() => {
+    const origSelectAMC = window.selectAMC;
+    if (origSelectAMC) {
+      window.selectAMC = function(amc, el, isInit = false) {
+        origSelectAMC(amc, el, isInit);
+        const sel = document.getElementById('fundSelect');
+        if (sel) {
+          sel.removeEventListener('change', updateLiveEstimate);
+          sel.addEventListener('change', updateLiveEstimate);
+        }
+      };
+    }
+
+    const origInitLiveChart = window.initLiveChart;
+    if (origInitLiveChart) {
+      window.initLiveChart = async function() {
+        await origInitLiveChart();
+        updateLiveEstimate();
+      };
+    }
+  }, 500); // Small delay to ensure original functions are loaded
+
+  setInterval(() => {
+    if (document.getElementById('liveChartModal') && document.getElementById('liveChartModal').style.display === 'flex') {
+      updateLiveEstimate();
+    }
+  }, 900000);
+
+})();
+</script>
+
 </body>
 </html>
