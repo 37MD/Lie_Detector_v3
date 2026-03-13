@@ -2986,7 +2986,13 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').ca
       pointer-events: none; transition: background-color 0.3s ease;
       text-align: right; white-space: nowrap;
     }
-    #estIdxName { font-size: 0.45rem; color: #7090b0; display: block; margin-bottom: 2px; text-transform: uppercase; }
+    #estIdxName {
+      font-size: 0.45rem;
+      color: #7090b0;
+      display: block;
+      margin-bottom: 2px;
+      text-transform: uppercase;
+    }
   `;
 
   const styleEl = document.createElement('style');
@@ -2995,13 +3001,15 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').ca
 
   window.addEventListener('DOMContentLoaded', () => {
     const mainPane = document.querySelector('#liveChartModal .chart-main-pane');
-    if (mainPane) {
-      const estBox = document.createElement('div');
-      estBox.id = 'liveEstBox';
-      estBox.style.display = 'none';
-      estBox.innerHTML = '<span id="estIdxName">Reference Index</span><div id="estValue">Change: --%</div>';
-      mainPane.appendChild(estBox);
-    }
+    if (!mainPane) return;
+
+    const estBox = document.createElement('div');
+    estBox.id = 'liveEstBox';
+    estBox.style.display = 'none';
+    estBox.innerHTML =
+      '<span id="estIdxName">Reference Index</span><div id="estValue">Change: --%</div>';
+
+    mainPane.appendChild(estBox);
   });
 
   const NSE_BENCHMARK_MAP = {
@@ -3022,85 +3030,97 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').ca
     "SM008005":"BHARATBOND","SM007005":"BHARATBOND","SM005005":"BHARATBOND","SM006005":"BHARATBOND"
   };
 
+  async function getIndexChange(indexName) {
+
+    const url =
+      "https://api.allorigins.win/raw?url=" +
+      encodeURIComponent(
+        "https://www.nseindia.com/api/equity-stockIndices?index=" + indexName
+      );
+
+    const res = await fetch(url);
+    const json = await res.json();
+
+    const rec = json.data[0];
+    const last = parseFloat(rec.lastPrice);
+    const prev = parseFloat(rec.previousClose);
+
+    return ((last - prev) / prev) * 100;
+  }
+
   async function updateLiveEstimate() {
 
-    const estBox = document.getElementById('liveEstBox');
-    const estVal = document.getElementById('estValue');
-    const estName = document.getElementById('estIdxName');
+    const modal = document.getElementById("liveChartModal");
+    const estBox = document.getElementById("liveEstBox");
 
-    if (!estBox || document.getElementById('liveChartModal').style.display !== 'flex') return;
+    if (!modal || modal.style.display !== "flex" || !estBox) return;
 
-    estBox.style.display = 'block';
+    const fundSelect = document.getElementById("fundSelect");
+    if (!fundSelect) return;
 
-    const fundCode = document.getElementById('fundSelect').value;
+    const fundCode = fundSelect.value;
+
+    const estVal = document.getElementById("estValue");
+    const estName = document.getElementById("estIdxName");
+
     const benchmarkName = NSE_BENCHMARK_MAP[fundCode] || "NIFTY 50";
 
+    estBox.style.display = "block";
     estName.textContent = benchmarkName;
 
     try {
 
-      let changePct = 0;
+      let changePct;
 
       if (benchmarkName === "MCX_GOLD" || benchmarkName === "MCX_SILVER") {
 
-        const commodity = benchmarkName === "MCX_GOLD" ? "gold" : "silver";
-        const url = `https://priceapi.moneycontrol.com/pricefeed/commodity/${commodity}`;
-        const proxy = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+        const commodity =
+          benchmarkName === "MCX_GOLD" ? "gold" : "silver";
 
-        const res = await fetch(proxy,{cache:"no-store"});
+        const url =
+          "https://api.allorigins.win/raw?url=" +
+          encodeURIComponent(
+            "https://priceapi.moneycontrol.com/pricefeed/commodity/" +
+              commodity
+          );
+
+        const res = await fetch(url);
         const json = await res.json();
 
         changePct = parseFloat(json.data.percentChange);
 
       } else {
 
-        const url = `https://www.nseindia.com/api/equity-stockIndices?index=${encodeURIComponent(benchmarkName)}`;
-        const proxy = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
-
-        const res = await fetch(proxy,{cache:"no-store"});
-        const json = await res.json();
-
-        const rec = json.data[0];
-
-        const last = parseFloat(rec.lastPrice);
-        const prev = parseFloat(rec.previousClose);
-
-        changePct = ((last-prev)/prev)*100;
+        changePct = await getIndexChange(benchmarkName);
 
       }
 
-      estVal.textContent = `Change: ${changePct >= 0 ? '+' : ''}${changePct.toFixed(2)}%`;
+      estVal.textContent =
+        "Change: " +
+        (changePct >= 0 ? "+" : "") +
+        changePct.toFixed(2) +
+        "%";
 
-      if (changePct > 0.05) estBox.style.backgroundColor = '#dcfce7';
-      else if (changePct < -0.05) estBox.style.backgroundColor = '#fee2e2';
-      else estBox.style.backgroundColor = '#ffedd5';
+      if (changePct > 0.05)
+        estBox.style.backgroundColor = "#dcfce7";
+      else if (changePct < -0.05)
+        estBox.style.backgroundColor = "#fee2e2";
+      else
+        estBox.style.backgroundColor = "#ffedd5";
 
-    }
-    catch (err) {
+    } catch (err) {
 
-      console.warn("Fetch Error:", err);
       estVal.textContent = "Change: N/A";
-      estBox.style.backgroundColor = '#f2f5f9';
+      estBox.style.backgroundColor = "#f2f5f9";
 
     }
-
   }
 
-  document.addEventListener("change", function(e){
-      if(e.target && e.target.id==="fundSelect"){
-          updateLiveEstimate();
-      }
-  });
-
-  setInterval(()=>{
-      if(document.getElementById('liveChartModal') &&
-         document.getElementById('liveChartModal').style.display==='flex'){
-          updateLiveEstimate();
-      }
-  },900000);
+  setInterval(updateLiveEstimate, 15000);
 
 })();
 </script>
+
 
 </body>
 </html>
