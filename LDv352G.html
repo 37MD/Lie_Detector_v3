@@ -3045,19 +3045,35 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').ca
     estName.textContent = config.name;
 
     try {
-      const response = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${config.ticker}?interval=15m&range=1d`);
+      // Create the target URL, properly encoding the ticker (e.g. ^CNX200 becomes %5ECNX200)
+      const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(config.ticker)}?interval=15m&range=1d`;
+      
+      // Route through a free CORS proxy so the browser does not block the request
+      const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
+      
+      const response = await fetch(proxyUrl);
+      if (!response.ok) throw new Error("CORS Proxy or API failed");
+      
       const data = await response.json();
       const meta = data.chart.result[0].meta;
       
+      // Extract pricing safely, accommodating slight variations in Yahoo's JSON structure
+      const currentPrice = meta.regularMarketPrice;
+      const prevClose = meta.chartPreviousClose || meta.previousClose;
+      
+      if (!currentPrice || !prevClose) throw new Error("Pricing data missing from payload");
+
       // ONLY calculating the % change from yesterday's close
-      const changePct = ((meta.regularMarketPrice - meta.previousClose) / meta.previousClose) * 100;
+      const changePct = ((currentPrice - prevClose) / prevClose) * 100;
       
       estVal.textContent = `Change: ${changePct >= 0 ? '+' : ''}${changePct.toFixed(2)}%`;
       
       if (changePct > 0.05) estBox.style.backgroundColor = '#dcfce7';
       else if (changePct < -0.05) estBox.style.backgroundColor = '#fee2e2';
       else estBox.style.backgroundColor = '#ffedd5';
+      
     } catch (err) {
+      console.error("Live Estimate Error:", err);
       estVal.textContent = "Change: --%";
       estBox.style.backgroundColor = '#f2f5f9';
     }
@@ -3084,7 +3100,7 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').ca
         updateLiveEstimate();
       };
     }
-  }, 500); // Small delay to ensure original functions are loaded
+  }, 500);
 
   setInterval(() => {
     if (document.getElementById('liveChartModal') && document.getElementById('liveChartModal').style.display === 'flex') {
