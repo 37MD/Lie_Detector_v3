@@ -2976,7 +2976,7 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').ca
 
 <script>
 (function() {
-  // 1. Inject the CSS
+  // 1. Inject the CSS (Small font, Bottom Right)
   const css = `
     #liveEstBox {
       position: absolute; bottom: 6px; right: 6px;
@@ -2992,7 +2992,7 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').ca
   styleEl.innerHTML = css;
   document.head.appendChild(styleEl);
 
-  // 2. Inject the HTML Box
+  // 2. Inject the HTML Box into the Chart
   window.addEventListener('DOMContentLoaded', () => {
     const mainPane = document.querySelector('#liveChartModal .chart-main-pane');
     if (mainPane) {
@@ -3004,91 +3004,80 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').ca
     }
   });
 
-  // 3. EXHAUSTIVE MAPPING: Using highly liquid NSE ETFs for 100% Yahoo Finance reliability
+  // 3. EXACT MAPPING TO INVESTING.COM URL SLUGS
   const benchmarkMap = {
-    // --- HDFC ---
-    '118989': { ticker: 'MONIFTY500.NS', name: 'Nifty 500' },      // Flexi Cap
-    '118968': { ticker: 'NIFTYBEES.NS', name: 'Nifty 50 (BAF)' },  // BAF
-    '119132': { ticker: 'GOLDBEES.NS', name: 'NSE Gold' }, 
-    '153264': { ticker: 'NIFTYBEES.NS', name: 'Nifty 100 Proxy' }, // Quality 30
-    '150737': { ticker: 'SILVERBEES.NS', name: 'NSE Silver' },
-    '152521': { ticker: 'NIFTYBEES.NS', name: 'Realty Proxy' },
-    '153097': { ticker: 'ITBEES.NS', name: 'Nifty IT' },
-    '154179': { ticker: 'CONSUMBEES.NS', name: 'Nifty Consumptn' },
-    '152778': { ticker: 'MONIFTY500.NS', name: 'Nifty 500' },      // Multicap
+    // --- Flexi Caps (Nifty 500) ---
+    '118989': { slug: 's-p-cnx-500', name: 'Nifty 500' }, // HDFC
+    '119062': { slug: 's-p-cnx-500', name: 'Nifty 500' }, // ICICI
+    '120166': { slug: 's-p-cnx-500', name: 'Nifty 500' }, // KOTAK
+    '120517': { slug: 's-p-cnx-500', name: 'Nifty 500' }, // ABSL
+    '152778': { slug: 's-p-cnx-500', name: 'Nifty 500' }, // HDFC Multicap
 
-    // --- ICICI ---
-    '119062': { ticker: 'MONIFTY500.NS', name: 'Nifty 500' },      // Flexicap
-    '120377': { ticker: 'NIFTYBEES.NS', name: 'Nifty 50 (BAF)' },  // BAF
-    '150468': { ticker: 'ITBEES.NS', name: 'Nifty IT' },
-    '153394': { ticker: 'AUTOBEES.NS', name: 'Nifty Auto' },
-    '153679': { ticker: 'BANKBEES.NS', name: 'Nifty Pvt Bank' },
-    '152936': { ticker: 'NIFTYBEES.NS', name: 'Value 30 Proxy' },
-    '149858': { ticker: 'BANKBEES.NS', name: 'Nifty Bank' },
-    '150643': { ticker: 'AUTOBEES.NS', name: 'Nifty Auto' },
-    '150930': { ticker: 'PHARMABEES.NS', name: 'Nifty Pharma' },
+    // --- Balanced Advantage Funds (Nifty 50) ---
+    '118968': { slug: 's-p-cnx-nifty', name: 'Nifty 50' }, // HDFC BAF
+    '120377': { slug: 's-p-cnx-nifty', name: 'Nifty 50' }, // ICICI BAF
+    '144335': { slug: 's-p-cnx-nifty', name: 'Nifty 50' }, // KOTAK BAF
+    '131670': { slug: 's-p-cnx-nifty', name: 'Nifty 50' }, // ABSL BAF
 
-    // --- KOTAK ---
-    '120166': { ticker: 'MONIFTY500.NS', name: 'Nifty 500' },      // Flexicap
-    '144335': { ticker: 'NIFTYBEES.NS', name: 'Nifty 50 (BAF)' },  // BAF
-    '153223': { ticker: 'MOSMALL250.NS', name: 'SmallCap 250' },
-    '153353': { ticker: 'NIFTYBEES.NS', name: 'Cmdty Proxy' }, 
-    '152039': { ticker: 'NIFTYBEES.NS', name: 'Housing Proxy' }, 
-    '153921': { ticker: 'GOLDBEES.NS', name: 'Gold/Silver' },
-    '151603': { ticker: 'SILVERBEES.NS', name: 'NSE Silver' },
-    '119781': { ticker: 'GOLDBEES.NS', name: 'NSE Gold' },
-    '151781': { ticker: 'NIFTYBEES.NS', name: 'Momentum 30' },
-    '151911': { ticker: 'BANKBEES.NS', name: 'Fin Serv Proxy' },
-    '154032': { ticker: 'MONIFTY500.NS', name: 'Nifty 500' },
-    '154145': { ticker: 'NIFTYBEES.NS', name: 'Value 30 Proxy' },
-    '152916': { ticker: 'MID150BEES.NS', name: 'Nifty Midcap 150' },
+    // --- NPS Scheme E Equity (Nifty 200) ---
+    'SM008001': { slug: 'cnx-200', name: 'Nifty 200' }, 'SM008004': { slug: 'cnx-200', name: 'Nifty 200' },
+    'SM007001': { slug: 'cnx-200', name: 'Nifty 200' }, 'SM007004': { slug: 'cnx-200', name: 'Nifty 200' },
+    'SM005001': { slug: 'cnx-200', name: 'Nifty 200' }, 'SM005004': { slug: 'cnx-200', name: 'Nifty 200' },
+    'SM006001': { slug: 'cnx-200', name: 'Nifty 200' }, 'SM006004': { slug: 'cnx-200', name: 'Nifty 200' },
 
-    // --- ABSL ---
-    '120517': { ticker: 'MONIFTY500.NS', name: 'Nifty 500' },      // Flexi Cap
-    '131670': { ticker: 'NIFTYBEES.NS', name: 'Nifty 50 (BAF)' },  // BAF
-    '120546': { ticker: 'GOLDBEES.NS', name: 'NSE Gold' },
-    '148807': { ticker: 'MID150BEES.NS', name: 'Nifty Midcap 150' },
-    '153736': { ticker: 'MONIFTY500.NS', name: 'BSE 500 Proxy' },
-    '152798': { ticker: 'NIFTYBEES.NS', name: 'Defence Proxy' },   
-    '153081': { ticker: 'NIFTYBEES.NS', name: 'Infra Proxy' },
-    '149780': { ticker: 'SILVERBEES.NS', name: 'NSE Silver' },
+    // --- Sectoral / Thematic ---
+    '150468': { slug: 'cnx-it', name: 'Nifty IT' },
+    '153097': { slug: 'cnx-it', name: 'Nifty IT' },
+    '149858': { slug: 'bank-nifty', name: 'Nifty Bank' },
+    '153679': { slug: 'nifty-private-bank', name: 'Nifty Pvt Bank' },
+    '150643': { slug: 'cnx-auto', name: 'Nifty Auto' },
+    '153394': { slug: 'cnx-auto', name: 'Nifty Auto' },
+    '150930': { slug: 'cnx-pharma', name: 'Nifty Pharma' },
+    '152521': { slug: 'cnx-realty', name: 'Nifty Realty' },
+    '152039': { slug: 'cnx-realty', name: 'Nifty Realty' },
+    '154179': { slug: 'cnx-consumption', name: 'Nifty Consumptn' },
+    '153081': { slug: 'cnx-infrastructure', name: 'Nifty Infra' },
+    '151911': { slug: 'cnx-finance', name: 'Nifty Fin Serv' },
 
-    // --- NPS SCHEME E (EQUITY) ---
-    'SM008001': { ticker: 'NIFTYBEES.NS', name: 'NPS Eq (Nifty 50)' }, 'SM008004': { ticker: 'NIFTYBEES.NS', name: 'NPS Eq (Nifty 50)' },
-    'SM007001': { ticker: 'NIFTYBEES.NS', name: 'NPS Eq (Nifty 50)' }, 'SM007004': { ticker: 'NIFTYBEES.NS', name: 'NPS Eq (Nifty 50)' },
-    'SM005001': { ticker: 'NIFTYBEES.NS', name: 'NPS Eq (Nifty 50)' }, 'SM005004': { ticker: 'NIFTYBEES.NS', name: 'NPS Eq (Nifty 50)' },
-    'SM006001': { ticker: 'NIFTYBEES.NS', name: 'NPS Eq (Nifty 50)' }, 'SM006004': { ticker: 'NIFTYBEES.NS', name: 'NPS Eq (Nifty 50)' },
-    
-    // --- NPS SCHEME C (CORP BOND) ---
-    'SM008002': { ticker: 'LIQUIDBEES.NS', name: 'Bond Proxy' }, 'SM008005': { ticker: 'LIQUIDBEES.NS', name: 'Bond Proxy' },
-    'SM007002': { ticker: 'LIQUIDBEES.NS', name: 'Bond Proxy' }, 'SM007005': { ticker: 'LIQUIDBEES.NS', name: 'Bond Proxy' },
-    'SM005002': { ticker: 'LIQUIDBEES.NS', name: 'Bond Proxy' }, 'SM005005': { ticker: 'LIQUIDBEES.NS', name: 'Bond Proxy' },
-    'SM006002': { ticker: 'LIQUIDBEES.NS', name: 'Bond Proxy' }, 'SM006005': { ticker: 'LIQUIDBEES.NS', name: 'Bond Proxy' },
+    // --- Midcap / Smallcap / Factor ---
+    '153223': { slug: 'nifty-smallcap-250', name: 'Nifty SmallCap 250' },
+    '148807': { slug: 'nifty-midcap-150', name: 'Nifty Midcap 150' },
+    '152916': { slug: 'nifty-midcap-150', name: 'Nifty Midcap 150' },
+    '153264': { slug: 's-p-cnx-100', name: 'Nifty 100' },
+    '152936': { slug: 'cnx-200', name: 'Nifty 200' },
+    '154145': { slug: 'cnx-200', name: 'Nifty 200' },
+    '151781': { slug: 'cnx-200', name: 'Nifty 200' },
+    '153736': { slug: 's-p-cnx-500', name: 'BSE 500' },
+    '154032': { slug: 's-p-cnx-500', name: 'Nifty 500' },
 
-    'DEFAULT': { ticker: 'NIFTYBEES.NS', name: 'Nifty 50' }
+    // Fallback
+    'DEFAULT': { slug: 's-p-cnx-nifty', name: 'Nifty 50' }
   };
 
-  // Armor-Plated Multi-Proxy Fetch
-  async function fetchYahooData(ticker) {
-    const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=15m&range=1d`;
-    const encodedUrl = encodeURIComponent(targetUrl);
+  // Scrape Investing.com via Proxy
+  async function scrapeInvestingCom(slug) {
+    const targetUrl = `https://www.investing.com/indices/${slug}`;
+    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
     
-    try { 
-      let r = await fetch(`https://corsproxy.io/?${encodedUrl}`, { cache: "no-store" }); 
-      if (r.ok) return await r.json(); 
-    } catch(e) {}
+    const res = await fetch(proxyUrl, { cache: "no-store" });
+    const data = await res.json();
     
-    try { 
-      let r = await fetch(`https://api.allorigins.win/get?url=${encodedUrl}`, { cache: "no-store" }); 
-      if (r.ok) { let d = await r.json(); return JSON.parse(d.contents); } 
-    } catch(e) {}
-
-    try { 
-      let r = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodedUrl}`, { cache: "no-store" }); 
-      if (r.ok) return await r.json(); 
-    } catch(e) {}
-
-    throw new Error("All proxies blocked");
+    // Parse the downloaded HTML to find the % change element
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(data.contents, "text/html");
+    const pctElement = doc.querySelector('[data-test="instrument-price-change-percent"]');
+    
+    if (!pctElement) throw new Error("Could not locate percentage in Investing.com HTML");
+    
+    // Extract the number from string like "(+1.23%)" or "(-0.45%)"
+    const rawText = pctElement.textContent.replace(/[()%+]/g, '').trim();
+    const changePct = parseFloat(rawText);
+    
+    // Check if the original text had a minus sign for negatives
+    if (pctElement.textContent.includes('-')) {
+      return -Math.abs(changePct);
+    }
+    return Math.abs(changePct);
   }
 
   async function updateLiveEstimate() {
@@ -3104,27 +3093,24 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').ca
 
     try {
       estVal.textContent = "Change: ..."; 
-      const data = await fetchYahooData(config.ticker);
-      const meta = data.chart.result[0].meta;
       
-      const currentPrice = meta.regularMarketPrice;
-      const prevClose = meta.chartPreviousClose || meta.previousClose;
-      if (!currentPrice || !prevClose) throw new Error("Price data missing");
-
-      // Calculate ONLY the % change from yesterday's close
-      const changePct = ((currentPrice - prevClose) / prevClose) * 100;
+      const changePct = await scrapeInvestingCom(config.slug);
+      
       estVal.textContent = `Change: ${changePct >= 0 ? '+' : ''}${changePct.toFixed(2)}%`;
       
-      if (changePct > 0.05) estBox.style.backgroundColor = '#dcfce7';
-      else if (changePct < -0.05) estBox.style.backgroundColor = '#fee2e2';
-      else estBox.style.backgroundColor = '#ffedd5';
+      // Color triggers
+      if (changePct > 0.05) estBox.style.backgroundColor = '#dcfce7'; // Green
+      else if (changePct < -0.05) estBox.style.backgroundColor = '#fee2e2'; // Red
+      else estBox.style.backgroundColor = '#ffedd5'; // Orange
+
     } catch (err) {
+      console.warn("Investing.com fetch failed:", err);
       estVal.textContent = "Change: N/A";
       estBox.style.backgroundColor = '#f2f5f9';
     }
   }
 
-  // Hook safely into LDv315 UI
+  // 4. Hook safely into LDv315 UI
   setTimeout(() => {
     const origSelectAMC = window.selectAMC;
     if (origSelectAMC) {
