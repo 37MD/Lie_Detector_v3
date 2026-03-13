@@ -2976,10 +2976,7 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').ca
 
 <script>
 (function() {
-  // ⚠️ 1. PASTE YOUR FREE ALPHA VANTAGE API KEY HERE ⚠️
-  const ALPHA_VANTAGE_API_KEY = "09WJBBH0XJ7EL63M";
-
-  // 2. Inject the CSS (Small font, Bottom Right)
+  // 1. Inject the CSS (Small font, Bottom Right)
   const css = `
     #liveEstBox {
       position: absolute; bottom: 6px; right: 6px;
@@ -2995,7 +2992,7 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').ca
   styleEl.innerHTML = css;
   document.head.appendChild(styleEl);
 
-  // 3. Inject the HTML Box into the Chart
+  // 2. Inject the HTML Box into the Chart
   window.addEventListener('DOMContentLoaded', () => {
     const mainPane = document.querySelector('#liveChartModal .chart-main-pane');
     if (mainPane) {
@@ -3007,74 +3004,95 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').ca
     }
   });
 
-  // 4. MAPPING: Using BSE ETFs for Alpha Vantage compatibility
+  // 3. EXACT MAPPING TO TRUE YAHOO FINANCE INDICES
   const benchmarkMap = {
-    // --- Flexi Caps / Multicaps (Nifty 500 / BSE 500) ---
-    '118989': { ticker: 'MONIFTY500.BSE', name: 'Nifty 500' },
-    '119062': { ticker: 'MONIFTY500.BSE', name: 'Nifty 500' },
-    '120166': { ticker: 'MONIFTY500.BSE', name: 'Nifty 500' },
-    '120517': { ticker: 'MONIFTY500.BSE', name: 'Nifty 500' },
-    '152778': { ticker: 'MONIFTY500.BSE', name: 'Nifty 500' },
-    '153736': { ticker: 'MONIFTY500.BSE', name: 'BSE 500 Proxy' },
-    '154032': { ticker: 'MONIFTY500.BSE', name: 'Nifty 500' },
+    // --- Flexi Caps / Multicaps (Nifty 500) ---
+    '118989': { ticker: '^CRSL500', name: 'Nifty 500' },
+    '119062': { ticker: '^CRSL500', name: 'Nifty 500' },
+    '120166': { ticker: '^CRSL500', name: 'Nifty 500' },
+    '120517': { ticker: '^CRSL500', name: 'Nifty 500' },
+    '152778': { ticker: '^CRSL500', name: 'Nifty 500' },
+    '153736': { ticker: '^CRSL500', name: 'BSE 500 Proxy' },
+    '154032': { ticker: '^CRSL500', name: 'Nifty 500' },
 
     // --- Balanced Advantage Funds (Nifty 50) ---
-    '118968': { ticker: 'NIFTYBEES.BSE', name: 'Nifty 50 (BAF)' },
-    '120377': { ticker: 'NIFTYBEES.BSE', name: 'Nifty 50 (BAF)' },
-    '144335': { ticker: 'NIFTYBEES.BSE', name: 'Nifty 50 (BAF)' },
-    '131670': { ticker: 'NIFTYBEES.BSE', name: 'Nifty 50 (BAF)' },
+    '118968': { ticker: '^NSEI', name: 'Nifty 50' },
+    '120377': { ticker: '^NSEI', name: 'Nifty 50' },
+    '144335': { ticker: '^NSEI', name: 'Nifty 50' },
+    '131670': { ticker: '^NSEI', name: 'Nifty 50' },
 
     // --- Sectoral / Thematic ---
-    '150468': { ticker: 'ITBEES.BSE', name: 'Nifty IT' },
-    '153097': { ticker: 'ITBEES.BSE', name: 'Nifty IT' },
-    '149858': { ticker: 'BANKBEES.BSE', name: 'Nifty Bank' },
-    '153679': { ticker: 'BANKBEES.BSE', name: 'Nifty Pvt Bank' },
-    '150643': { ticker: 'AUTOBEES.BSE', name: 'Nifty Auto' },
-    '153394': { ticker: 'AUTOBEES.BSE', name: 'Nifty Auto' },
-    '150930': { ticker: 'PHARMABEES.BSE', name: 'Nifty Pharma' },
-    '151911': { ticker: 'BANKBEES.BSE', name: 'Fin Serv Proxy' },
-    
-    // Fallbacks for sectors lacking pure BSE ETFs
-    '152521': { ticker: 'NIFTYBEES.BSE', name: 'Realty Proxy' },
-    '152039': { ticker: 'NIFTYBEES.BSE', name: 'Housing Proxy' },
-    '154179': { ticker: 'CONSUMBEES.BSE', name: 'Consumption' },
-    '153081': { ticker: 'NIFTYBEES.BSE', name: 'Infra Proxy' },
-    '152798': { ticker: 'NIFTYBEES.BSE', name: 'Defence Proxy' },
+    '150468': { ticker: '^CNXIT', name: 'Nifty IT' },
+    '153097': { ticker: '^CNXIT', name: 'Nifty IT' },
+    '149858': { ticker: '^NSEBANK', name: 'Nifty Bank' },
+    '153679': { ticker: '^NIFTYPVTBANK', name: 'Nifty Pvt Bank' },
+    '150643': { ticker: '^CNXAUTO', name: 'Nifty Auto' },
+    '153394': { ticker: '^CNXAUTO', name: 'Nifty Auto' },
+    '150930': { ticker: '^CNXPHARMA', name: 'Nifty Pharma' },
+    '151911': { ticker: '^CNXFIN', name: 'Nifty Fin Serv' },
+    '152521': { ticker: '^CNXREALTY', name: 'Nifty Realty' },
+    '152039': { ticker: '^CNXREALTY', name: 'Nifty Realty' },
+    '154179': { ticker: '^CNXCONSUM', name: 'Nifty Consumption' },
+    '153081': { ticker: '^CNXINFRA', name: 'Nifty Infra' },
+    '152798': { ticker: '^NSEI', name: 'Defence Proxy' },
 
     // --- Midcap / Smallcap / Factor ---
-    '153223': { ticker: 'MOSMALL250.BSE', name: 'SmallCap 250' },
-    '148807': { ticker: 'MID150BEES.BSE', name: 'Midcap 150' },
-    '152916': { ticker: 'MID150BEES.BSE', name: 'Midcap 150' },
-    '153264': { ticker: 'NIFTYBEES.BSE', name: 'Quality 30 Proxy' },
-    '152936': { ticker: 'NIFTYBEES.BSE', name: 'Value 30 Proxy' },
-    '154145': { ticker: 'NIFTYBEES.BSE', name: 'Value 30 Proxy' },
-    '151781': { ticker: 'NIFTYBEES.BSE', name: 'Momentum 30 Proxy' },
+    '153223': { ticker: '^CRSLSML', name: 'Nifty SmallCap 250' },
+    '148807': { ticker: '^CNXMIDCAP', name: 'Nifty Midcap 150' },
+    '152916': { ticker: '^CNXMIDCAP', name: 'Nifty Midcap 150' },
+    '153264': { ticker: '^CNX100', name: 'Nifty 100' },
+    '152936': { ticker: '^CNX200', name: 'Nifty 200' },
+    '154145': { ticker: '^CNX200', name: 'Nifty 200' },
+    '151781': { ticker: '^CNX200', name: 'Nifty 200' },
 
-    // --- Commodities ---
-    '119132': { ticker: 'GOLDBEES.BSE', name: 'Gold ETF' }, 
-    '150737': { ticker: 'SILVERBEES.BSE', name: 'Silver ETF' },
-    '153921': { ticker: 'GOLDBEES.BSE', name: 'Gold ETF' }, 
-    '151603': { ticker: 'SILVERBEES.BSE', name: 'Silver ETF' },
-    '119781': { ticker: 'GOLDBEES.BSE', name: 'Gold ETF' }, 
-    '149780': { ticker: 'SILVERBEES.BSE', name: 'Silver ETF' },
-    '120546': { ticker: 'GOLDBEES.BSE', name: 'Gold ETF' },
-    '153353': { ticker: 'NIFTYBEES.BSE', name: 'Cmdty Proxy' }, 
+    // --- Commodities (NSE ETFs used as there are no domestic live spot indices on Yahoo) ---
+    '119132': { ticker: 'GOLDBEES.NS', name: 'Gold ETF' }, 
+    '150737': { ticker: 'SILVERBEES.NS', name: 'Silver ETF' },
+    '153921': { ticker: 'GOLDBEES.NS', name: 'Gold ETF' }, 
+    '151603': { ticker: 'SILVERBEES.NS', name: 'Silver ETF' },
+    '119781': { ticker: 'GOLDBEES.NS', name: 'Gold ETF' }, 
+    '149780': { ticker: 'SILVERBEES.NS', name: 'Silver ETF' },
+    '120546': { ticker: 'GOLDBEES.NS', name: 'Gold ETF' },
+    '153353': { ticker: '^NSEI', name: 'Cmdty Proxy' }, 
 
-    // --- NPS Schemes (Equity defaults to Nifty BEES for BSE tracking) ---
-    'SM008001': { ticker: 'NIFTYBEES.BSE', name: 'NPS Eq (Nifty 50)' }, 'SM008004': { ticker: 'NIFTYBEES.BSE', name: 'NPS Eq' },
-    'SM007001': { ticker: 'NIFTYBEES.BSE', name: 'NPS Eq (Nifty 50)' }, 'SM007004': { ticker: 'NIFTYBEES.BSE', name: 'NPS Eq' },
-    'SM005001': { ticker: 'NIFTYBEES.BSE', name: 'NPS Eq (Nifty 50)' }, 'SM005004': { ticker: 'NIFTYBEES.BSE', name: 'NPS Eq' },
-    'SM006001': { ticker: 'NIFTYBEES.BSE', name: 'NPS Eq (Nifty 50)' }, 'SM006004': { ticker: 'NIFTYBEES.BSE', name: 'NPS Eq' },
+    // --- NPS Schemes (Equity -> Nifty 200) ---
+    'SM008001': { ticker: '^CNX200', name: 'Nifty 200' }, 'SM008004': { ticker: '^CNX200', name: 'Nifty 200' },
+    'SM007001': { ticker: '^CNX200', name: 'Nifty 200' }, 'SM007004': { ticker: '^CNX200', name: 'Nifty 200' },
+    'SM005001': { ticker: '^CNX200', name: 'Nifty 200' }, 'SM005004': { ticker: '^CNX200', name: 'Nifty 200' },
+    'SM006001': { ticker: '^CNX200', name: 'Nifty 200' }, 'SM006004': { ticker: '^CNX200', name: 'Nifty 200' },
     
     // --- NPS Corporate Debt ---
-    'SM008002': { ticker: 'LIQUIDBEES.BSE', name: 'Bond Proxy' }, 'SM008005': { ticker: 'LIQUIDBEES.BSE', name: 'Bond Proxy' },
-    'SM007002': { ticker: 'LIQUIDBEES.BSE', name: 'Bond Proxy' }, 'SM007005': { ticker: 'LIQUIDBEES.BSE', name: 'Bond Proxy' },
-    'SM005002': { ticker: 'LIQUIDBEES.BSE', name: 'Bond Proxy' }, 'SM005005': { ticker: 'LIQUIDBEES.BSE', name: 'Bond Proxy' },
-    'SM006002': { ticker: 'LIQUIDBEES.BSE', name: 'Bond Proxy' }, 'SM006005': { ticker: 'LIQUIDBEES.BSE', name: 'Bond Proxy' },
+    'SM008002': { ticker: '^NIFTY_CORP_BOND', name: 'Corp Bond Index' }, 'SM008005': { ticker: '^NIFTY_CORP_BOND', name: 'Corp Bond Index' },
+    'SM007002': { ticker: '^NIFTY_CORP_BOND', name: 'Corp Bond Index' }, 'SM007005': { ticker: '^NIFTY_CORP_BOND', name: 'Corp Bond Index' },
+    'SM005002': { ticker: '^NIFTY_CORP_BOND', name: 'Corp Bond Index' }, 'SM005005': { ticker: '^NIFTY_CORP_BOND', name: 'Corp Bond Index' },
+    'SM006002': { ticker: '^NIFTY_CORP_BOND', name: 'Corp Bond Index' }, 'SM006005': { ticker: '^NIFTY_CORP_BOND', name: 'Corp Bond Index' },
 
     // Fallback
-    'DEFAULT': { ticker: 'NIFTYBEES.BSE', name: 'Nifty 50' }
+    'DEFAULT': { ticker: '^NSEI', name: 'Nifty 50' }
   };
+
+  // 4. Robust Fetch Wrapper
+  async function fetchYahooData(ticker) {
+    const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=15m&range=1d`;
+    const encodedUrl = encodeURIComponent(targetUrl);
+    
+    const proxies = [
+      `https://corsproxy.io/?${encodedUrl}`,
+      `https://api.allorigins.win/raw?url=${encodedUrl}`
+    ];
+
+    for (let proxy of proxies) {
+      try {
+        const res = await fetch(proxy, { cache: "no-store" });
+        if (!res.ok) continue;
+        const data = await res.json();
+        if (data && data.chart && data.chart.result) return data;
+      } catch (e) {
+        continue; 
+      }
+    }
+    throw new Error("Data fetch failed");
+  }
 
   async function updateLiveEstimate() {
     const estBox = document.getElementById('liveEstBox');
@@ -3090,40 +3108,31 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').ca
     try {
       estVal.textContent = "Change: ..."; 
       
-      // Fetch directly from Alpha Vantage GLOBAL_QUOTE endpoint
-      const targetUrl = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${config.ticker}&apikey=${ALPHA_VANTAGE_API_KEY}`;
-      const response = await fetch(targetUrl);
-      const data = await response.json();
+      const data = await fetchYahooData(config.ticker);
+      const meta = data.chart.result[0].meta;
       
-      // Alpha Vantage error handling (Rate limits, Invalid API key)
-      if (data["Information"] || data["Note"]) {
-          throw new Error("Alpha Vantage Rate Limit or API Key Error");
-      }
+      const currentPrice = meta.regularMarketPrice;
+      const prevClose = meta.chartPreviousClose || meta.previousClose;
       
-      const quote = data["Global Quote"];
-      if (!quote || Object.keys(quote).length === 0) {
-          throw new Error("No data returned for ticker");
-      }
+      if (!currentPrice || !prevClose) throw new Error("Price data missing");
 
-      // Extract the string (e.g., "-0.5401%") and parse it
-      const changeStr = quote["09. change percent"];
-      const changePct = parseFloat(changeStr);
+      // STRICT CALCULATION: % Change from Yesterday's Close
+      const changePct = ((currentPrice - prevClose) / prevClose) * 100;
       
       estVal.textContent = `Change: ${changePct >= 0 ? '+' : ''}${changePct.toFixed(2)}%`;
       
-      // Background Color Logic
+      // Color Logic
       if (changePct > 0.05) estBox.style.backgroundColor = '#dcfce7'; // Green
       else if (changePct < -0.05) estBox.style.backgroundColor = '#fee2e2'; // Red
       else estBox.style.backgroundColor = '#ffedd5'; // Orange
 
     } catch (err) {
-      console.warn("Alpha Vantage Fetch Failed:", err);
       estVal.textContent = "Change: N/A";
       estBox.style.backgroundColor = '#f2f5f9';
     }
   }
 
-  // 5. Hook safely into LDv315 UI
+  // 5. Hook into LDv315 safely
   setTimeout(() => {
     const origSelectAMC = window.selectAMC;
     if (origSelectAMC) {
@@ -3150,7 +3159,7 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').ca
     if (document.getElementById('liveChartModal') && document.getElementById('liveChartModal').style.display === 'flex') {
       updateLiveEstimate();
     }
-  }, 900000);
+  }, 900000); // 15 Minute refresh
 
 })();
 </script>
