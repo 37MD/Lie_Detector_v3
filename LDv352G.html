@@ -3004,74 +3004,35 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').ca
     }
   });
 
-  // 3. YOUR EXACT MAPPING LIST (With the 3 missing Kotak funds added back)
+  // 3. YOUR EXACT MAPPING LIST
   const NSE_BENCHMARK_MAP = {
-    /* FLEXICAP → NIFTY500 */
-    "118989":"NIFTY 500", "119062":"NIFTY 500", "120166":"NIFTY 500", "120517":"NIFTY 500", "152778":"NIFTY 500", 
-    
-    /* BALANCED ADVANTAGE → NIFTY100 */
+    "118989":"NIFTY 500", "119062":"NIFTY 500", "120166":"NIFTY 500", "120517":"NIFTY 500", "152778":"NIFTY 500", "154032":"NIFTY 500",
     "118968":"NIFTY 100", "120377":"NIFTY 100", "144335":"NIFTY 100", "131670":"NIFTY 100",
-
-    /* MID / SMALL */
     "148807":"NIFTY MIDCAP 150", "152916":"NIFTY MIDCAP 150", "153223":"NIFTY SMALLCAP 250",
-
-    /* FACTOR INDICES */
-    "153264":"NIFTY100 QUALITY 30", 
-    "151781":"NIFTY200 MOMENTUM 30", 
-    "152936":"NIFTY200 VALUE 30", 
-    "154145":"NIFTY200 VALUE 30", 
-    "153736":"NIFTY500 MOMENTUM 50",
-    "154032":"NIFTY500 MOMENTUM 50", /* ADDED: Missing Kotak Nifty500 Mom 50 */
-
-    /* SECTOR */
-    "150468":"NIFTY IT", 
-    "153679":"NIFTY PRIVATE BANK", 
-    "149858":"NIFTY BANK", 
-    "150643":"NIFTY AUTO", 
-    "150930":"NIFTY PHARMA", 
-    "152521":"NIFTY REALTY", 
-    "152039":"NIFTY REALTY", 
-    "151911":"NIFTY FIN SERVICE",
-
-    /* THEMATIC */
-    "153097":"NIFTY INDIA DIGITAL",
-    "154179":"NIFTY INDIA CONSUMPTION", 
-    "152798":"NIFTY INDIA DEFENCE",
-    "153353":"NIFTY COMMODITIES", /* ADDED: Missing Kotak Commodities */
-    
-    /* CORRECTED */
+    "153264":"NIFTY100 QUALITY 30", "151781":"NIFTY200 MOMENTUM 30", "152936":"NIFTY200 VALUE 30", "154145":"NIFTY200 VALUE 30", "153736":"NIFTY500 MOMENTUM 50",
+    "150468":"NIFTY IT", "153097":"NIFTY IT", "153679":"NIFTY PRIVATE BANK", "149858":"NIFTY BANK", "150643":"NIFTY AUTO", "150930":"NIFTY PHARMA", "152521":"NIFTY REALTY", "152039":"NIFTY REALTY", "151911":"NIFTY FIN SERVICE",
+    "154179":"NIFTY INDIA CONSUMPTION", "152798":"NIFTY INDIA DEFENCE",
     "153394":"NIFTY EV & NEW AGE AUTOMOTIVE",
-
-    /* INFRA */
     "153081":"NIFTY INFRASTRUCTURE",
-
-    /* GOLD */
     "119132":"MCX_GOLD", "120546":"MCX_GOLD", "119781":"MCX_GOLD", "153921":"MCX_GOLD",
-
-    /* SILVER */
     "150737":"MCX_SILVER", "151603":"MCX_SILVER", "149780":"MCX_SILVER",
-
-    /* NPS EQUITY */
     "SM008001":"NIFTY 200", "SM007001":"NIFTY 200", "SM005001":"NIFTY 200", "SM006001":"NIFTY 200",
     "SM008004":"NIFTY 200", "SM007004":"NIFTY 200", "SM005004":"NIFTY 200", "SM006004":"NIFTY 200",
-
-    /* NPS CORPORATE BOND */
     "SM008002":"BHARATBOND", "SM007002":"BHARATBOND", "SM005002":"BHARATBOND", "SM006002":"BHARATBOND",
     "SM008005":"BHARATBOND", "SM007005":"BHARATBOND", "SM005005":"BHARATBOND", "SM006005":"BHARATBOND"
   };
 
-  // 4. FULL YAHOO TRANSLATOR
+  // 4. YAHOO TRANSLATOR
   const YAHOO_TICKER_MAP = {
     "NIFTY 500": "^CRSL500",
     "NIFTY 100": "^CNX100",
     "NIFTY MIDCAP 150": "MID150BEES.NS",      
     "NIFTY SMALLCAP 250": "^CRSLSML",
     "NIFTY100 QUALITY 30": "QUAL30IETF.NS",   
-    "NIFTY200 MOMENTUM 30": "MOMENTUM.NS",    
+    "NIFTY200 MOMENTUM 30": "MOMOM100.NS",    
     "NIFTY200 VALUE 30": "VALUE30.NS",        
-    "NIFTY500 MOMENTUM 50": "^CRSL500",       // Proxy to 500 base to ensure stability
+    "NIFTY500 MOMENTUM 50": "MOM50.NS",       
     "NIFTY IT": "^CNXIT",
-    "NIFTY INDIA DIGITAL": "^CNXIT",          // FIXED: Was missing entirely
     "NIFTY PRIVATE BANK": "^NIFTYPVTBANK",
     "NIFTY BANK": "^NSEBANK",
     "NIFTY AUTO": "^CNXAUTO",
@@ -3082,7 +3043,6 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').ca
     "NIFTY INDIA DEFENCE": "MODEFENCE.NS",    
     "NIFTY EV & NEW AGE AUTOMOTIVE": "AUTOBEES.NS", 
     "NIFTY INFRASTRUCTURE": "^CNXINFRA",
-    "NIFTY COMMODITIES": "^CNXCMDT",          // FIXED: Was missing entirely
     "MCX_GOLD": "GOLDBEES.NS",                
     "MCX_SILVER": "SILVERBEES.NS",            
     "NIFTY 200": "^CNX200",
@@ -3107,6 +3067,7 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').ca
       const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooTicker)}?interval=15m&range=1d`;
       const encodedUrl = encodeURIComponent(targetUrl);
       
+      // THE ORIGINAL WORKING FETCH LOGIC
       const proxies = [
         `https://corsproxy.io/?${encodedUrl}`,
         `https://api.allorigins.win/raw?url=${encodedUrl}`
