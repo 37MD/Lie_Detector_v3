@@ -3022,7 +3022,7 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').ca
     "152936":"NIFTY200 VALUE 30", 
     "154145":"NIFTY200 VALUE 30", 
     "154032":"NIFTY500 MOMENTUM 50", 
-    "153736":"BSE 500 MOMENTUM 50", /* Updated to BSE equivalent */
+    "153736":"BSE 500 MOMENTUM 50", 
     "152916":"NIFTY MIDCAP 150 MOMENTUM 50 INDEX", 
 
     /* SECTOR */
@@ -3040,35 +3040,35 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').ca
     "154179":"NIFTY INDIA CONSUMPTION", 
     "152798":"NIFTY INDIA DEFENCE",
     "153394":"NIFTY EV & NEW AGE AUTOMOTIVE",
-    "153081":"BSE INDIA INFRASTRUCTURE", /* Updated to BSE equivalent */
+    "153081":"BSE INDIA INFRASTRUCTURE", 
     "153353":"NIFTY COMMODITIES",    
 
     /* SPECIFIC GOLD */
-    "119132":"HDFC GOLD FOF", 
+    "119132":"HDFC GOLD ETF",     /* Fixed: Was pointing to .BO FoF */
     "119781":"KOTAK GOLD ETF", 
-    "153921":"KOTAK GOLD ETF", /* Kotak Gold/Silver FoF defaults to Gold feed */
+    "153921":"KOTAK GOLD ETF", 
     "120546":"ABSL GOLD ETF",
 
     /* SPECIFIC SILVER */
-    "150737":"HDFC SILVER FOF", 
+    "150737":"HDFC SILVER ETF",   /* Fixed: Was pointing to .BO FoF */
     "151603":"KOTAK SILVER ETF", 
     "149780":"ABSL SILVER ETF",
 
-    /* NPS EQUITY */
+    /* NPS EQUITY (All replicated identically) */
     "SM008001":"NIFTY 200", "SM007001":"NIFTY 200", "SM005001":"NIFTY 200", "SM006001":"NIFTY 200",
     "SM008004":"NIFTY 200", "SM007004":"NIFTY 200", "SM005004":"NIFTY 200", "SM006004":"NIFTY 200",
 
-    /* NPS CORPORATE BOND */
+    /* NPS CORPORATE BOND (All replicated identically) */
     "SM008002":"BHARATBOND", "SM007002":"BHARATBOND", "SM005002":"BHARATBOND", "SM006002":"BHARATBOND",
     "SM008005":"BHARATBOND", "SM007005":"BHARATBOND", "SM005005":"BHARATBOND", "SM006005":"BHARATBOND"
   };
 
-  // 4. YAHOO TRANSLATOR (Incorporating all your custom updates)
+  // 4. YAHOO TRANSLATOR 
   const YAHOO_TICKER_MAP = {
     "NIFTY 500": "^CRSLDX",
     "NIFTY 100": "^CNX100",
     "NIFTY MIDCAP 150": "MID150BEES.NS",      
-    "NIFTY SMALLCAP 250": "HDFCSML250.NS",
+    "NIFTY SMALLCAP 250": "^CRSLSML",               /* Swapped to index to prevent low volume issues */
     "NIFTY100 QUALITY 30": "NIFTYQUALITY30.NS",   
     "NIFTY200 MOMENTUM 30": "MOMENTUM.NS",     
     "NIFTY200 VALUE 30": "NIFTY200_VALUE_30.NS",        
@@ -3083,16 +3083,14 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').ca
     "NIFTY PHARMA": "^CNXPHARMA",
     "NIFTY REALTY": "^CNXREALTY",
     "NIFTY FINANCIAL SERVICES EXCLUDING BANK": "FINIETF.NS",
-    "NIFTY INDIA CONSUMPTION": "CONSUMIETF.NS",
+    "NIFTY INDIA CONSUMPTION": "^CNXCONSUM",        /* Fixed: Replaced illiquid ETF with solid index */
     "NIFTY INDIA DEFENCE": "MODEFENCE.NS",    
     "NIFTY EV & NEW AGE AUTOMOTIVE": "EVIETF.NS", 
     "NIFTY INFRASTRUCTURE": "^CNXINFRA",
     "BSE INDIA INFRASTRUCTURE": "INFRASTRUCTURE.BO",
     "NIFTY COMMODITIES": "^CNXCMDT",           
-    "HDFC GOLD FOF": "0P0000XW7I.BO",
-    "HDFC SILVER FOF": "0P0001PU07.BO",
-    "HDFC GOLD ETF": "HDFCGOLD.NS",
-    "HDFC SILVER ETF": "HDFCSILVER.NS",
+    "HDFC GOLD ETF": "HDFCGOLD.NS",                 /* Fixed: Liquid ETF */
+    "HDFC SILVER ETF": "HDFCSILVER.NS",             /* Fixed: Liquid ETF */
     "KOTAK GOLD ETF": "GOLD1.NS",
     "KOTAK SILVER ETF": "SILVER1.NS",
     "ABSL GOLD ETF": "BSLGOLDETF.NS",
@@ -3196,6 +3194,7 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').ca
 
 })();
 </script>
+
 
 
 </body>
