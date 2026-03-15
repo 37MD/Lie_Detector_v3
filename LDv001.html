@@ -3,28 +3,31 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Lie Detector v3.16 - Fully Wired Simulator</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-zoom/2.0.1/chartjs-plugin-zoom.min.js"></script>
+<title>Lie Detector v3.16 - Pure Data Engine</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg: #ffffff; --surface: #f2f5f9; --surface2: #e4eaf2; --surface3: #d6deeb;
-    --border: #b0bece; --border2: #7090b0; --accent: #009e70; --accent-dim: rgba(0, 158, 112, 0.10);
-    --accent2: #c97a00; --accent2-dim: rgba(201, 122, 0, 0.10); --red: #c8102e; --red-dim: rgba(200, 16, 46, 0.08);
-    --text: #000000; --muted: #404060; --muted2: #304058; --gold: #b07a00; --gold-dim: rgba(176, 122, 0, 0.10);
+    --border: #b0bece; --border2: #7090b0;
+    --accent: #009e70; --accent-dim: rgba(0, 158, 112, 0.10);
+    --accent2: #c97a00; --accent2-dim: rgba(201, 122, 0, 0.10);
+    --red: #c8102e; --red-dim: rgba(200, 16, 46, 0.08);
+    --text: #000000; --muted: #404060; --muted2: #304058;
+    --gold: #b07a00; --gold-dim: rgba(176, 122, 0, 0.10);
     --mono: 'Space Mono', monospace; --radius: 6px; --radius-sm: 4px;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html { font-size: 16px; }
   body { background: var(--bg); color: var(--text); font-family: var(--mono); font-weight: 400; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
-  canvas { touch-action: none; }
+  
+  /* ── SPINNER ── */
   #ov { display: none; position: fixed; inset: 0; background: rgba(255,255,255,0.96); z-index: 1000; align-items: center; justify-content: center; flex-direction: column; backdrop-filter: blur(4px); }
   .spin { width: 36px; height: 36px; border: 2px solid var(--border2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
   #ovTxt { color: var(--accent); font-size: 0.65rem; margin-top: 12px; letter-spacing: 0.12em; opacity: 0.8; transition: color 0.2s;}
+
+  /* ── SETUP SCREEN ── */
   #setupScreen { position: fixed; inset: 0; background: var(--bg); z-index: 500; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1.5rem; text-align: center; }
   .setup-logo { font-size: 0.65rem; color: var(--accent); letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 1.2rem; opacity: 0.7; }
   .setup-title { font-size: 1.75rem; font-weight: 400; letter-spacing: -0.02em; margin-bottom: 0.3rem; }
@@ -48,6 +51,8 @@
   .setup-btn-wave:hover { background: var(--accent2-dim); }
   .setup-btn-live { border-color: var(--border2); color: var(--muted2); }
   .setup-btn-live:hover { border-color: var(--muted2); color: var(--text); }
+
+  /* ── GAME UI CHROME ── */
   .app-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 14px; background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0; }
   .logo { font-weight: 700; font-size: 0.75rem; color: var(--accent); letter-spacing: 0.12em; display: flex; align-items: center; }
   .logo span { color: var(--muted); font-weight: 400; }
@@ -57,11 +62,15 @@
   .btn-log:hover { color: var(--text); border-color: var(--muted2); }
   .btn-review { background: var(--gold-dim); color: var(--gold); border: 1px solid var(--gold); padding: 5px 10px; font-size: 0.65rem; font-family: var(--mono); font-weight: 400; cursor: pointer; border-radius: var(--radius-sm); letter-spacing: 0.08em; transition: all 0.15s; }
   .btn-review:hover { background: rgba(251,191,36,0.15); }
+
+  /* ── NETWORTH STRIP ── */
   .networth-header { display: flex; justify-content: space-around; background: var(--surface); border-bottom: 1px solid var(--border); padding: 7px 8px; flex-shrink: 0; }
   .nw-col { display: flex; flex-direction: column; align-items: center; gap: 1px; }
   .nw-lbl { font-size: 0.55rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
   .nw-val { font-size: 1.25rem; font-weight: 400; white-space: nowrap; overflow: hidden; }
   .nw-divider { width: 1px; background: var(--border); align-self: stretch; }
+
+  /* ── ALERT BANNER ── */
   #alertBanner, #liveAlertBanner, #liveChartAlertBanner { display: block; height: 36px; line-height: 36px; padding: 0 12px; text-align: center; font-weight: 700; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.06em; flex-shrink: 0; visibility: hidden; border-bottom: 1px solid rgba(0,0,0,0); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
   #alertBanner.banner-on, #liveAlertBanner.banner-on, #liveChartAlertBanner.banner-on { visibility: visible; border-bottom-color: rgba(0,0,0,0.15); animation: pulseAlert 1.8s ease-in-out infinite; }
   .alert-danger { background: var(--red); color: #fff; }
@@ -69,6 +78,8 @@
   .alert-profit { background: var(--accent2); color: #1a0a00; }
   .alert-mega { letter-spacing: 0.09em; }
   @keyframes pulseAlert { 0%, 100% { opacity: 1; } 50% { opacity: 0.72; } }
+
+  /* ── MAIN SIM AREA ── */
   .main-sim { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
   .main-sim-scroll { flex-shrink: 0; overflow-y: auto; padding-bottom: 96px; }
   .chart-container { background: var(--bg); padding: 6px 8px; height: 52vh; min-height: 380px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; }
@@ -79,40 +90,63 @@
   .chart-main-pane { flex: 2.2; position: relative; width: 100%; min-height: 0; }
   .chart-rsi-pane  { flex: 1.43; position: relative; width: 100%; min-height: 0; border-top: 1px dashed var(--border); margin-top: 4px; }
   .chart-delta-pane{ flex: 1.1; position: relative; width: 100%; min-height: 0; border-top: 1px dashed var(--border); margin-top: 4px; }
+  
   .canvas-box { position: absolute; inset: 0; }
   .canvas-box-bottom { position: absolute; inset: 0; top: 18px; }
   .delta-label { position: absolute; top: 3px; left: 4px; font-size: 0.52rem; color: var(--muted); z-index: 10; letter-spacing: 0.08em; pointer-events: none; background: rgba(255,255,255, 0.8); padding: 1px 4px; border-radius: 2px; }
+
+  /* ── HUD OVERLAY CLASSES ── */
   .chart-hud { position: absolute; top: 4px; left: 4px; width: calc(100% - 60px); font-family: var(--mono); font-size: 0.55rem; font-weight: 400; color: #ffffff; z-index: 10; pointer-events: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.4; letter-spacing: -0.02em; }
   .chart-hud:not(:empty) { background: rgba(255,255,255, 0.88); padding: 2px 5px; border-radius: 2px; }
   #liveRsiHud, #liveDeltaHud, #simRsiHud, #simDeltaHud { top: 20px; font-size: 0.52rem; width: calc(60% - 8px); }
-  @media (max-width: 600px) { .chart-hud { font-size: 0.50rem; letter-spacing: -0.05em; width: calc(100% - 50px); line-height: 1.2; } .ind-val { font-size: 0.95rem !important; padding: 2px 4px !important; } .chart-container { height: 44vh; min-height: 300px; } .psy-logic { font-size: 0.65rem; line-height: 1.4; } .psy-logic .psy-line { margin-bottom: 2px; font-size: 0.62rem; line-height: 1.5; color: var(--text); } }
+
+  @media (max-width: 600px) {
+    .chart-hud { font-size: 0.50rem; letter-spacing: -0.05em; width: calc(100% - 50px); line-height: 1.2; }
+    .ind-val { font-size: 0.95rem !important; padding: 2px 4px !important; }
+    .chart-container { height: 44vh; min-height: 300px; }
+    .psy-logic { font-size: 0.65rem; line-height: 1.4; }
+    .psy-logic .psy-line { margin-bottom: 2px; font-size: 0.62rem; line-height: 1.5; color: var(--text); }
+  }
+
+  /* ── INDICATOR ROW ── */
   .indicator-row { display: flex; justify-content: space-between; align-items: stretch; background: var(--surface); padding: 0; border-bottom: 1px solid var(--border); flex-shrink: 0; }
   .ind-box { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 4px 2px; border-right: 1px solid var(--border); }
   .ind-box:last-child { border-right: none; }
   .ind-val { font-size: 1.0rem; font-weight: 700; margin-top: 3px; padding: 2px 8px; border-radius: var(--radius-sm); transition: color 0.3s, background 0.3s; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .reg-A { color: var(--accent); background: var(--accent-dim); border: 1px solid rgba(0,232,162,0.3); } .reg-B { color: var(--accent2); background: var(--accent2-dim); border: 1px solid rgba(245,158,11,0.3); } .reg-C { color: var(--red); background: var(--red-dim); border: 1px solid rgba(240,64,96,0.3); }
+  .reg-A { color: var(--accent); background: var(--accent-dim); border: 1px solid rgba(0,232,162,0.3); }
+  .reg-B { color: var(--accent2); background: var(--accent2-dim); border: 1px solid rgba(245,158,11,0.3); }
+  .reg-C { color: var(--red); background: var(--red-dim); border: 1px solid rgba(240,64,96,0.3); }
+
+  /* ── PSY BOX ── */
   .psy-box { padding: 4px 14px 10px 14px; background: var(--surface); flex-shrink: 0; font-size: 0.62rem; }
   .psy-logic { font-size: 0.70rem; color: var(--text); line-height: 1.6; font-weight: 400; border-left: 2px solid var(--accent); padding-left: 10px; margin-top: 6px; }
-  .psy-logic .psy-line { color: var(--muted2); margin-bottom: 4px; } .psy-logic .psy-line:first-child { color: var(--text); font-weight: 400; }
+  .psy-logic .psy-line { color: var(--muted2); margin-bottom: 4px; }
+  .psy-logic .psy-line:first-child { color: var(--text); font-weight: 400; }
+
+  /* ── ACTION BAR ── */
   .action-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: var(--surface); border-top: 1px solid var(--border); display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 8px; z-index: 200; height: 88px; }
   .btn { font-family: var(--mono); font-size: 0.67rem; font-weight: 700; padding: 8px 2px; border-radius: var(--radius-sm); cursor: pointer; border: 1.5px solid transparent; text-transform: uppercase; text-align: center; letter-spacing: 0.06em; transition: all 0.15s ease; background: transparent; }
-  .btn:hover:not(:disabled) { filter: brightness(1.2); } .btn:disabled { opacity: 0.35; cursor: not-allowed; border-color: var(--border) !important; color: var(--muted) !important; background: transparent !important; }
+  .btn:hover:not(:disabled) { filter: brightness(1.2); }
+  .btn:disabled { opacity: 0.35; cursor: not-allowed; border-color: var(--border) !important; color: var(--muted) !important; background: transparent !important; }
   .btn-buy { border-color: var(--accent); color: var(--accent); } .btn-buy:hover:not(:disabled) { background: var(--accent-dim); }
   .btn-hold { border-color: var(--border2); color: var(--muted2); } .btn-hold:hover { background: rgba(0,0,0,0.05); color: var(--text); }
   .btn-sell { border-color: var(--red); color: var(--red); } .btn-sell:hover:not(:disabled) { background: var(--red-dim); }
   .btn-profit { border-color: var(--accent2); color: var(--accent2); } .btn-profit:hover:not(:disabled) { background: var(--accent2-dim); }
+
+  /* ── MODALS ── */
   .modal-overlay { display: none; position: fixed; inset: 0; background: var(--bg); z-index: 600; flex-direction: column; }
   .modal-close { padding: 11px 14px; text-align: right; border-bottom: 1px solid var(--border); background: var(--surface); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
   .modal-close-btn { font-size: 0.65rem; color: var(--red); cursor: pointer; letter-spacing: 0.08em; transition: opacity 0.15s; font-weight: 400; }
   .modal-close-btn:hover { opacity: 0.7; }
   .modal-title { font-size: 0.72rem; letter-spacing: 0.1em; font-weight: 400; }
-  .log-table { width: 100%; font-size: 0.75rem; text-align: left; border-collapse: collapse; font-weight: 400; } .log-table th { padding: 10px 8px; border-bottom: 1px solid var(--border); color: var(--muted); font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 400;} .log-table td { padding: 9px 8px; border-bottom: 1px solid var(--border); }
+
+  /* ── LOG TABLE ── */
+  .log-table { width: 100%; font-size: 0.75rem; text-align: left; border-collapse: collapse; font-weight: 400; }
+  .log-table th { padding: 10px 8px; border-bottom: 1px solid var(--border); color: var(--muted); font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 400;}
+  .log-table td { padding: 9px 8px; border-bottom: 1px solid var(--border); }
   .log-buy { color: var(--accent); } .log-sell { color: var(--red); } .log-profit { color: var(--accent2); } .log-tax { color: var(--muted); font-size: 0.65rem; }
-  .tf-row { display: flex; justify-content: space-around; background: var(--surface2); padding: 4px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
-  .tf-btn { background: transparent; border: none; color: var(--muted); font-family: var(--mono); font-size: 0.70rem; padding: 5px 12px; cursor: pointer; transition: color 0.15s; letter-spacing: 0.06em; border-radius: var(--radius-sm); font-weight: 400; }
-  .tf-btn:hover { color: var(--text); } .tf-btn.active { color: var(--accent); background: var(--accent-dim); }
-  .reset-zoom { font-size: 0.6rem; background: transparent; border: 1px solid var(--border2); color: var(--muted); padding: 3px 8px; border-radius: var(--radius-sm); cursor: pointer; font-family: var(--mono); letter-spacing: 0.06em; transition: all 0.15s; font-weight: 400; }
-  .reset-zoom:hover { border-color: var(--muted); color: var(--text); }
+
+  /* ── REVIEW UI ── */
   .review-container { padding: 10px 14px 24px 14px; overflow-y: scroll; -webkit-overflow-scrolling: touch; flex-grow: 1; min-height: 0; }
   .score-card { background: var(--surface2); border: 1px solid var(--border); padding: 10px 14px; border-radius: var(--radius); margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;}
   .score-title { font-size: 0.55rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 400;}
@@ -127,6 +161,12 @@
   .pos-score { color: var(--accent); } .neg-score { color: var(--red); } .neu-score { color: var(--text); }
   .remarks-box { padding: 7px 11px; border-left: 3px solid; background: rgba(0,0,0,0.2); font-size: 0.68rem; line-height: 1.4; font-weight: 400; margin-bottom: 3px; border-radius: 0 var(--radius-sm) var(--radius-sm) 0;}
   .section-title { font-size: 0.60rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 5px; border-bottom: 1px solid var(--border); padding-bottom: 4px; font-weight: 400; margin-top: 8px;}
+  
+  .tf-row { display: flex; justify-content: space-around; background: var(--surface2); padding: 4px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .tf-btn { background: transparent; border: none; color: var(--muted); font-family: var(--mono); font-size: 0.70rem; padding: 5px 12px; cursor: pointer; transition: color 0.15s; letter-spacing: 0.06em; border-radius: var(--radius-sm); font-weight: 400; }
+  .tf-btn:hover { color: var(--text); } .tf-btn.active { color: var(--accent); background: var(--accent-dim); }
+  .reset-zoom { font-size: 0.6rem; background: transparent; border: 1px solid var(--border2); color: var(--muted); padding: 3px 8px; border-radius: var(--radius-sm); cursor: pointer; font-family: var(--mono); letter-spacing: 0.06em; transition: all 0.15s; font-weight: 400; }
+  .reset-zoom:hover { border-color: var(--muted); color: var(--text); }
 </style>
 </head>
 <body>
@@ -161,8 +201,8 @@
   <div class="setup-btns" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
     <button class="setup-btn setup-btn-sim"  onclick="initGame('random')">Simulator</button>
     <button class="setup-btn setup-btn-wave" onclick="initGame('wave')">Recent Simulator</button>
-    <button class="setup-btn setup-btn-live" onclick="initLiveChart()">Live</button>
-    <button class="setup-btn" style="border-color:var(--gold);color:var(--gold);" onclick="initLiveAnalytics()">Live Analytics</button>
+    <button class="setup-btn setup-btn-live" onclick="alert('Live Analytics rendering should be handled by external Add-On')">Live</button>
+    <button class="setup-btn" style="border-color:var(--gold);color:var(--gold);" onclick="alert('Live Analytics rendering should be handled by external Add-On')">Live Analytics</button>
   </div>
 </div>
 
@@ -220,35 +260,35 @@
       <div class="chart-header">
         <span class="label-sm" id="simDay">Day 0</span>
         <div style="display:flex;gap:6px;align-items:center;">
-          <button class="reset-zoom" onclick="if(chart)chart.resetZoom();if(rsiChart)rsiChart.resetZoom();if(deltaChart)deltaChart.resetZoom();" style="font-size:0.5rem;padding:2px 6px;">RESET ZOOM</button>
+          <button class="reset-zoom" style="font-size:0.5rem;padding:2px 6px;">RESET ZOOM</button>
           <span class="chart-nav" id="simNav">NAV: —</span>
         </div>
       </div>
       <div class="chart-split">
         <div class="chart-main-pane">
           <div class="chart-hud" id="simHudMain"></div>
-          <div class="canvas-box"><canvas id="mainChart"></canvas></div>
+          <div class="canvas-box"></div>
         </div>
         <div class="chart-rsi-pane">
           <div class="delta-label">MOMENTUM RIBBON · RSI vs WMA20(RSI)</div>
           <div class="chart-hud" id="simRsiHud" style="top:18px;"></div>
           <div id="simRsiLabel" style="position:absolute;top:3px;right:4px;font-size:0.52rem;z-index:10;pointer-events:none;background:rgba(255,255,255,0.90);padding:1px 5px;border-radius:2px;letter-spacing:0.02em;"></div>
-          <div class="canvas-box-bottom"><canvas id="rsiChart"></canvas></div>
+          <div class="canvas-box-bottom"></div>
         </div>
         <div class="chart-delta-pane">
           <div class="delta-label">VELOCITY · Daily − Weekly</div>
           <div class="chart-hud" id="simDeltaHud" style="top:18px;"></div>
           <div id="simDeltaLabel" style="position:absolute;top:3px;right:4px;font-size:0.52rem;z-index:10;pointer-events:none;background:rgba(255,255,255,0.90);padding:1px 5px;border-radius:2px;letter-spacing:0.02em;"></div>
-          <div class="canvas-box-bottom"><canvas id="deltaChart"></canvas></div>
+          <div class="canvas-box-bottom"></div>
         </div>
       </div>
       <div class="tf-row" id="simTfRow" style="border-top:1px solid var(--border);padding:4px 0 2px;margin-top:2px;">
-        <button class="tf-btn" onclick="setSimTf(5,this)">1W</button>
-        <button class="tf-btn" onclick="setSimTf(10,this)">2W</button>
-        <button class="tf-btn" onclick="setSimTf(21,this)">1M</button>
-        <button class="tf-btn" onclick="setSimTf(63,this)">3M</button>
-        <button class="tf-btn active" onclick="setSimTf(250,this)">1Y</button>
-        <button class="tf-btn" onclick="setSimTf(999,this)">ALL</button>
+        <button class="tf-btn">1W</button>
+        <button class="tf-btn">2W</button>
+        <button class="tf-btn">1M</button>
+        <button class="tf-btn">3M</button>
+        <button class="tf-btn active">1Y</button>
+        <button class="tf-btn">ALL</button>
       </div>
     </div>
 
@@ -407,22 +447,13 @@ async function fetchFundData() {
 // ─────────────────────────────────────────────
 //  3. ENGINE CALCULATION HELPERS
 // ─────────────────────────────────────────────
-let fullHistory = [], globalLiveData = [];
+let fullHistory = [];
 let simWeeklyRsiCache = [], simDailyRsiCache = [];
 let currentIdx = 0, simStartIdx = 0;
-let chart = null, deltaChart = null, rsiChart = null;
 let cash = 100000, tranches = [], tradeLog = [];
 let prevRegime = null, prevNav = null, currentRegimeLog = 'A';
 let totalTaxPaid = 0, peakNetWorth = 100000, maxDrawdown = 0;
 let profitDeltaLevel = 15, buyDeltaLevel = -15;
-let simChartWindow = 250, simHoverIdx = null;
-
-function setSimTf(n, btn) { simChartWindow = n; for (const b of document.getElementById('simTfRow').children) b.classList.remove('active'); btn.classList.add('active'); updateDisplay(); }
-
-function formatShortDate(dateStr) {
-  if (!dateStr) return ''; const parts = dateStr.split('-');
-  return parts.length !== 3 ? dateStr : `${parts[0]} ${["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][parseInt(parts[1], 10) - 1]}`;
-}
 
 function calculateRSI(prices, period = 14) {
   if (prices.length <= 2) return 50;
@@ -440,11 +471,6 @@ function calculateWMA(prices, period = 20) {
   if (prices.length < period) return null;
   const weightSum = (period * (period + 1)) / 2; let sum = 0;
   for (let i = 0; i < period; i++) sum += prices[prices.length - 1 - i] * (period - i); return sum / weightSum;
-}
-
-function calculateSMA(prices, period = 50) {
-  if (prices.length < period) return null; let sum = 0;
-  for (let i = 0; i < period; i++) sum += prices[prices.length - 1 - i]; return sum / period;
 }
 
 function buildDailyRsiCache(allPrices, period = 14) {
@@ -506,35 +532,34 @@ function calculateConsolidation(prices) {
   } return { pcAlert, ncAlert };
 }
 
-function calculateChoCh(prices) {
-  if (prices.length < 5) return { status: 'INSIDE', lastHigh: null, lastLow: null };
-  const currentNav = prices[prices.length - 1]; let lastHigh = null, lastLow = null;
-  for (let k = prices.length - 3; k >= 2; k--) {
-    if (!lastLow && prices[k] <= prices[k-1] && prices[k] < prices[k-2] && prices[k] <= prices[k+1] && prices[k] < prices[k+2]) lastLow = prices[k];
-    if (!lastHigh && prices[k] >= prices[k-1] && prices[k] > prices[k-2] && prices[k] >= prices[k+1] && prices[k] > prices[k+2]) lastHigh = prices[k];
-    if (lastLow && lastHigh) break;
-  }
-  let status = 'INSIDE'; if (lastHigh && currentNav > lastHigh) status = 'BULL'; else if (lastLow && currentNav < lastLow) status = 'BEAR';
-  return { status, lastHigh, lastLow };
-}
-
-function calcTideHTML(wrsiArr, idx) {
-  const wv = wrsiArr[idx]; const wv4w = idx >= 20 ? wrsiArr[idx - 20] : wrsiArr[0];
-  const dW = wv - wv4w; const sign = dW >= 0 ? '+' : '';
-  let color, badge, arrow;
-  if (wv >= 60) { color = '#00e8a2'; if (dW >= 0) { badge = '🌊 TIDE: RISING'; arrow = '↑'; } else { badge = '🟢 TIDE: COOLING'; arrow = '↘'; } }
-  else if (wv >= 50) { color = '#f59e0b'; if (dW <= -5) { badge = '⚠️ TIDE: WARNING'; arrow = '↓'; } else { badge = '🟡 TIDE: FLAT'; arrow = '→'; } }
-  else { color = '#f04060'; badge = '🔴 TIDE: DEAD'; arrow = '↓'; }
-  const html = `<span style="color:${color};font-weight:700;">${badge}&nbsp;&nbsp;W-RSI ${Math.round(wv)} | Δ4W ${sign}${dW.toFixed(1)}</span>`;
-  return { html, arrow, color, label: badge };
-}
-
 function calcVectorClass(wrsiArr, idx) {
   const wv = wrsiArr[idx]; const wv4 = idx >= 20 ? wrsiArr[idx - 20] : wrsiArr[0]; const dW = wv - wv4;
   if (dW <= -5) return { text: '🔴 Regime Death_Hard Abort', color: '#f04060', sizeRule: 'ABORT', dW };
   if (dW > 0) return { text: '🟢 Rising_100% Size', color: '#00e8a2', sizeRule: '100%', dW };
   if (wv >= 60) return { text: '🟠 Healthy Cooldown_50% Size', color: '#f59e0b', sizeRule: '50%', dW };
   return { text: '🔴 Regime Death_Hard Abort', color: '#f04060', sizeRule: 'ABORT', dW };
+}
+
+function buildEngineSnapshot(dayIndex, allPricesArr, simStartIdx, cachedDrsiArr, cachedWrsiArr, currentCash, currentTranches, peakNW) {
+  const slice = allPricesArr.slice(0, dayIndex + 1);
+  const currentNav = slice[slice.length - 1];
+  const currentDrsi = cachedDrsiArr[dayIndex] ?? calculateRSI(slice, 14);
+  const currentWrsi = cachedWrsiArr[dayIndex] ?? calculateRSI(slice.filter((_, i) => i % 5 === 0), 14);
+  const tslData = calculateTSL(slice);
+  const consolidationData = calculateConsolidation(slice);
+  
+  const totalUnits = currentTranches.reduce((s, t) => s + t.units, 0);
+  const currentNW = currentCash + totalUnits * currentNav;
+  const newPeakNW = currentNW > peakNW ? currentNW : peakNW;
+  
+  return {
+    dayNum: dayIndex - simStartIdx, nav: currentNav,
+    drsi: currentDrsi, wrsi: currentWrsi, delta: currentDrsi - currentWrsi,
+    regime: currentWrsi >= 50 ? 'A' : (currentWrsi >= 40 ? 'B' : 'C'),
+    tsl: tslData, pcAlert: consolidationData.pcAlert, ncAlert: consolidationData.ncAlert,
+    vector: calcVectorClass(cachedWrsiArr, dayIndex),
+    portfolio: { currentNetWorth: currentNW, peakNetWorth: newPeakNW, currentDrawdown: newPeakNW > 0 ? ((newPeakNW - currentNW) / newPeakNW) * 100 : 0 }
+  };
 }
 
 function executeTradeEngine(action, currentState) {
@@ -570,99 +595,7 @@ function executeTradeEngine(action, currentState) {
 }
 
 // ─────────────────────────────────────────────
-//  4. THE REAL DATA BRIDGE & CHARTS
-// ─────────────────────────────────────────────
-function syncCharts(charts, activeElements) {
-  if (activeElements && activeElements.length) simHoverIdx = activeElements[0].index; else simHoverIdx = null;
-  charts.forEach(c => { if(c) c.update('none'); });
-}
-
-let _syncingZoom = false;
-function syncSimZoom(sourceChart) {
-  if (_syncingZoom) return; _syncingZoom = true;
-  try { const { min, max } = sourceChart.scales.x; [chart, rsiChart, deltaChart].forEach(c => { if (c && c !== sourceChart) c.zoomScale('x', { min, max }, 'none'); }); }
-  finally { _syncingZoom = false; }
-}
-
-const universalAnnotationsPlugin = {
-  id: 'universalAnnotations',
-  afterDatasetsDraw(ci) {
-    const ctx = ci.ctx; const meta = ci.getDatasetMeta(0); if (!meta.data || meta.data.length === 0) return;
-    if (simHoverIdx !== null && meta.data[simHoverIdx]) {
-      const ax = meta.data[simHoverIdx].x; ctx.save(); ctx.beginPath(); ctx.setLineDash([3, 3]);
-      ctx.moveTo(ax, ci.chartArea.top); ctx.lineTo(ax, ci.chartArea.bottom); ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(148,163,184,0.6)'; ctx.stroke(); ctx.restore();
-    }
-  }
-};
-
-window.syncChartsWithEngine = function(fullHistory, currentIdx, simDailyRsiCache, simWeeklyRsiCache) {
-  const visible = fullHistory.slice(0, currentIdx + 1);
-  const chartData = visible.slice(-Math.min(simChartWindow, visible.length));
-  
-  const wmaData = chartData.map((_, i) => calculateWMA(fullHistory.slice(0, currentIdx - (chartData.length - 1) + i + 1).map(h => h.nav), 20));
-  const smaData = chartData.map((_, i) => calculateSMA(fullHistory.slice(0, currentIdx - (chartData.length - 1) + i + 1).map(h => h.nav), 50));
-  
-  const recentDrsi = [], drsiWmaHud = [];
-  for (let i = 0; i < chartData.length + 20; i++) recentDrsi.push(simDailyRsiCache[currentIdx - (chartData.length + 20) + 1 + i] ?? 50);
-  for (let i = 0; i < chartData.length; i++) drsiWmaHud.push(calculateWMA(recentDrsi.slice(i, i + 20), 20));
-  const drsiArrHud = recentDrsi.slice(20);
-
-  const deltaData = [], deltaColors = [], wmaRegimes = [], wrsiArrHud = [];
-  for (let i = 0; i < chartData.length; i++) {
-    const ei = currentIdx - (chartData.length - 1) + i;
-    const wr = simWeeklyRsiCache[ei] ?? 50; const d = drsiArrHud[i] - wr;
-    deltaData.push(d); wrsiArrHud.push(wr); wmaRegimes.push(wr >= 50 ? 'A' : (wr >= 40 ? 'B' : 'C'));
-    deltaColors.push(d >= 20 ? 'rgba(0, 232, 162, 1)' : d <= -20 ? 'rgba(240, 64, 96, 1)' : d > 0 ? 'rgba(0, 232, 162, 0.25)' : 'rgba(240, 64, 96, 0.25)');
-  }
-
-  if (chart) chart.destroy(); if (rsiChart) rsiChart.destroy(); if (deltaChart) deltaChart.destroy();
-
-  chart = new Chart(document.getElementById('mainChart').getContext('2d'), {
-    type: 'line', plugins: [universalAnnotationsPlugin],
-    data: {
-      labels: chartData.map((_, i) => i),
-      datasets: [
-        { data: chartData.map(d => d.nav), borderColor: '#00e8a2', borderWidth: 1.5, pointRadius: 0, fill: true, backgroundColor: 'rgba(0,158,112,0.06)' },
-        { data: wmaData, borderWidth: 1.5, borderDash: [4,4], pointRadius: 0, fill: false, segment: { borderColor: ctx => wmaRegimes[ctx.p1DataIndex] === 'A' ? '#00e8a2' : wmaRegimes[ctx.p1DataIndex] === 'B' ? '#f59e0b' : '#f04060' } },
-        { data: smaData, borderWidth: 1, pointRadius: 0, fill: false, segment: { borderColor: ctx => chartData[ctx.p1DataIndex].nav > smaData[ctx.p1DataIndex] ? 'rgba(0,232,162,0.8)' : 'rgba(240,64,96,0.8)' } }
-      ]
-    },
-    options: { responsive: true, maintainAspectRatio: false, animation: false, layout: { padding: { top: 32, bottom: 4, left: 0, right: 0 } }, interaction: { mode: 'index', intersect: false }, onHover: (event, activeElements) => syncCharts([chart, rsiChart, deltaChart], activeElements), plugins: { legend: { display: false }, tooltip: { enabled: false }, zoom: { zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x', onZoom: ({ chart: c }) => syncSimZoom(c), onZoomComplete: ({ chart: c }) => syncSimZoom(c) }, pan: { enabled: true, mode: 'x', onPan: ({ chart: c }) => syncSimZoom(c), onPanComplete: ({ chart: c }) => syncSimZoom(c) } } }, scales: { x: { display: false, offset: true }, y: { position: 'right', grid: { color: 'rgba(150,170,190,0.5)' }, ticks: { display: true, color: '#000000', font: { size: 9, family: '"Space Mono"' }, maxTicksLimit: 5 }, afterFit: s => { s.width = 40; } } } }
-  });
-
-  const vectorSlopeColor = ctx => { const i = ctx.p1DataIndex; const delta4w = (i >= 20) ? wrsiArrHud[i] - wrsiArrHud[i - 20] : 0; const wr = wrsiArrHud[i] ?? 50; if (wr >= 50 && delta4w > 0) return 'rgba(0,158,112,1.0)'; if (wr >= 50 && delta4w <= 0) return 'rgba(201,122,0,1.0)'; return 'rgba(200,16,46,1.0)'; };
-
-  rsiChart = new Chart(document.getElementById('rsiChart').getContext('2d'), {
-    type: 'line', plugins: [universalAnnotationsPlugin],
-    data: {
-      labels: chartData.map((_, i) => i),
-      datasets: [
-        { type: 'line', data: Array(chartData.length).fill(50), borderWidth: 6, pointRadius: 0, fill: false, yAxisID: 'yRsi', segment: { borderColor: vectorSlopeColor } },
-        { type: 'line', data: drsiWmaHud, borderColor: 'rgba(201,122,0,0.85)', borderWidth: 1.5, borderDash: [3,2], pointRadius: 0, fill: false, yAxisID: 'yRsi' },
-        { type: 'line', data: drsiArrHud, borderColor: 'rgba(26,42,108,0.9)', borderWidth: 1.5, pointRadius: 0, fill: { target: { value: 50 }, above: 'rgba(0,158,112,0.12)', below: 'rgba(200,16,46,0.12)' }, yAxisID: 'yRsi' },
-        { type: 'line', data: wrsiArrHud, borderWidth: 2, pointRadius: 0, fill: false, borderDash: [5,3], yAxisID: 'yRsi', segment: { borderColor: ctx => wrsiArrHud[ctx.p1DataIndex] >= 60 ? 'rgba(0,232,162,0.75)' : wrsiArrHud[ctx.p1DataIndex] >= 50 ? 'rgba(245,158,11,0.75)' : 'rgba(240,64,96,0.75)' } }
-      ]
-    },
-    options: { responsive: true, maintainAspectRatio: false, animation: false, layout: { padding: { top: 4, bottom: 4, left: 0, right: 0 } }, interaction: { mode: 'index', intersect: false }, onHover: (event, activeElements) => syncCharts([chart, rsiChart, deltaChart], activeElements), plugins: { legend: { display: false }, tooltip: { enabled: false } }, scales: { x: { display: false }, yRsi: { position: 'right', grid: { color: 'rgba(150,170,190,0.5)' }, ticks: { color: '#000000', font: { size: 8, family: '"Space Mono"' }, maxTicksLimit: 3 }, min: 10, max: 100, afterFit: s => { s.width = 40; } } } }
-  });
-
-  deltaChart = new Chart(document.getElementById('deltaChart').getContext('2d'), {
-    type: 'bar', plugins: [universalAnnotationsPlugin],
-    data: {
-      labels: chartData.map((_, i) => i),
-      datasets: [
-        { type: 'bar', data: deltaData, backgroundColor: deltaColors, barPercentage: 1.0, categoryPercentage: 1.0 },
-        { type: 'line', data: Array(chartData.length).fill(profitDeltaLevel), borderColor: 'rgba(240,64,96,0.7)', borderDash: [2,2], pointRadius: 0, borderWidth: 1 },
-        { type: 'line', data: Array(chartData.length).fill(-Math.abs(buyDeltaLevel)), borderColor: 'rgba(0,232,162,0.7)', borderDash: [2,2], pointRadius: 0, borderWidth: 1 },
-        { type: 'line', data: Array(chartData.length).fill(0), borderColor: 'rgba(0,0,0,0.20)', borderDash: [4,4], pointRadius: 0, borderWidth: 1 }
-      ]
-    },
-    options: { responsive: true, maintainAspectRatio: false, animation: false, layout: { padding: { top: 4, bottom: 4, left: 0, right: 0 } }, interaction: { mode: 'index', intersect: false }, onHover: (event, activeElements) => syncCharts([chart, rsiChart, deltaChart], activeElements), plugins: { legend: { display: false }, tooltip: { enabled: false } }, scales: { x: { display: false }, y: { position: 'right', grid: { color: 'rgba(160,180,200,0.5)' }, border: { dash: [2,4] }, min: -35, max: 35, ticks: { display: true, color: '#000000', font: { size: 8, family: '"Space Mono"' }, maxTicksLimit: 3 }, afterFit: s => { s.width = 40; } } } }
-  });
-};
-
-// ─────────────────────────────────────────────
-//  5. SIMULATOR GAME LOOP
+//  4. SIMULATOR GAME LOOP
 // ─────────────────────────────────────────────
 async function initGame(mode) {
   saveFundSelection();
@@ -685,7 +618,7 @@ async function initGame(mode) {
   
   if (simStartIdx < 20) simStartIdx = 20;
   currentIdx = simStartIdx; tradeLog = []; cash = 100000; tranches = [];
-  peakNetWorth = 100000; maxDrawdown = 0; totalTaxPaid = 0; simHoverIdx = null; simChartWindow = 250;
+  peakNetWorth = 100000; maxDrawdown = 0; totalTaxPaid = 0; 
   
   document.getElementById('setupScreen').style.display = 'none';
   document.getElementById('gameUI').style.display = 'flex';
@@ -693,33 +626,43 @@ async function initGame(mode) {
 }
 
 function updateDisplay() {
-  const visible = fullHistory.slice(0, currentIdx + 1);
-  const currentNav = visible[visible.length - 1].nav;
-  const dRsi = simDailyRsiCache[currentIdx];
-  const wRsi = simWeeklyRsiCache[currentIdx];
-  const delta = dRsi - wRsi;
+  const snap = buildEngineSnapshot(currentIdx, fullHistory.map(v=>v.nav), simStartIdx, simDailyRsiCache, simWeeklyRsiCache, cash, tranches, peakNetWorth);
   
-  document.getElementById('simDay').textContent = `Day ${currentIdx - simStartIdx}`; 
-  document.getElementById('simNav').textContent = `NAV: ₹${currentNav.toFixed(2)}`;
+  currentRegimeLog = snap.regime; peakNetWorth = snap.portfolio.peakNetWorth; maxDrawdown = snap.portfolio.currentDrawdown;
+  document.getElementById('simDay').textContent = `Day ${snap.dayNum}`; document.getElementById('simNav').textContent = `NAV: ₹${snap.nav.toFixed(2)}`;
   
   const cF = v => v >= 50 ? 'var(--accent)' : (v >= 40 ? 'var(--accent2)' : 'var(--red)');
-  document.getElementById('dRsi').textContent = Math.round(dRsi); document.getElementById('dRsi').style.color = cF(dRsi);
-  document.getElementById('wRsi').textContent = Math.round(wRsi); document.getElementById('wRsi').style.color = cF(wRsi);
+  document.getElementById('dRsi').textContent = Math.round(snap.drsi); document.getElementById('dRsi').style.color = cF(snap.drsi);
+  document.getElementById('wRsi').textContent = Math.round(snap.wrsi); document.getElementById('wRsi').style.color = cF(snap.wrsi);
   
-  currentRegimeLog = wRsi >= 50 ? 'A' : (wRsi >= 40 ? 'B' : 'C');
-  const rB = document.getElementById('regimeBlock'); rB.className = 'ind-val ' + (currentRegimeLog === 'A' ? 'reg-A' : (currentRegimeLog === 'B' ? 'reg-B' : 'reg-C')); rB.textContent = `Regime ${currentRegimeLog}`;
-  
-  const totalUnits = tranches.reduce((s, t) => s + t.units, 0);
-  const currentNW = cash + totalUnits * currentNav;
-  if (currentNW > peakNetWorth) peakNetWorth = currentNW;
-  maxDrawdown = peakNetWorth > 0 ? ((peakNetWorth - currentNW) / peakNetWorth) * 100 : 0;
+  const rB = document.getElementById('regimeBlock'); rB.className = 'ind-val ' + (snap.regime === 'A' ? 'reg-A' : (snap.regime === 'B' ? 'reg-B' : 'reg-C')); rB.textContent = `Regime ${snap.regime}`;
   
   document.getElementById('cashVal').textContent = `₹${Math.round(cash).toLocaleString('en-IN')}`;
-  document.getElementById('nwVal').textContent = `₹${Math.round(currentNW).toLocaleString('en-IN')}`;
+  document.getElementById('nwVal').textContent = `₹${Math.round(snap.portfolio.currentNetWorth).toLocaleString('en-IN')}`;
   document.getElementById('ddVal').textContent = `-${maxDrawdown.toFixed(1)}%`;
   
-  // Real Data Bridge
-  window.syncChartsWithEngine(fullHistory, currentIdx, simDailyRsiCache, simWeeklyRsiCache);
+  let alertText = '', alertClass = '';
+  if (currentIdx > simStartIdx) {
+    if (snap.tsl.tslHit) { alertText = '🚨 TSL BREACHED ➔ EXECUTE TSL SELL'; alertClass = 'alert-danger alert-mega'; }
+    else if (prevRegime && prevRegime !== 'C' && snap.regime === 'C') { alertText = `🚨 REGIME CRASH: ${prevRegime} ➔ C ➔ SELL ALL`; alertClass = 'alert-danger'; }
+    else if (snap.ncAlert) { alertText = '🚨 NC BREAKDOWN ➔ DO NOT BUY'; alertClass = 'alert-danger'; }
+    else if (snap.regime === 'A') {
+      if (snap.vector.sizeRule === 'ABORT') { alertText = `🔴 VECTOR DECLINING: W-RSI Slope ↓ ➔ NO NEW BUYS`; alertClass = 'alert-danger'; }
+      else if (snap.pcAlert) { alertText = `🟢 PC BREAKOUT ➔ BUY TRANCHE [${snap.vector.sizeRule}]`; alertClass = 'alert-buy'; }
+      else if (snap.drsi < 40) { alertText = `🟢 OVERSOLD RSI<40 ➔ BUY TRANCHE [${snap.vector.sizeRule}]`; alertClass = 'alert-buy'; }
+      else if (snap.delta < buyDeltaLevel) { alertText = `🟢 SLINGSHOT Δ<${buyDeltaLevel} ➔ BUY TRANCHE [${snap.vector.sizeRule}]`; alertClass = 'alert-buy'; }
+    }
+    if (!alertText && snap.delta > profitDeltaLevel) { alertText = `🟠 OVERHEATED (Delta > ${profitDeltaLevel}) ➔ PULL OUT SOME PROFITS`; alertClass = 'alert-profit'; }
+  }
+  const banner = document.getElementById('alertBanner');
+  banner.textContent = alertText || ''; banner.className = alertText ? alertClass + ' banner-on' : '';
+  
+  prevRegime = snap.regime; prevNav = snap.nav;
+
+  // Real Data Bridge - Passes data to external visual Add-On
+  if (typeof window.syncChartsWithEngine === 'function') {
+      window.syncChartsWithEngine(fullHistory, currentIdx, simDailyRsiCache, simWeeklyRsiCache);
+  }
 }
 
 function flashBanner(text, cls, ms = 1800) { const b = document.getElementById('alertBanner'); b.textContent = text; b.className = cls + ' banner-on'; setTimeout(() => { b.textContent = ''; b.className = ''; }, ms); }
@@ -727,9 +670,7 @@ function flashBanner(text, cls, ms = 1800) { const b = document.getElementById('
 function trade(action) {
   const currentState = { cash, tranches, tradeLog, totalTaxPaid, currentNav: fullHistory[currentIdx].nav, dayNum: currentIdx - simStartIdx, currentRegimeLog };
   const result = executeTradeEngine(action, currentState);
-  
   if (result.alert) { flashBanner(`⚠️ ${result.alert.replace('_', ' ')}`, 'alert-danger'); return; }
-  
   cash = result.cash; tranches = result.tranches; tradeLog = result.tradeLog; totalTaxPaid = result.totalTaxPaid;
   if (currentIdx < fullHistory.length - 1) nextDay();
   else { updateDisplay(); alert("🏁 SIMULATION COMPLETE."); document.querySelectorAll('.action-bar .btn').forEach(b => b.disabled = true); }
@@ -737,7 +678,7 @@ function trade(action) {
 
 function nextDay() {
   if (currentIdx < fullHistory.length - 1) { currentIdx++; updateDisplay(); }
-  else { alert("🏁 SIMULATION COMPLETE."); document.querySelectorAll('.action-bar .btn').forEach(b => b.disabled = true); }
+  else { updateDisplay(); alert("🏁 SIMULATION COMPLETE."); document.querySelectorAll('.action-bar .btn').forEach(b => b.disabled = true); }
 }
 
 function showLog() {
@@ -753,7 +694,7 @@ function showLog() {
 function closeLog() { document.getElementById('logModal').style.display = 'none'; }
 
 // ─────────────────────────────────────────────
-//  PROCESS AUDIT SCORING (As included previously)
+//  PROCESS AUDIT SCORING 
 // ─────────────────────────────────────────────
 function endAndReview() {
   let scoreEntry = 0, scoreExit = 0, scoreProfit = 0;
@@ -896,10 +837,6 @@ function endAndReview() {
   document.getElementById('feedbackContainer').innerHTML = remarks;
   document.getElementById('reviewModal').style.display = 'flex'; 
 }
-
-function initLiveChart() { alert("Live mode requires full analytics integration. Please test the Simulator first!"); }
-function initLiveAnalytics() { alert("Live mode requires full analytics integration. Please test the Simulator first!"); }
-function openLiveAnalyticsFromCockpit() {}
 
 if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(() => {}); }
 </script>
