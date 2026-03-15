@@ -1049,9 +1049,10 @@ const charts = {
 let simChartsInitialized = false;
 let liveChartsInitialized = false;
 
-// 3. CHART INITIALIZATION ENGINE
+// 3. CHART INITIALIZATION ENGINE (Uses autoSize to permanently defeat the 0x0 bug)
 function initOscillatorCharts(target) {
     const chartOptions = {
+        autoSize: true,
         layout: { background: { type: 'solid', color: 'transparent' }, textColor: '#7090b0', fontSize: 10 },
         grid: { vertLines: { color: 'rgba(0,0,0,0.05)' }, horzLines: { color: 'rgba(0,0,0,0.05)' } },
         timeScale: { visible: false }, 
@@ -1076,9 +1077,6 @@ function initOscillatorCharts(target) {
             
             charts.sim.delta = LightweightCharts.createChart(simDelCont, { ...chartOptions, ...deltaScale });
             charts.sim.sDelta = charts.sim.delta.addHistogramSeries({ base: 0 });
-
-            charts.sim.rsi.applyOptions({ width: simRsiCont.clientWidth, height: simRsiCont.clientHeight });
-            charts.sim.delta.applyOptions({ width: simDelCont.clientWidth, height: simDelCont.clientHeight });
         }
     }
 
@@ -1095,9 +1093,6 @@ function initOscillatorCharts(target) {
 
             charts.live.delta = LightweightCharts.createChart(liveDelCont, { ...chartOptions, ...deltaScale });
             charts.live.sDelta = charts.live.delta.addHistogramSeries({ base: 0 });
-
-            charts.live.rsi.applyOptions({ width: liveRsiCont.clientWidth, height: liveRsiCont.clientHeight });
-            charts.live.delta.applyOptions({ width: liveDelCont.clientWidth, height: liveDelCont.clientHeight });
         }
     }
 }
@@ -1131,10 +1126,14 @@ function updateOscillatorCharts(target, dataArray) {
         charts.sim.sRsi.setData(rsiData);
         charts.sim.sWma.setData(wmaData);
         charts.sim.sDelta.setData(deltaData);
+        charts.sim.rsi.timeScale().fitContent();
+        charts.sim.delta.timeScale().fitContent();
     } else if (target === 'live' && charts.live.sRsi) {
         charts.live.sRsi.setData(rsiData);
         charts.live.sWma.setData(wmaData);
         charts.live.sDelta.setData(deltaData);
+        charts.live.rsi.timeScale().fitContent();
+        charts.live.delta.timeScale().fitContent();
         
         if (latestState) {
             const hEl = document.getElementById('alertHarvest');
@@ -1174,25 +1173,29 @@ function runDummyDataTest() {
     updateOscillatorCharts('live', testData); 
 }
 
-// 6. AUTO-HOOK INTO YOUR EXISTING BUTTONS
+// 6. AUTO-HOOK INTO YOUR EXISTING BUTTONS (With fixed delays to defeat the TV 0x0 bug)
 const originalInitGame = window.initGame;
 window.initGame = function(mode) {
     if(originalInitGame) originalInitGame(mode);
-    if (!simChartsInitialized) {
-        initOscillatorCharts('sim');
-        simChartsInitialized = true;
-    }
-    setTimeout(runDummyDataTest, 50);
+    setTimeout(() => {
+        if (!simChartsInitialized) {
+            initOscillatorCharts('sim');
+            simChartsInitialized = true;
+        }
+        runDummyDataTest();
+    }, 150);
 };
 
 const originalInitLiveChart = window.initLiveChart;
 window.initLiveChart = function() {
     if(originalInitLiveChart) originalInitLiveChart();
-    if (!liveChartsInitialized) {
-        initOscillatorCharts('live');
-        liveChartsInitialized = true;
-    }
-    setTimeout(runDummyDataTest, 50);
+    setTimeout(() => {
+        if (!liveChartsInitialized) {
+            initOscillatorCharts('live');
+            liveChartsInitialized = true;
+        }
+        runDummyDataTest();
+    }, 150);
 };
 </script>
 </body>
