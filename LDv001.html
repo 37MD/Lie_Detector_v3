@@ -754,9 +754,6 @@ function initGame(mode) {
   document.getElementById('gameUI').style.display = 'flex';
   
   console.log("Simulator Initialized (UI Only) - Ready for Calculation Engine Wiring");
-  
-  // RUN THE DUMMY DATA CHART TEST
-  setTimeout(runDummyDataTest, 200);
 }
 
 function initLiveChart() {
@@ -1020,8 +1017,6 @@ function calculateAuditScore(fullHistory, simStartIdx, currentIdx, simDailyRsiCa
     behavioralRemarkCode: remarksCode
   };
 }
-
-//------------------------------------
 </script>
 
 <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
@@ -1031,7 +1026,6 @@ function calculateAuditScore(fullHistory, simStartIdx, currentIdx, simDailyRsiCa
 (function injectLiveAlertZone() {
     const liveSplit = document.querySelector('#liveChartModal .chart-split');
     if (liveSplit) {
-        // We will leave this system action trigger layout here as your placeholder!
         const alertHTML = `
             <div id="liveAlertZone" style="height: 42px; border-top: 1px dashed var(--border); margin-top: 4px; display: flex; flex-direction: column; justify-content: center; align-items: center; background: var(--surface2); border-radius: 2px; flex-shrink: 0;">
                 <div style="font-size: 0.55rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 3px;">System Action Triggers</div>
@@ -1052,8 +1046,11 @@ const charts = {
     live: { rsi: null, delta: null, sRsi: null, sWma: null, sDelta: null }
 };
 
+let simChartsInitialized = false;
+let liveChartsInitialized = false;
+
 // 3. CHART INITIALIZATION ENGINE
-function initOscillatorCharts() {
+function initOscillatorCharts(target) {
     const chartOptions = {
         layout: { background: { type: 'solid', color: 'transparent' }, textColor: '#7090b0', fontSize: 10 },
         grid: { vertLines: { color: 'rgba(0,0,0,0.05)' }, horzLines: { color: 'rgba(0,0,0,0.05)' } },
@@ -1066,47 +1063,43 @@ function initOscillatorCharts() {
     const rsiScale = { rightPriceScale: { autoScale: false, minValue: 0, maxValue: 100 } };
     const deltaScale = { rightPriceScale: { autoScale: false, minValue: -80, maxValue: 100 } };
 
-    // --- SIMULATOR CHARTS ---
-    const simRsiCont = document.querySelector('.main-sim .chart-rsi-pane .canvas-box-bottom');
-    const simDelCont = document.querySelector('.main-sim .chart-delta-pane .canvas-box-bottom');
-    
-    if(simRsiCont && simDelCont) {
-        // FIX: Nuke any existing old charts/canvases before drawing the new ones
-        simRsiCont.innerHTML = '';
-        simDelCont.innerHTML = '';
-
-        charts.sim.rsi = LightweightCharts.createChart(simRsiCont, { ...chartOptions, ...rsiScale });
-        charts.sim.sRsi = charts.sim.rsi.addLineSeries({ color: '#b0bece', lineWidth: 1 });
-        charts.sim.sWma = charts.sim.rsi.addLineSeries({ color: '#009e70', lineWidth: 2 });
+    if (target === 'sim') {
+        const simRsiCont = document.querySelector('.main-sim .chart-rsi-pane .canvas-box-bottom');
+        const simDelCont = document.querySelector('.main-sim .chart-delta-pane .canvas-box-bottom');
         
-        charts.sim.delta = LightweightCharts.createChart(simDelCont, { ...chartOptions, ...deltaScale });
-        charts.sim.sDelta = charts.sim.delta.addHistogramSeries({ base: 0 });
+        if(simRsiCont && simDelCont) {
+            simRsiCont.innerHTML = ''; simDelCont.innerHTML = '';
+
+            charts.sim.rsi = LightweightCharts.createChart(simRsiCont, { ...chartOptions, ...rsiScale });
+            charts.sim.sRsi = charts.sim.rsi.addLineSeries({ color: '#b0bece', lineWidth: 1 });
+            charts.sim.sWma = charts.sim.rsi.addLineSeries({ color: '#009e70', lineWidth: 2 });
+            
+            charts.sim.delta = LightweightCharts.createChart(simDelCont, { ...chartOptions, ...deltaScale });
+            charts.sim.sDelta = charts.sim.delta.addHistogramSeries({ base: 0 });
+
+            charts.sim.rsi.applyOptions({ width: simRsiCont.clientWidth, height: simRsiCont.clientHeight });
+            charts.sim.delta.applyOptions({ width: simDelCont.clientWidth, height: simDelCont.clientHeight });
+        }
     }
 
-    // --- LIVE COCKPIT CHARTS ---
-    const liveRsiCont = document.querySelector('#liveChartModal .chart-rsi-pane .canvas-box-bottom');
-    const liveDelCont = document.querySelector('#liveChartModal .chart-delta-pane .canvas-box-bottom');
+    if (target === 'live') {
+        const liveRsiCont = document.querySelector('#liveChartModal .chart-rsi-pane .canvas-box-bottom');
+        const liveDelCont = document.querySelector('#liveChartModal .chart-delta-pane .canvas-box-bottom');
 
-    if(liveRsiCont && liveDelCont) {
-        // FIX: Nuke any existing old charts/canvases before drawing the new ones
-        liveRsiCont.innerHTML = '';
-        liveDelCont.innerHTML = '';
+        if(liveRsiCont && liveDelCont) {
+            liveRsiCont.innerHTML = ''; liveDelCont.innerHTML = '';
 
-        charts.live.rsi = LightweightCharts.createChart(liveRsiCont, { ...chartOptions, ...rsiScale });
-        charts.live.sRsi = charts.live.rsi.addLineSeries({ color: '#b0bece', lineWidth: 1 });
-        charts.live.sWma = charts.live.rsi.addLineSeries({ color: '#009e70', lineWidth: 2 });
+            charts.live.rsi = LightweightCharts.createChart(liveRsiCont, { ...chartOptions, ...rsiScale });
+            charts.live.sRsi = charts.live.rsi.addLineSeries({ color: '#b0bece', lineWidth: 1 });
+            charts.live.sWma = charts.live.rsi.addLineSeries({ color: '#009e70', lineWidth: 2 });
 
-        charts.live.delta = LightweightCharts.createChart(liveDelCont, { ...chartOptions, ...deltaScale });
-        charts.live.sDelta = charts.live.delta.addHistogramSeries({ base: 0 });
+            charts.live.delta = LightweightCharts.createChart(liveDelCont, { ...chartOptions, ...deltaScale });
+            charts.live.sDelta = charts.live.delta.addHistogramSeries({ base: 0 });
+
+            charts.live.rsi.applyOptions({ width: liveRsiCont.clientWidth, height: liveRsiCont.clientHeight });
+            charts.live.delta.applyOptions({ width: liveDelCont.clientWidth, height: liveDelCont.clientHeight });
+        }
     }
-
-    new ResizeObserver(entries => {
-        if (entries.length === 0 || entries[0].target !== simRsiCont) return;
-        if(charts.sim.rsi) charts.sim.rsi.applyOptions({ width: simRsiCont.clientWidth, height: simRsiCont.clientHeight });
-        if(charts.sim.delta) charts.sim.delta.applyOptions({ width: simDelCont.clientWidth, height: simDelCont.clientHeight });
-        if(charts.live.rsi) charts.live.rsi.applyOptions({ width: liveRsiCont.clientWidth, height: liveRsiCont.clientHeight });
-        if(charts.live.delta) charts.live.delta.applyOptions({ width: liveDelCont.clientWidth, height: liveDelCont.clientHeight });
-    }).observe(simRsiCont);
 }
 
 // 4. DATA UPDATE ENGINE 
@@ -1128,9 +1121,7 @@ function updateOscillatorCharts(target, dataArray) {
         else if (gap > 0) color = 'rgba(0, 158, 112, 0.5)'; 
         else if (gap > -15) color = 'rgba(200, 16, 46, 0.5)'; 
 
-        if (showExtremesOnly && Math.abs(gap) < 35) {
-            gap = 0; 
-        }
+        if (showExtremesOnly && Math.abs(gap) < 35) { gap = 0; }
 
         deltaData.push({ time: d.time, value: gap, color: color });
         latestState = d;
@@ -1162,16 +1153,13 @@ function updateOscillatorCharts(target, dataArray) {
     }
 }
 
-// 5. DUMMY DATA TEST (Provides Proof of Life to charts on Simulator Click)
+// 5. DUMMY DATA TEST
 function runDummyDataTest() {
     let testData = [];
-    let d = new Date();
+    let baseTime = new Date('2024-01-01').getTime();
     
-    // Generate 100 days of fake oscillating data
     for(let i=0; i<100; i++) {
-        d.setDate(d.getDate() + 1);
-        let timeStr = d.toISOString().split('T')[0];
-        
+        let timeStr = new Date(baseTime + i * 86400000).toISOString().split('T')[0];
         testData.push({
             time: timeStr,
             dailyRSI: 50 + Math.sin(i/4) * 35,       
@@ -1182,14 +1170,30 @@ function runDummyDataTest() {
             sig_bearCollapse: i === 60
         });
     }
-
-    // Fire the data into the Simulator Addon
     updateOscillatorCharts('sim', testData);
+    updateOscillatorCharts('live', testData); 
 }
 
-window.addEventListener('DOMContentLoaded', () => {
-    setTimeout(initOscillatorCharts, 100);
-});
+// 6. AUTO-HOOK INTO YOUR EXISTING BUTTONS
+const originalInitGame = window.initGame;
+window.initGame = function(mode) {
+    if(originalInitGame) originalInitGame(mode);
+    if (!simChartsInitialized) {
+        initOscillatorCharts('sim');
+        simChartsInitialized = true;
+    }
+    setTimeout(runDummyDataTest, 50);
+};
+
+const originalInitLiveChart = window.initLiveChart;
+window.initLiveChart = function() {
+    if(originalInitLiveChart) originalInitLiveChart();
+    if (!liveChartsInitialized) {
+        initOscillatorCharts('live');
+        liveChartsInitialized = true;
+    }
+    setTimeout(runDummyDataTest, 50);
+};
 </script>
 </body>
 </html>
