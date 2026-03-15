@@ -1530,15 +1530,7 @@ const myCanvases = {
     liveRsi: document.createElement('canvas'), liveDelta: document.createElement('canvas')
 };
 
-function hideChartJs() {
-    ['rsiChart', 'deltaChart', 'liveRsiCanvas2', 'liveDeltaCanvas2'].forEach(id => {
-        const el = document.getElementById(id);
-        if(el) el.style.opacity = '0'; // Silently hide Chart.js elements
-    });
-}
-
 function injectCanvases() {
-    hideChartJs();
     const sRBox = document.querySelector('.main-sim .chart-rsi-pane .canvas-box-bottom');
     const sDBox = document.querySelector('.main-sim .chart-delta-pane .canvas-box-bottom');
     const lRBox = document.querySelector('#liveChartModal .chart-rsi-pane .canvas-box-bottom');
@@ -1579,12 +1571,22 @@ window.syncNativeChartsWithEngine = function(fHist, cIdx, dailyCache, weeklyCach
     if (!fHist || !dailyCache || !weeklyCache || cIdx <= 0) return;
     
     let dataArray = [];
-    let lookback = window.simChartWindow || 250; 
+    let lookback = 250; 
     if (modeStr === 'live' || modeStr === 'cockpit') {
         const activeLiveBtn = document.querySelector('#liveChartTfRow .tf-btn.active');
         if (activeLiveBtn) {
             const map = {'3D':3, '1W':5, '2W':10, '1M':21, '3M':63, '6M':125, '1Y':250};
             lookback = map[activeLiveBtn.textContent.trim()] || 250;
+        }
+    } else if (modeStr === 'sim') {
+        const activeSimBtn = document.querySelector('#simTfRow .tf-btn.active');
+        if (activeSimBtn) {
+             const txt = activeSimBtn.textContent.trim();
+             if (txt === 'ALL') lookback = fHist.length;
+             else {
+                 const map = {'1W':5, '2W':10, '1M':21, '3M':63, '1Y':250};
+                 lookback = map[txt] || 250;
+             }
         }
     }
 
@@ -1651,18 +1653,17 @@ window.addEventListener('DOMContentLoaded', () => {
                 typeof window.globalDailyRsiCache !== 'undefined' && typeof window.globalWeeklyRsiCache !== 'undefined') {
                 window.syncNativeChartsWithEngine(window.globalLiveData, window.globalLiveData.length - 1, window.globalDailyRsiCache, window.globalWeeklyRsiCache, 'live');
             }
-        }, 100); // 100ms delay ensures DOM layout is fully rendered
+        }, 100); 
     };
 
     const obsOpts = { childList: true, characterData: true, subtree: true };
-    ['simDay', 'liveNavDate', 'simNav', 'liveChartTfRow'].forEach(id => {
+    ['simDay', 'liveNavDate', 'simNav', 'liveChartTfRow', 'simTfRow'].forEach(id => {
         const el = document.getElementById(id);
         if (el) new MutationObserver(triggerSyncIfDataReady).observe(el, obsOpts);
     });
     
-    // Manual overrides for clicks that might not trigger mutations instantly
     document.body.addEventListener('click', (e) => {
-        if(e.target.tagName === 'BUTTON' || e.target.closest('.fund-box')) triggerSyncIfDataReady();
+        if(e.target.tagName === 'BUTTON' || e.target.closest('.fund-box') || e.target.classList.contains('tf-btn')) triggerSyncIfDataReady();
     });
 });
 
@@ -1675,6 +1676,7 @@ window.addEventListener('resize', () => {
     }
 });
 </script>
+
 
 </body>
 </html>
