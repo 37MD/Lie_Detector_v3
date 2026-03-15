@@ -3,15 +3,18 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Lie Detector v3.16 - Pure Data Engine (Two-Chart Layout)</title>
+<title>LDv316 (1) - Core Data Engine</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg: #ffffff; --surface: #f2f5f9; --surface2: #e4eaf2; --surface3: #d6deeb;
-    --border: #b0bece; --border2: #7090b0; --accent: #009e70; --accent-dim: rgba(0, 158, 112, 0.10);
-    --accent2: #c97a00; --accent2-dim: rgba(201, 122, 0, 0.10); --red: #c8102e; --red-dim: rgba(200, 16, 46, 0.08);
-    --text: #000000; --muted: #404060; --muted2: #304058; --gold: #b07a00; --gold-dim: rgba(176, 122, 0, 0.10);
+    --border: #b0bece; --border2: #7090b0;
+    --accent: #009e70; --accent-dim: rgba(0, 158, 112, 0.10);
+    --accent2: #c97a00; --accent2-dim: rgba(201, 122, 0, 0.10);
+    --red: #c8102e; --red-dim: rgba(200, 16, 46, 0.08);
+    --text: #000000; --muted: #404060; --muted2: #304058;
+    --gold: #b07a00; --gold-dim: rgba(176, 122, 0, 0.10);
     --mono: 'Space Mono', monospace; --radius: 6px; --radius-sm: 4px;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -31,25 +34,12 @@
   .fund-box { background: var(--surface2); border: 1.5px solid var(--border); color: var(--muted2); padding: 12px 4px; border-radius: var(--radius); font-size: 0.75rem; cursor: pointer; transition: all 0.15s; }
   .fund-box.active { border-color: var(--accent); background: var(--accent-dim); color: var(--accent); }
   .dropdown { background: var(--surface2); border: 1.5px solid var(--border); color: var(--text); padding: 11px 12px; width: 100%; max-width: 350px; margin-bottom: 0.75rem; border-radius: var(--radius); font-size: 0.75rem; font-family: var(--mono); }
-  .custom-inputs { display: flex; gap: 8px; width: 100%; max-width: 350px; margin-bottom: 0.75rem; }
-  .c-input-box { flex: 1; background: var(--surface2); padding: 8px 10px; border-radius: var(--radius); border: 1.5px solid var(--border); }
-  .c-label { font-size: 0.6rem; color: var(--muted); display: block; margin-bottom: 3px; letter-spacing: 0.1em; }
-  .c-num { width: 100%; background: transparent; border: none; font-weight: 700; font-size: 1rem; font-family: var(--mono); outline: none; text-align: center; }
-  .setup-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; max-width: 350px; margin-top: 1rem; }
-  .setup-btn { font-size: 0.68rem; font-family: var(--mono); padding: 12px 4px; border-radius: var(--radius); cursor: pointer; border: 1.5px solid; text-transform: uppercase; letter-spacing: 0.08em; background: transparent; transition: 0.15s; }
-  .setup-btn-sim { border-color: var(--accent); color: var(--accent); }
-  .setup-btn-live { border-color: var(--border2); color: var(--muted2); }
 
-  /* ── GAME UI ── */
-  .app-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 14px; background: var(--surface); border-bottom: 1px solid var(--border); }
-  .logo { font-weight: 700; font-size: 0.75rem; color: var(--accent); letter-spacing: 0.12em; }
-  .fund-name-tag { font-size: 0.6rem; margin-left: 8px; padding-left: 8px; border-left: 1px solid var(--border); color: var(--text); }
-  .btn-review { background: var(--gold-dim); color: var(--gold); border: 1px solid var(--gold); padding: 5px 10px; font-size: 0.65rem; font-family: var(--mono); cursor: pointer; border-radius: var(--radius-sm); }
-  .networth-header { display: flex; justify-content: space-around; background: var(--surface); border-bottom: 1px solid var(--border); padding: 7px 8px; }
-  .nw-col { display: flex; flex-direction: column; align-items: center; }
-  .nw-lbl { font-size: 0.55rem; color: var(--muted); text-transform: uppercase; }
-  .nw-val { font-size: 1.25rem; }
-  #alertBanner, #liveAlertBanner { display: block; height: 36px; line-height: 36px; text-align: center; font-weight: 700; font-size: 0.82rem; text-transform: uppercase; visibility: hidden; }
+  /* ── ALERTS (FORCED BLACK FONT) ── */
+  #alertBanner { display: block; height: 36px; line-height: 36px; text-align: center; font-weight: 700; font-size: 0.82rem; text-transform: uppercase; visibility: hidden; color: #000000 !important; }
+  .alert-danger { background: var(--red); }
+  .alert-buy { background: var(--accent); }
+  .alert-profit { background: var(--accent2); }
   .banner-on { visibility: visible !important; animation: pulseAlert 1.8s infinite; }
   @keyframes pulseAlert { 0%, 100% { opacity: 1; } 50% { opacity: 0.72; } }
 
@@ -59,72 +49,70 @@
   .chart-split { display: flex; flex-direction: column; flex-grow: 1; }
   .chart-main-pane { flex: 0.60; position: relative; border-bottom: 1px dashed var(--border); }
   .chart-osc-pane  { flex: 0.40; position: relative; }
-  .chart-hud { position: absolute; top: 4px; left: 4px; font-size: 0.55rem; z-index: 10; background: rgba(255,255,255,0.8); padding: 2px 4px; pointer-events: none; }
+  .canvas-box { position: absolute; inset: 0; }
 
-  /* ── INDICATORS ── */
+  /* ── UI ELEMENTS ── */
   .indicator-row { display: flex; justify-content: space-between; background: var(--surface); border-bottom: 1px solid var(--border); }
   .ind-box { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 4px; border-right: 1px solid var(--border); }
   .ind-val { font-size: 1.0rem; font-weight: 700; margin-top: 2px; border-radius: 4px; padding: 2px 8px; }
   .reg-A { color: var(--accent); background: var(--accent-dim); } .reg-B { color: var(--accent2); background: var(--accent2-dim); } .reg-C { color: var(--red); background: var(--red-dim); }
-
   .action-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: var(--surface); border-top: 1px solid var(--border); display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 8px; height: 88px; }
   .btn { font-family: var(--mono); font-size: 0.67rem; font-weight: 700; border-radius: 4px; cursor: pointer; border: 1.5px solid transparent; text-transform: uppercase; background: transparent; }
   .btn-buy { border-color: var(--accent); color: var(--accent); } .btn-sell { border-color: var(--red); color: var(--red); }
-  .modal-overlay { display: none; position: fixed; inset: 0; background: var(--bg); z-index: 600; flex-direction: column; }
+  .app-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 14px; background: var(--surface); border-bottom: 1px solid var(--border); }
 </style>
 </head>
 <body>
 
-<div id="ov" style="display:none;"><div class="spin"></div><span id="ovTxt">FETCHING...</span></div>
+<div id="ov" style="display:none;"><div class="spin"></div><span id="ovTxt">FETCHING DATA...</span></div>
 
 <div id="setupScreen">
   <div class="setup-logo">Sacred RSI Regime System</div>
-  <h1 class="setup-title">Lie Detector v3.16</h1>
+  <h1 class="setup-title">Lie Detector v3.16 (1)</h1>
   <div class="fund-grid" id="fundGrid">
     <div class="fund-box" onclick="selectAMC('HDFC', this)">HDFC</div>
     <div class="fund-box active" onclick="selectAMC('ICICI', this)">ICICI</div>
     <div class="fund-box" onclick="selectAMC('KOTAK', this)">KOTAK</div>
     <div class="fund-box" onclick="selectAMC('ABSL', this)">ABSL</div>
   </div>
-  <select id="fundSelect" class="dropdown" onchange="saveFundSelection()"></select>
-  <div class="custom-inputs">
-    <div class="c-input-box"><span class="c-label">Profit Delta</span><input type="number" id="profitDeltaIn" class="c-num" style="color:var(--accent2);" value="15"></div>
-    <div class="c-input-box"><span class="c-label">Scout Buy</span><input type="number" id="buyDeltaIn" class="c-num" style="color:var(--accent);" value="-15"></div>
+  <select id="fundSelect" class="dropdown"></select>
+  <div class="custom-inputs" style="display:flex; gap:8px; width:100%; max-width:350px; margin-bottom:0.75rem;">
+    <div style="flex:1; background:var(--surface2); padding:8px; border-radius:6px; border:1.5px solid var(--border);">
+      <span style="font-size:0.5rem; color:var(--muted); display:block; text-transform:uppercase;">Profit Delta</span>
+      <input type="number" id="profitDeltaIn" value="15" style="width:100%; background:transparent; border:none; font-weight:700; text-align:center; font-family:var(--mono);">
+    </div>
+    <div style="flex:1; background:var(--surface2); padding:8px; border-radius:6px; border:1.5px solid var(--border);">
+      <span style="font-size:0.5rem; color:var(--muted); display:block; text-transform:uppercase;">Scout Buy</span>
+      <input type="number" id="buyDeltaIn" value="-15" style="width:100%; background:transparent; border:none; font-weight:700; text-align:center; font-family:var(--mono);">
+    </div>
   </div>
-  <div class="setup-btns">
-    <button class="setup-btn setup-btn-sim" onclick="initGame('random')">Simulator</button>
-    <button class="setup-btn setup-btn-live" onclick="initLive()">Live Analytics</button>
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; width:100%; max-width:350px;">
+    <button class="btn btn-buy" style="padding:12px;" onclick="initGame()">Simulator</button>
+    <button class="btn" style="border-color:var(--border2); color:var(--muted2); padding:12px;" onclick="alert('Live Analytics rendered by external Add-On')">Live Engine</button>
   </div>
 </div>
 
 <div id="gameUI" style="display:none; height:100vh; flex-direction:column;">
   <header class="app-header">
-    <div class="logo">LIE DETECTOR <span id="simFundName" class="fund-name-tag"></span></div>
-    <button class="btn-review" onclick="endAndReview()">END & REVIEW</button>
+    <div style="font-weight:700; font-size:0.75rem; color:var(--accent);">LIE DETECTOR <span id="simFundName" style="font-size:0.6rem; margin-left:8px; border-left:1px solid var(--border); padding-left:8px; color:var(--text); font-weight:400;"></span></div>
+    <button style="background:var(--gold-dim); color:var(--gold); border:1px solid var(--gold); padding:5px 10px; font-size:0.65rem; border-radius:4px; cursor:pointer;" onclick="location.reload()">RESTART</button>
   </header>
-  <div class="networth-header">
-    <div class="nw-col"><span class="nw-lbl">Net Worth</span><span class="nw-val" id="nwVal" style="color:var(--accent);">₹1,00,000</span></div>
-    <div class="nw-col"><span class="nw-lbl">Max DD</span><span class="nw-val" id="ddVal" style="color:var(--red);">0.0%</span></div>
-    <div class="nw-col"><span class="nw-lbl">Cash</span><span class="nw-val" id="cashVal">₹1,00,000</span></div>
+  <div class="indicator-row" style="background:var(--surface); border-bottom:1px solid var(--border); padding:8px; justify-content:space-around;">
+    <div style="text-align:center;"><div style="font-size:0.5rem; color:var(--muted);">NET WORTH</div><div id="nwVal" style="font-size:1.1rem; color:var(--accent);">₹1,00,000</div></div>
+    <div style="text-align:center;"><div style="font-size:0.5rem; color:var(--muted);">CASH</div><div id="cashVal" style="font-size:1.1rem;">₹1,00,000</div></div>
   </div>
   <div id="alertBanner"></div>
   <main class="main-sim">
     <div class="chart-container">
       <div class="chart-split">
-        <div class="chart-main-pane">
-          <div class="chart-hud" id="simHudPrice"></div>
-          <div class="canvas-box"></div>
-        </div>
-        <div class="chart-osc-pane">
-          <div class="chart-hud" id="simHudOsc"></div>
-          <div class="canvas-box"></div>
-        </div>
+        <div class="chart-main-pane"><div class="canvas-box"></div></div>
+        <div class="chart-osc-pane"><div class="canvas-box"></div></div>
       </div>
     </div>
     <div class="indicator-row">
-      <div class="ind-box"><span class="nw-lbl">Daily RSI</span><div id="dRsi" class="ind-val">--</div></div>
-      <div class="ind-box"><span class="nw-lbl">Weekly RSI</span><div id="wRsi" class="ind-val">--</div></div>
-      <div class="ind-box"><span class="nw-lbl">Regime</span><div id="regimeBlock" class="ind-val">--</div></div>
+      <div class="ind-box"><span style="font-size:0.55rem; color:var(--muted);">DAILY RSI</span><div id="dRsi" class="ind-val">--</div></div>
+      <div class="ind-box"><span style="font-size:0.55rem; color:var(--muted);">WEEKLY RSI</span><div id="wRsi" class="ind-val">--</div></div>
+      <div class="ind-box"><span style="font-size:0.55rem; color:var(--muted);">REGIME</span><div id="regimeBlock" class="ind-val">--</div></div>
     </div>
   </main>
   <footer class="action-bar">
@@ -136,37 +124,49 @@
 </div>
 
 <script>
-// AMCs and Funds from v315
+// Verbatim Fund Registry from LDv315
 const amcFunds = {
   'HDFC': [
-    { name: 'HDFC Flexi Cap - Growth', code: '118989' },
-    { name: 'HDFC Balanced Advantage - Growth', code: '118968' },
-    { name: 'HDFC Gold ETF FoF - Direct', code: '119132' },
-    { name: 'HDFC Nifty100 Quality 30 - Direct', code: '153264' }
+    { name: 'HDFC Flexi Cap - Growth', code: '118989' }, { name: 'HDFC Balanced Advantage - Growth', code: '118968' },
+    { name: 'HDFC Gold ETF FoF - Direct', code: '119132' }, { name: 'HDFC Nifty100 Quality 30 - Direct', code: '153264' },
+    { name: 'HDFC Silver ETF FoF - Direct', code: '150737' }, { name: 'HDFC Nifty Realty Index - Direct', code: '152521' },
+    { name: 'HDFC Nifty India Digital - Direct', code: '153097' }, { name: 'HDFC Nifty India Consumption - Direct', code: '154179' },
+    { name: 'HDFC NIFTY500 Multicap - Direct', code: '152778' }, { name: '[NPS] HDFC Scheme E - Tier I', code: 'SM008001' },
+    { name: '[NPS] HDFC Scheme C - Tier I', code: 'SM008002' }, { name: '[NPS] HDFC Scheme E - Tier II', code: 'SM008004' },
+    { name: '[NPS] HDFC Scheme C - Tier II', code: 'SM008005' }
   ],
   'ICICI': [
-    { name: 'ICICI Flexicap - Growth', code: '119062' },
-    { name: 'ICICI Balanced Advantage - Growth', code: '120377' },
-    { name: 'ICICI Nifty Bank Index - Direct', code: '149858' },
-    { name: 'ICICI Nifty Pharma Index - Direct', code: '150930' }
+    { name: 'ICICI Flexicap - Growth', code: '119062' }, { name: 'ICICI Balanced Advantage - Growth', code: '120377' },
+    { name: 'ICICI Nifty IT Index - Direct', code: '150468' }, { name: 'ICICI Nifty EV & New Age Auto - Direct', code: '153394' },
+    { name: 'ICICI Nifty Private Bank - Direct', code: '153679' }, { name: 'ICICI Nifty200 Value 30 - Direct', code: '152936' },
+    { name: 'ICICI Nifty Bank Index - Direct', code: '149858' }, { name: 'ICICI Nifty Auto Index - Direct', code: '150643' },
+    { name: 'ICICI Nifty Pharma Index - Direct', code: '150930' }, { name: '[NPS] ICICI Scheme E - Tier I', code: 'SM007001' },
+    { name: '[NPS] ICICI Scheme C - Tier I', code: 'SM007002' }, { name: '[NPS] ICICI Scheme E - Tier II', code: 'SM007004' },
+    { name: '[NPS] ICICI Scheme C - Tier II', code: 'SM007005' }
   ],
   'KOTAK': [
-    { name: 'KOTAK Flexicap - Growth', code: '120166' },
-    { name: 'Kotak Nifty SmallCap 250 - Direct', code: '153223' },
-    { name: 'Kotak Gold Fund - Direct', code: '119781' },
-    { name: 'Kotak Nifty 200 Momentum 30 - Direct', code: '151781' }
+    { name: 'KOTAK Flexicap - Growth', code: '120166' }, { name: 'KOTAK Balanced Advantage - Growth', code: '144335' },
+    { name: 'Kotak Nifty SmallCap 250 - Direct', code: '153223' }, { name: 'Kotak Nifty Commodities - Direct', code: '153353' },
+    { name: 'Kotak BSE Housing Index - Direct', code: '152039' }, { name: 'Kotak Gold Silver Passive FoF - Direct', code: '153921' },
+    { name: 'Kotak Silver ETF FoF - Direct', code: '151603' }, { name: 'Kotak Gold Fund - Direct', code: '119781' },
+    { name: 'Kotak Nifty 200 Momentum 30 - Direct', code: '151781' }, { name: 'Kotak Nifty Fin Serv Ex-Bank - Direct', code: '151911' },
+    { name: 'Kotak Nifty500 Momentum 50 - Direct', code: '154032' }, { name: 'Kotak Nifty200 Value 30 - Direct', code: '154145' },
+    { name: 'Kotak Nifty Midcap 150 Mom 50 - Direct', code: '152916' }, { name: '[NPS] KOTAK Scheme E - Tier I', code: 'SM005001' },
+    { name: '[NPS] KOTAK Scheme C - Tier I', code: 'SM005002' }, { name: '[NPS] KOTAK Scheme E - Tier II', code: 'SM005004' },
+    { name: '[NPS] KOTAK Scheme C - Tier II', code: 'SM005005' }
   ],
   'ABSL': [
-    { name: 'ABSL Flexi Cap - Growth', code: '120517' },
-    { name: 'ABSL Nifty Midcap 150 - Direct', code: '148807' },
-    { name: 'ABSL BSE 500 Momentum 50 - Direct', code: '153736' },
-    { name: 'ABSL Nifty India Defence - Direct', code: '152798' }
+    { name: 'ABSL Flexi Cap - Growth', code: '120517' }, { name: 'ABSL Balanced Advantage - Growth', code: '131670' },
+    { name: 'ABSL Gold Fund - Growth', code: '120546' }, { name: 'ABSL Nifty Midcap 150 - Direct', code: '148807' },
+    { name: 'ABSL BSE 500 Momentum 50 - Direct', code: '153736' }, { name: 'ABSL Nifty India Defence - Direct', code: '152798' },
+    { name: 'ABSL BSE India Infrastructure - Direct', code: '153081' }, { name: 'ABSL Silver ETF FOF - Direct', code: '149780' },
+    { name: '[NPS] ABSL Scheme E - Tier I', code: 'SM006001' }, { name: '[NPS] ABSL Scheme C - Tier I', code: 'SM006002' },
+    { name: '[NPS] ABSL Scheme E - Tier II', code: 'SM006004' }, { name: '[NPS] ABSL Scheme C - Tier II', code: 'SM006005' }
   ]
 };
 
-// ── ENGINE STATE ──
-let fullHistory = [], currentIdx = 0, simStartIdx = 0;
-let cash = 100000, tranches = [], tradeLog = [];
+// State Variables
+let fullHistory = [], currentIdx = 0, cash = 100000, tranches = [];
 let simDailyRsiCache = [], simWeeklyRsiCache = [];
 
 function selectAMC(amc, el) {
@@ -178,64 +178,91 @@ function selectAMC(amc, el) {
   });
 }
 
-// ── API ENGINE ──
+// Data Fetch Engine
 async function fetchFundData() {
   const code = document.getElementById('fundSelect').value;
   const ov = document.getElementById('ov'); ov.style.display = 'flex';
   const url = code.startsWith('SM') ? `https://npsnav.in/api/historical/${code}` : `https://api.mfapi.in/mf/${code}`;
   try {
-    const res = await fetch(url);
-    const data = await res.json();
-    ov.style.display = 'none';
-    return data.data.map(d => ({ nav: parseFloat(d.nav), date: d.date })).reverse();
+    const res = await fetch(url); const data = await res.json(); ov.style.display = 'none';
+    if (!data.data) return [];
+    return data.data.map(d => ({ nav: parseFloat(d.nav), date: d.date })).filter(d => d.nav > 0).reverse();
   } catch (e) { ov.style.display = 'none'; return []; }
 }
 
-// ── SIMULATION LOOP ──
-async function initGame(mode) {
+// Calculation Engine
+function buildDailyRsiCache(prices) {
+  let ag = 0, al = 0; const cache = new Array(prices.length).fill(50);
+  for (let i = 1; i < prices.length; i++) {
+    const d = prices[i] - prices[i-1];
+    ag = (ag * 13 + (d > 0 ? d : 0)) / 14; al = (al * 13 + (d < 0 ? -d : 0)) / 14;
+    cache[i] = al === 0 ? 100 : 100 - (100 / (1 + ag / al));
+  } return cache;
+}
+
+function buildWeeklyRsiCache(prices) {
+  const cache = new Array(prices.length).fill(50); const weekly = []; let ag = 0, al = 0;
+  for (let i = 0; i < prices.length; i++) {
+    if (i % 5 === 0) weekly.push(prices[i]);
+    if (weekly.length > 1 && i % 5 === 0) {
+      const d = weekly[weekly.length-1] - weekly[weekly.length-2];
+      ag = (ag * 13 + (d > 0 ? d : 0)) / 14; al = (al * 13 + (d < 0 ? -d : 0)) / 14;
+    }
+    cache[i] = al === 0 ? 100 : 100 - (100 / (1 + ag / al));
+  } return cache;
+}
+
+// Simulation Core
+async function initGame() {
   fullHistory = await fetchFundData();
-  if (!fullHistory.length) return;
-  
-  simStartIdx = Math.floor(Math.random() * (fullHistory.length - 400)) + 100;
-  currentIdx = simStartIdx;
-  
-  // Pre-calculate RSI Caches for performance
+  if (!fullHistory.length) { alert("Data Engine: Fetch Failed"); return; }
   simDailyRsiCache = buildDailyRsiCache(fullHistory.map(h => h.nav));
   simWeeklyRsiCache = buildWeeklyRsiCache(fullHistory.map(h => h.nav));
-  
+  currentIdx = Math.floor(Math.random() * (fullHistory.length - 400)) + 100;
   document.getElementById('setupScreen').style.display = 'none';
   document.getElementById('gameUI').style.display = 'flex';
   updateDisplay();
 }
 
 function updateDisplay() {
-  const currentNav = fullHistory[currentIdx].nav;
-  const dRsi = simDailyRsiCache[currentIdx];
-  const wRsi = simWeeklyRsiCache[currentIdx];
-  const regime = wRsi >= 50 ? 'A' : (wRsi >= 40 ? 'B' : 'C');
+  const cur = fullHistory[currentIdx];
+  const dr = simDailyRsiCache[currentIdx], wr = simWeeklyRsiCache[currentIdx];
+  const regime = wr >= 50 ? 'A' : (wr >= 40 ? 'B' : 'C');
+  const nw = cash + (tranches.reduce((s, t) => s + t.units, 0) * cur.nav);
 
-  // Modular Bridge: Hand data to Add-Ons
-  if (window.syncChartsWithEngine) {
-    window.syncChartsWithEngine(fullHistory, currentIdx, simDailyRsiCache, simWeeklyRsiCache);
-  }
-
-  // Update Text DOM
   document.getElementById('simFundName').textContent = document.getElementById('fundSelect').selectedOptions[0].text;
-  document.getElementById('dRsi').textContent = Math.round(dRsi);
-  document.getElementById('wRsi').textContent = Math.round(wRsi);
+  document.getElementById('nwVal').textContent = `₹${Math.round(nw).toLocaleString('en-IN')}`;
+  document.getElementById('cashVal').textContent = `₹${Math.round(cash).toLocaleString('en-IN')}`;
+  document.getElementById('dRsi').textContent = Math.round(dr);
+  document.getElementById('wRsi').textContent = Math.round(wr);
   const rb = document.getElementById('regimeBlock');
-  rb.textContent = 'Regime ' + regime;
-  rb.className = 'ind-val ' + (regime === 'A' ? 'reg-A' : (regime === 'B' ? 'reg-B' : 'reg-C'));
+  rb.textContent = 'Regime ' + regime; rb.className = 'ind-val ' + (regime==='A'?'reg-A':(regime==='B'?'reg-B':'reg-C'));
+
+  // Alert System (Black font)
+  let alertText = '', alertClass = '';
+  if (regime === 'A' && dr <= 50) { alertText = '🟢 BUY ZONE: DIP DETECTED'; alertClass = 'alert-buy'; }
+  else if (regime === 'C') { alertText = '🚨 DANGER: REGIME CRASH'; alertClass = 'alert-danger'; }
+  const banner = document.getElementById('alertBanner');
+  banner.textContent = alertText; banner.className = alertText ? alertClass + ' banner-on' : '';
+
+  // MODULAR BRIDGE: Push data to external Add-On
+  if (window.syncChartsWithEngine) window.syncChartsWithEngine(fullHistory, currentIdx, simDailyRsiCache, simWeeklyRsiCache);
 }
 
-function nextDay() {
-  if (currentIdx < fullHistory.length - 1) {
-    currentIdx++;
-    updateDisplay();
-  }
+function trade(type) {
+  const nav = fullHistory[currentIdx].nav;
+  if (type === 'BUY10') { const a = cash * 0.1; tranches.push({ units: a/nav, price: nav }); cash -= a; }
+  else if (type === 'BUY50') { const a = cash * 0.5; tranches.push({ units: a/nav, price: nav }); cash -= a; }
+  else if (type === 'SELLALL') { cash += tranches.reduce((s,t)=>s+t.units, 0) * nav; tranches = []; }
+  nextDay();
 }
 
-// (Helper functions calculateRSI, buildDailyRsiCache, etc. to be pasted here from Phase 1)
+function nextDay() { if (currentIdx < fullHistory.length-1) { currentIdx++; updateDisplay(); } }
+
+window.addEventListener('DOMContentLoaded', () => {
+  selectAMC('ICICI', document.querySelectorAll('.fund-box')[1]);
+  document.getElementById('ov').style.display = 'none';
+});
 </script>
 </body>
 </html>
