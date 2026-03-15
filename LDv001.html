@@ -41,7 +41,7 @@
     flex-direction: column;
     overflow: hidden;
   }
-  canvas { touch-action: none; }
+  canvas { touch-action: none; display: block; }
 
   /* ── SPINNER ── */
   #ov {
@@ -439,12 +439,12 @@
         <div class="delta-label">MOMENTUM RIBBON · RSI vs WMA20(RSI)</div>
         <div class="chart-hud" id="liveRsiHud" style="top:18px;"></div>
         <div id="liveRsiLabel" style="position:absolute;top:3px;right:44px;font-size:0.52rem;color:var(--muted2);z-index:10;pointer-events:none;background:rgba(255,255,255,0.90);padding:1px 4px;border-radius:2px;"></div>
-        <div class="canvas-box-bottom"></div>
+        <div class="canvas-box-bottom" id="liveRsiBox"></div>
       </div>
       <div class="chart-delta-pane">
         <div class="delta-label">RSI DELTA · Daily − Weekly</div>
         <div class="chart-hud" id="liveDeltaHud" style="top:18px;"></div>
-        <div class="canvas-box-bottom"></div>
+        <div class="canvas-box-bottom" id="liveDeltaBox"></div>
       </div>
     </div>
   </div>
@@ -578,13 +578,13 @@
           <div class="delta-label">MOMENTUM RIBBON · RSI vs WMA20(RSI)</div>
           <div class="chart-hud" id="simRsiHud" style="top:18px;"></div>
           <div id="simRsiLabel" style="position:absolute;top:3px;right:4px;font-size:0.52rem;z-index:10;pointer-events:none;background:rgba(255,255,255,0.90);padding:1px 5px;border-radius:2px;letter-spacing:0.02em;"></div>
-          <div class="canvas-box-bottom"></div>
+          <div class="canvas-box-bottom" id="simRsiBox"></div>
         </div>
         <div class="chart-delta-pane">
           <div class="delta-label">VELOCITY · Daily − Weekly</div>
           <div class="chart-hud" id="simDeltaHud" style="top:18px;"></div>
           <div id="simDeltaLabel" style="position:absolute;top:3px;right:4px;font-size:0.52rem;z-index:10;pointer-events:none;background:rgba(255,255,255,0.90);padding:1px 5px;border-radius:2px;letter-spacing:0.02em;"></div>
-          <div class="canvas-box-bottom"></div>
+          <div class="canvas-box-bottom" id="simDeltaBox"></div>
         </div>
       </div>
       <div class="tf-row" id="simTfRow" style="border-top:1px solid var(--border);padding:4px 0 2px;margin-top:2px;">
@@ -751,7 +751,6 @@ function executeTradeEngine(action, currentState) {
 
   if (!currentNav || currentNav <= 0) return currentState;
 
-  // Handle Buys
   if (action.includes('BUY')) {
     const pct = action.includes('10') ? 0.1 : (action.includes('25') ? 0.25 : 0.5);
     const amt = cash * pct;
@@ -762,7 +761,6 @@ function executeTradeEngine(action, currentState) {
     return { cash, tranches, tradeLog, totalTaxPaid, alert: amt <= 10 ? 'INSUFFICIENT_CASH' : null };
   } 
 
-  // Handle Sells
   let unitsToSell = 0;
   const totalUnits = tranches.reduce((s, t) => s + t.units, 0);
   
@@ -780,7 +778,6 @@ function executeTradeEngine(action, currentState) {
     unitsToSell = totalUnits * r;
   }
 
-  // FIFO Execution and Tax Calculation
   if (unitsToSell > 0) {
     let remaining = unitsToSell, totalCash = 0, taxIncurred = 0, actualSold = 0;
     
@@ -793,7 +790,6 @@ function executeTradeEngine(action, currentState) {
       actualSold += chunk;
       
       const profit = (currentNav - t.price) * chunk;
-      // 20% Tax if held for less than 220 trading days
       const tax = (profit > 0 && (dayNum - t.day < 220)) ? profit * 0.20 : 0;
       taxIncurred += tax; 
       totalCash += currentNav * chunk - tax;
@@ -838,20 +834,18 @@ function calculateAuditScore(fullHistory, simStartIdx, currentIdx, simDailyRsiCa
     else if (regime === 'B') regimeBDays++;
     else regimeCDays++;
 
-    // PC Alert Math
     let pcAlert = false;
     if (sp.length >= 56) {
       const box = sp.slice(-6, -1);
       const boxMax = Math.max(...box), boxMin = Math.min(...box);
       const preBox = sp.slice(-56, -6);
       const preMax = Math.max(...preBox);
-      const boxWma = calculateWMA(sp.slice(0, -1), 20); // Requires calculateWMA helper
+      const boxWma = calculateWMA(sp.slice(0, -1), 20); 
       if ((boxMax - boxMin) / boxMin <= 0.02 && (boxWma ? Math.abs(boxMin - boxWma) / boxWma <= 0.04 : false)) {
         if (preMax > boxMax * 1.02 && currNav > boxMax) pcAlert = true;
       }
     }
 
-    // TSL Math
     const chartData = sp.slice(-80);
     let tslVal = 0, sLows = [], sHighs = [];
     for (let k = chartData.length - 3; k >= 2; k--) {
@@ -871,7 +865,6 @@ function calculateAuditScore(fullHistory, simStartIdx, currentIdx, simDailyRsiCa
     }
     const tslHit = tslVal > 0 && currNav < tslVal;
 
-    // Evaluate Actions for the Day
     const dayT = tradeLog.filter(t => t.day === dayNum);
     let hasBuy = false, hasProfit = false, hasSell = false;
 
@@ -910,7 +903,6 @@ function calculateAuditScore(fullHistory, simStartIdx, currentIdx, simDailyRsiCa
       }
     });
 
-    // Penalties for holding through danger
     if (runningUnits > 0.001) {
       if (tslHit) { daysTslBreachHeld++; scoreExit -= 10; }
       if (regime === 'C') {
@@ -926,7 +918,6 @@ function calculateAuditScore(fullHistory, simStartIdx, currentIdx, simDailyRsiCa
       regimeCBlock = 0;
     }
 
-    // Missed signal clustering
     const isBuySignal = regime === 'A' && (dr < 40 || d < buyDeltaLevel || pcAlert);
     if (isBuySignal && !hasBuy && (dayNum - lastMissedBuyDay) > 5) {
       missedBuyEvents++; scoreEntry -= 10; lastMissedBuyDay = dayNum;
@@ -938,12 +929,10 @@ function calculateAuditScore(fullHistory, simStartIdx, currentIdx, simDailyRsiCa
     }
   }
 
-  // Final Output Generation
   const totalScore = scoreEntry + scoreExit + scoreProfit;
   const totalUnits = tranches.reduce((s, t) => s + t.units, 0);
   const finalNW = cash + totalUnits * fullHistory[currentIdx].nav;
 
-  // Build Behavioral Remarks
   let remarksCode = "DISCIPLINED";
   if (tradeLog.length === 0) remarksCode = "GHOST";
   else if (daysRegimeCHeld > 2 || daysTslBreachHeld > 2) remarksCode = "CRITICAL_RISK";
@@ -990,8 +979,6 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').ca
 
 </script>
 
-<script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
-
 <script>
 // 1. INJECT THE 2-LINE ALERT ZONE (LIVE COCKPIT ONLY)
 (function injectLiveAlertZone() {
@@ -1011,138 +998,150 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').ca
     }
 })();
 
-// 2. GLOBAL CHART VARIABLES
-const charts = {
-    sim:  { rsi: null, delta: null, sRsi: null, sWma: null, sDelta: null },
-    live: { rsi: null, delta: null, sRsi: null, sWma: null, sDelta: null }
-};
-
-let simChartsInitialized = false;
-let liveChartsInitialized = false;
-
-// 3. CHART INITIALIZATION ENGINE
-// Added explicit width/height measurement and autoscaleInfoProvider for fixed boundaries
-function buildChart(container, minV, maxV) {
-    container.innerHTML = '';
-    const w = container.clientWidth > 0 ? container.clientWidth : 400;
-    const h = container.clientHeight > 0 ? container.clientHeight : 120;
-    
-    const chart = LightweightCharts.createChart(container, {
-        width: w,
-        height: h,
-        layout: { background: { type: 'solid', color: 'transparent' }, textColor: '#7090b0', fontSize: 10 },
-        grid: { vertLines: { color: 'rgba(0,0,0,0.05)' }, horzLines: { color: 'rgba(0,0,0,0.05)' } },
-        timeScale: { visible: false }, 
-        handleScroll: false,
-        handleScale: false
-    });
-
-    const ro = new ResizeObserver(entries => {
-        const { width, height } = entries[0].contentRect;
-        if (width > 0 && height > 0) chart.applyOptions({ width, height });
-    });
-    ro.observe(container);
-
-    return chart;
+// 2. NATIVE CANVAS DRAWING FUNCTIONS
+function mapY(val, min, max, height) {
+    return height - ((val - min) / (max - min) * height);
 }
 
-function initOscillatorCharts(target) {
-    if (target === 'sim') {
-        const simRsiCont = document.querySelector('.main-sim .chart-rsi-pane .canvas-box-bottom');
-        const simDelCont = document.querySelector('.main-sim .chart-delta-pane .canvas-box-bottom');
-        
-        if(simRsiCont && simDelCont) {
-            charts.sim.rsi = buildChart(simRsiCont);
-            charts.sim.sRsi = charts.sim.rsi.addLineSeries({ 
-                color: '#b0bece', lineWidth: 1,
-                autoscaleInfoProvider: () => ({ priceRange: { minValue: 0, maxValue: 100 } })
-            });
-            charts.sim.sWma = charts.sim.rsi.addLineSeries({ 
-                color: '#009e70', lineWidth: 2,
-                autoscaleInfoProvider: () => ({ priceRange: { minValue: 0, maxValue: 100 } })
-            });
-            // Reference Lines
-            charts.sim.sRsi.createPriceLine({ price: 35, color: '#009e70', lineStyle: 2, axisLabelVisible: false });
-            charts.sim.sRsi.createPriceLine({ price: 15, color: '#00e8a2', lineStyle: 2, axisLabelVisible: false });
-            
-            charts.sim.delta = buildChart(simDelCont);
-            charts.sim.sDelta = charts.sim.delta.addHistogramSeries({ 
-                base: 0,
-                autoscaleInfoProvider: () => ({ priceRange: { minValue: -80, maxValue: 100 } })
-            });
-            // Reference Lines
-            charts.sim.sDelta.createPriceLine({ price: 35, color: '#009e70', lineStyle: 2, axisLabelVisible: false });
-            charts.sim.sDelta.createPriceLine({ price: -35, color: '#009e70', lineStyle: 2, axisLabelVisible: false });
-            charts.sim.sDelta.createPriceLine({ price: 15, color: '#00e8a2', lineStyle: 2, axisLabelVisible: false });
-            charts.sim.sDelta.createPriceLine({ price: -15, color: '#00e8a2', lineStyle: 2, axisLabelVisible: false });
-        }
-    }
-
-    if (target === 'live') {
-        const liveRsiCont = document.querySelector('#liveChartModal .chart-rsi-pane .canvas-box-bottom');
-        const liveDelCont = document.querySelector('#liveChartModal .chart-delta-pane .canvas-box-bottom');
-
-        if(liveRsiCont && liveDelCont) {
-            charts.live.rsi = buildChart(liveRsiCont);
-            charts.live.sRsi = charts.live.rsi.addLineSeries({ 
-                color: '#b0bece', lineWidth: 1,
-                autoscaleInfoProvider: () => ({ priceRange: { minValue: 0, maxValue: 100 } })
-            });
-            charts.live.sWma = charts.live.rsi.addLineSeries({ 
-                color: '#009e70', lineWidth: 2,
-                autoscaleInfoProvider: () => ({ priceRange: { minValue: 0, maxValue: 100 } })
-            });
-            // Reference Lines
-            charts.live.sRsi.createPriceLine({ price: 35, color: '#009e70', lineStyle: 2, axisLabelVisible: false });
-            charts.live.sRsi.createPriceLine({ price: 15, color: '#00e8a2', lineStyle: 2, axisLabelVisible: false });
-
-            charts.live.delta = buildChart(liveDelCont);
-            charts.live.sDelta = charts.live.delta.addHistogramSeries({ 
-                base: 0,
-                autoscaleInfoProvider: () => ({ priceRange: { minValue: -80, maxValue: 100 } })
-            });
-            // Reference Lines
-            charts.live.sDelta.createPriceLine({ price: 35, color: '#009e70', lineStyle: 2, axisLabelVisible: false });
-            charts.live.sDelta.createPriceLine({ price: -35, color: '#009e70', lineStyle: 2, axisLabelVisible: false });
-            charts.live.sDelta.createPriceLine({ price: 15, color: '#00e8a2', lineStyle: 2, axisLabelVisible: false });
-            charts.live.sDelta.createPriceLine({ price: -15, color: '#00e8a2', lineStyle: 2, axisLabelVisible: false });
-        }
-    }
+function drawRefLine(ctx, val, color, width, h, min, max, isDashed) {
+    let y = mapY(val, min, max, h);
+    ctx.beginPath();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1;
+    if(isDashed) ctx.setLineDash([4, 4]); else ctx.setLineDash([]);
+    ctx.moveTo(0, y);
+    ctx.lineTo(width, y);
+    ctx.stroke();
+    ctx.setLineDash([]); 
 }
 
-// 4. DATA UPDATE ENGINE 
-function updateOscillatorCharts(target, dataArray) {
-    const rsiData = [];
-    const wmaData = [];
-    const deltaData = [];
+function renderRsiCanvas(canvas, data) {
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.parentElement.getBoundingClientRect();
+    if(rect.width === 0) return; // Screen still hidden
     
-    const showExtremesOnly = true; 
-    let latestState = null;
+    // High DPI Retina Support
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
+    canvas.style.width = rect.width + 'px';
+    canvas.style.height = rect.height + 'px';
+    
+    const w = rect.width;
+    const h = rect.height;
+    const minV = 0, maxV = 100;
 
-    dataArray.forEach(d => {
-        rsiData.push({ time: d.time, value: parseFloat(d.dailyRSI) });
-        wmaData.push({ time: d.time, value: parseFloat(d.rsiWMA) }); 
+    ctx.clearRect(0, 0, w, h);
 
-        let gap = parseFloat(d.velocityGap);
+    // Reference Lines
+    drawRefLine(ctx, 35, 'rgba(0, 158, 112, 0.4)', w, h, minV, maxV, true);
+    drawRefLine(ctx, 15, 'rgba(0, 232, 162, 0.4)', w, h, minV, maxV, true);
+    
+    if(!data || data.length === 0) return;
+
+    // Draw WMA Line (Green)
+    ctx.beginPath();
+    ctx.strokeStyle = '#009e70';
+    ctx.lineWidth = 2;
+    for(let i=0; i<data.length; i++) {
+        let x = (i / Math.max(1, data.length - 1)) * w;
+        let y = mapY(data[i].rsiWMA, minV, maxV, h);
+        if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+
+    // Draw Daily RSI Line (Silver)
+    ctx.beginPath();
+    ctx.strokeStyle = '#b0bece';
+    ctx.lineWidth = 1.5;
+    for(let i=0; i<data.length; i++) {
+        let x = (i / Math.max(1, data.length - 1)) * w;
+        let y = mapY(data[i].dailyRSI, minV, maxV, h);
+        if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+}
+
+function renderDeltaCanvas(canvas, data) {
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.parentElement.getBoundingClientRect();
+    if(rect.width === 0) return; 
+
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
+    canvas.style.width = rect.width + 'px';
+    canvas.style.height = rect.height + 'px';
+    
+    const w = rect.width;
+    const h = rect.height;
+    const minV = -80, maxV = 100;
+
+    ctx.clearRect(0, 0, w, h);
+
+    // Reference Lines
+    drawRefLine(ctx, 0, 'rgba(0, 0, 0, 0.15)', w, h, minV, maxV, false);
+    drawRefLine(ctx, 35, 'rgba(0, 158, 112, 0.4)', w, h, minV, maxV, true);
+    drawRefLine(ctx, -35, 'rgba(0, 158, 112, 0.4)', w, h, minV, maxV, true);
+    drawRefLine(ctx, 15, 'rgba(0, 232, 162, 0.4)', w, h, minV, maxV, true);
+    drawRefLine(ctx, -15, 'rgba(0, 232, 162, 0.4)', w, h, minV, maxV, true);
+
+    if(!data || data.length === 0) return;
+
+    let zeroY = mapY(0, minV, maxV, h);
+    let barW = Math.max(1, (w / data.length) - 1);
+
+    for(let i=0; i<data.length; i++) {
+        let gap = data[i].velocityGap;
+        let showExtremesOnly = true;
+        if (showExtremesOnly && Math.abs(gap) < 35) continue; // Skip drawing small bars
+
         let color = '#fc0606'; 
         if (gap >= 15) color = '#015804'; 
         else if (gap > 0) color = 'rgba(0, 158, 112, 0.5)'; 
         else if (gap > -15) color = 'rgba(200, 16, 46, 0.5)'; 
 
-        if (showExtremesOnly && Math.abs(gap) < 35) { gap = 0; }
+        let x = (i / Math.max(1, data.length - 1)) * w - (barW/2);
+        let y = mapY(gap, minV, maxV, h);
+        
+        ctx.fillStyle = color;
+        ctx.fillRect(x, y, barW, zeroY - y);
+    }
+}
 
-        deltaData.push({ time: d.time, value: gap, color: color });
-        latestState = d;
-    });
+// 3. SETUP & UPDATE ENGINE
+const myCanvases = {
+    simRsi: document.createElement('canvas'),
+    simDelta: document.createElement('canvas'),
+    liveRsi: document.createElement('canvas'),
+    liveDelta: document.createElement('canvas')
+};
 
-    if (target === 'sim' && charts.sim.sRsi) {
-        charts.sim.sRsi.setData(rsiData);
-        charts.sim.sWma.setData(wmaData);
-        charts.sim.sDelta.setData(deltaData);
-    } else if (target === 'live' && charts.live.sRsi) {
-        charts.live.sRsi.setData(rsiData);
-        charts.live.sWma.setData(wmaData);
-        charts.live.sDelta.setData(deltaData);
+function injectCanvases() {
+    const sRBox = document.getElementById('simRsiBox');
+    const sDBox = document.getElementById('simDeltaBox');
+    const lRBox = document.getElementById('liveRsiBox');
+    const lDBox = document.getElementById('liveDeltaBox');
+
+    if(sRBox && !sRBox.contains(myCanvases.simRsi)) sRBox.appendChild(myCanvases.simRsi);
+    if(sDBox && !sDBox.contains(myCanvases.simDelta)) sDBox.appendChild(myCanvases.simDelta);
+    if(lRBox && !lRBox.contains(myCanvases.liveRsi)) lRBox.appendChild(myCanvases.liveRsi);
+    if(lDBox && !lDBox.contains(myCanvases.liveDelta)) lDBox.appendChild(myCanvases.liveDelta);
+}
+
+function updateOscillatorCharts(target, dataArray) {
+    injectCanvases(); // Ensure they exist in the DOM
+
+    let latestState = dataArray.length > 0 ? dataArray[dataArray.length - 1] : null;
+
+    if (target === 'sim') {
+        renderRsiCanvas(myCanvases.simRsi, dataArray);
+        renderDeltaCanvas(myCanvases.simDelta, dataArray);
+    } else if (target === 'live') {
+        renderRsiCanvas(myCanvases.liveRsi, dataArray);
+        renderDeltaCanvas(myCanvases.liveDelta, dataArray);
         
         if (latestState) {
             const hEl = document.getElementById('alertHarvest');
@@ -1161,15 +1160,11 @@ function updateOscillatorCharts(target, dataArray) {
     }
 }
 
-// 5. DUMMY DATA TEST
+// 4. DUMMY DATA TEST
 function runDummyDataTest() {
     let testData = [];
-    let baseTime = new Date('2024-01-01').getTime();
-    
     for(let i=0; i<100; i++) {
-        let timeStr = new Date(baseTime + i * 86400000).toISOString().split('T')[0];
         testData.push({
-            time: timeStr,
             dailyRSI: 50 + Math.sin(i/4) * 35,       
             rsiWMA: 50 + Math.sin(i/8) * 20,         
             velocityGap: Math.sin(i/5) * 45,         
@@ -1182,7 +1177,7 @@ function runDummyDataTest() {
     updateOscillatorCharts('live', testData); 
 }
 
-// 6. UI HOOKS: WAIT FOR DISPLAY TO RENDER BEFORE DRAWING
+// 5. UI HOOKS
 function initGame(mode) {
   saveFundSelection();
   document.getElementById('simFundName').textContent = getBriefFundName();
@@ -1190,11 +1185,8 @@ function initGame(mode) {
   document.getElementById('setupScreen').style.display = 'none';
   document.getElementById('gameUI').style.display = 'flex';
   
-  // Addon trigger (Wait 150ms for screen to exist)
-  setTimeout(() => {
-      if (!simChartsInitialized) { initOscillatorCharts('sim'); simChartsInitialized = true; }
-      runDummyDataTest();
-  }, 150);
+  // Wait a fraction of a second for CSS to render the flexbox sizes, then draw!
+  setTimeout(runDummyDataTest, 50);
 }
 
 function initLiveChart() {
@@ -1203,12 +1195,14 @@ function initLiveChart() {
   document.getElementById('setupScreen').style.display = 'none';
   document.getElementById('liveChartModal').style.display = 'flex';
   
-  // Addon trigger (Wait 150ms for screen to exist)
-  setTimeout(() => {
-      if (!liveChartsInitialized) { initOscillatorCharts('live'); liveChartsInitialized = true; }
-      runDummyDataTest();
-  }, 150);
+  setTimeout(runDummyDataTest, 50);
 }
+
+// Auto-resize charts if window size changes while active
+window.addEventListener('resize', () => {
+    if(document.getElementById('gameUI').style.display === 'flex') runDummyDataTest();
+    if(document.getElementById('liveChartModal').style.display === 'flex') runDummyDataTest();
+});
 
 </script>
 </body>
