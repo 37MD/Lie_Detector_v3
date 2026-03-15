@@ -57,6 +57,7 @@
     border-radius: 50%;
     animation: spin 0.7s linear infinite;
   }
+  @keyframes spin { to { transform: rotate(360deg); } }
   #ovTxt { color: var(--accent); font-size: 0.65rem; margin-top: 12px; letter-spacing: 0.12em; opacity: 0.8; transition: color 0.2s;}
 
   /* ── SETUP SCREEN ── */
@@ -746,116 +747,17 @@ function getBriefFundName() {
 }
 
 // ─────────────────────────────────────────────
-//  --- PHASE 1 CALCULATION ENGINE (JS ADDON) ---
-// ─────────────────────────────────────────────
-// Translated strictly from PineScript v2.1 Logic.
-// Active: RSI(4), WMA(20), Std Trim(15), Climax Trim(35).
-// Labels/Signals disabled per default.
-const ENGINE_CFG = { rsiLen: 4, wmaLen: 20, trimStd: 15, trimClimax: 35 };
-
-function calculateRSI(dataArray, period) {
-    let rsi = new Array(dataArray.length).fill(null);
-    if (dataArray.length <= period) return rsi;
-    let gains = 0, losses = 0;
-    
-    // Initial accumulation
-    for (let i = 1; i <= period; i++) {
-        let diff = dataArray[i] - dataArray[i - 1];
-        if (diff > 0) gains += diff; else losses -= diff;
-    }
-    
-    let avgGain = gains / period;
-    let avgLoss = losses / period;
-    rsi[period] = avgLoss === 0 ? 100 : 100 - (100 / (1 + avgGain / avgLoss));
-
-    // Smoothed calculations
-    for (let i = period + 1; i < dataArray.length; i++) {
-        let diff = dataArray[i] - dataArray[i - 1];
-        let gain = diff > 0 ? diff : 0;
-        let loss = diff < 0 ? -diff : 0;
-        
-        avgGain = (avgGain * (period - 1) + gain) / period;
-        avgLoss = (avgLoss * (period - 1) + loss) / period;
-        
-        rsi[i] = avgLoss === 0 ? 100 : 100 - (100 / (1 + avgGain / avgLoss));
-    }
-    return rsi;
-}
-
-function calculateWMA(dataArray, period) {
-    let wma = new Array(dataArray.length).fill(null);
-    let weightSum = (period * (period + 1)) / 2;
-    
-    for (let i = period - 1; i < dataArray.length; i++) {
-        let sum = 0;
-        for (let j = 0; j < period; j++) {
-            if (dataArray[i - j] === null) { sum = null; break; }
-            sum += dataArray[i - j] * (period - j);
-        }
-        if (sum !== null) wma[i] = sum / weightSum;
-    }
-    return wma;
-}
-
-// Master Math Hub: You can map this into your charting array loop
-function buildEngineSnapshot(dailyCloses, dailyLows, weeklyCloses, idx) {
-    if (idx < ENGINE_CFG.wmaLen) return null;
-
-    let dClose = dailyCloses.slice(0, idx + 1);
-    let dLow = dailyLows.slice(0, idx + 1);
-    let wClose = weeklyCloses.slice(0, idx + 1);
-
-    // Run Core Math
-    let dRSI = calculateRSI(dClose, ENGINE_CFG.rsiLen);
-    let wRSI = calculateRSI(wClose, ENGINE_CFG.rsiLen);
-    let rsiWMA = calculateWMA(dRSI, ENGINE_CFG.wmaLen);
-
-    let curDRSI = dRSI[idx];
-    let curWRSI = wRSI[idx];
-    let curWMA = rsiWMA[idx];
-
-    if (curDRSI === null || curWRSI === null || curWMA === null) return null;
-
-    let velocityGap = curDRSI - curWRSI;
-    let proxyMom = curDRSI - curWMA;
-
-    // Track state history for dynamic Hooks
-    let prevProxy = idx > 0 ? (dRSI[idx-1] - rsiWMA[idx-1]) : null;
-    let prevPrevProxy = idx > 1 ? (dRSI[idx-2] - rsiWMA[idx-2]) : null;
-    let prevLow = idx > 0 ? dLow[idx-1] : null;
-    let prevGap = idx > 0 ? (dRSI[idx-1] - wRSI[idx-1]) : null;
-
-    // Define Master Regimes
-    let isRegimeA = curWRSI >= 50;
-    let isRegimeB = curWRSI >= 40 && curWRSI < 50;
-    let isRegimeC = curWRSI < 40;
-    let isOverdrive = curWRSI >= 60;
-
-    // Confluence logic
-    let hookDown = (proxyMom < prevProxy) && (prevProxy > prevPrevProxy);
-    let priceKnockout = dClose[idx] < prevLow;
-    let smartCutoff = isOverdrive ? ENGINE_CFG.trimClimax : ENGINE_CFG.trimStd;
-
-    return {
-        dailyRSI: curDRSI.toFixed(2),
-        weeklyRSI: curWRSI.toFixed(2),
-        rsiWMA: curWMA.toFixed(2),
-        velocityGap: velocityGap.toFixed(2),
-        proxyMom: proxyMom.toFixed(2),
-        isRegimeA, isRegimeB, isRegimeC, isOverdrive,
-        
-        // Exact Action Alert Translations 
-        sig_smartHarvest: hookDown && (prevProxy >= smartCutoff) && priceKnockout,
-        sig_reload: (proxyMom > 0) && (prevProxy <= 0) && (velocityGap > -10),
-        sig_bearCollapse: isRegimeC && (velocityGap < -ENGINE_CFG.trimStd) && (prevGap >= -ENGINE_CFG.trimStd)
-    };
-}
+//  --- PASTE PHASE 1 CALCULATION ENGINE HERE ---
+//  (Functions: calculateTSL, calculateConsolidation, calculateChoCh, 
+//   calculateMomentumState, calculateRegime, calculatePortfolioMetrics, 
+//   buildEngineSnapshot, calculateRSI, calculateWMA, calculateSMA, 
+//   calcTideHTML, calcVectorClass, buildDailyRsiCache, buildWeeklyRsiCache)
 // ─────────────────────────────────────────────
 
 // ─────────────────────────────────────────────
-//  --- PHASE 1 TRADE & AUDIT ENGINE WILL CONNECT HERE ---
+//  --- PASTE PHASE 1 TRADE & AUDIT ENGINE HERE ---
+//  (Functions: executeTradeEngine, calculateAuditScore)
 // ─────────────────────────────────────────────
-
 
 // ─────────────────────────────────────────────
 //  UI ROUTING (No Charts)
@@ -868,7 +770,8 @@ function initGame(mode) {
   document.getElementById('setupScreen').style.display = 'none';
   document.getElementById('gameUI').style.display = 'flex';
   
-  console.log("Simulator Initialized (UI Only) - Backend ready for execution");
+  // App is ready for engine wiring in Phase 3
+  console.log("Simulator Initialized (UI Only) - Ready for Calculation Engine Wiring");
 }
 
 function initLiveChart() {
@@ -877,7 +780,8 @@ function initLiveChart() {
   document.getElementById('setupScreen').style.display = 'none';
   document.getElementById('liveChartModal').style.display = 'flex';
   
-  console.log("Live Cockpit Initialized");
+  // App is ready for engine wiring in Phase 3
+  console.log("Live Cockpit Initialized (UI Only) - Ready for Calculation Engine Wiring");
 }
 
 function initLiveAnalytics() {
@@ -886,7 +790,8 @@ function initLiveAnalytics() {
   document.getElementById('setupScreen').style.display = 'none';
   document.getElementById('liveAnalyticsModal').style.display = 'flex';
   
-  console.log("Live Analytics Initialized");
+  // App is ready for engine wiring in Phase 3
+  console.log("Live Analytics Initialized (UI Only) - Ready for Calculation Engine Wiring");
 }
 
 function openLiveAnalyticsFromCockpit() {
