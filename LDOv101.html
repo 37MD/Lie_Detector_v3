@@ -1419,40 +1419,36 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').ca
 
 <script>
 (function() {
-    const injectLiveAlertZone = () => {
-        const liveSplit = document.querySelector('#liveChartModal .chart-split');
-        if (liveSplit && !document.getElementById('liveAlertZone')) {
-            const alertHTML = `<div id="liveAlertZone" style="height: 44px; border-top: 1px dashed var(--border); margin-top: 4px; display: flex; flex-direction: column; justify-content: center; align-items: center; background: var(--surface2); border-radius: 2px; flex-shrink: 0;">
-                    <div style="font-size: 0.55rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 3px;">System Action Triggers</div>
-                    <div style="display: flex; gap: 14px; font-size: 0.62rem; font-weight: 700; font-family: var(--mono);">
-                        <span id="alertHarvest" style="color: var(--muted2);">HARVEST: 🌑</span>
-                        <span id="alertReload" style="color: var(--muted2);">RELOAD: 🌑</span>
-                        <span id="alertCollapse" style="color: var(--muted2);">COLLAPSE: 🌑</span>
-                    </div>
-                </div>`;
-            liveSplit.insertAdjacentHTML('beforeend', alertHTML);
-        }
-    };
+    // FORCE CSS VISIBILITY: Ensures the boxes actually have height to be seen
+    const style = document.createElement('style');
+    style.innerHTML = `
+        .chart-rsi-pane, .chart-delta-pane { min-height: 120px !important; display: block !important; position: relative !important; }
+        .canvas-box-bottom { height: 100% !important; width: 100% !important; display: block !important; overflow: visible !important; }
+        canvas { pointer-events: none; }
+    `;
+    document.head.appendChild(style);
 
     const mapY = (val, min, max, h) => h - ((val - min) / (max - min) * h);
 
     const renderRsiRibbon = (canvas, data) => {
         const ctx = canvas.getContext('2d');
         const rect = canvas.parentElement.getBoundingClientRect();
-        if (rect.width === 0 || rect.height === 0) return;
+        if (rect.width < 10 || rect.height < 10) return;
+        
         const dpr = window.devicePixelRatio || 1;
         canvas.width = rect.width * dpr; canvas.height = rect.height * dpr;
         ctx.scale(dpr, dpr);
-        canvas.style.width = '100%'; canvas.style.height = '100%';
+        canvas.style.width = rect.width + 'px'; canvas.style.height = rect.height + 'px';
         const w = rect.width, h = rect.height;
         ctx.clearRect(0, 0, w, h);
+
         if (!data.length) return;
 
-        // 1. RIBBON FILL
+        // Fill Ribbon
         for (let i = 1; i < data.length; i++) {
             ctx.beginPath();
-            ctx.fillStyle = data[i].dr > data[i].wma ? 'rgba(0,158,112,0.12)' : 'rgba(200,16,46,0.12)';
-            let x1 = ((i - 1) / (data.length - 1)) * w, x2 = (i / (data.length - 1)) * w;
+            ctx.fillStyle = data[i].dr > data[i].wma ? 'rgba(0,158,112,0.15)' : 'rgba(200,16,46,0.15)';
+            let x1 = ((i-1)/(data.length-1))*w, x2 = (i/(data.length-1))*w;
             ctx.moveTo(x1, mapY(data[i-1].dr, 0, 100, h));
             ctx.lineTo(x2, mapY(data[i].dr, 0, 100, h));
             ctx.lineTo(x2, mapY(data[i].wma, 0, 100, h));
@@ -1460,8 +1456,8 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').ca
             ctx.fill();
         }
 
-        // 2. SEGMENTED WMA LINE (Fixed Regime Colors)
-        ctx.lineWidth = 2.5;
+        // Segmented Regime WMA Line
+        ctx.lineWidth = 3;
         for (let i = 1; i < data.length; i++) {
             ctx.beginPath();
             const wr = data[i].wr;
@@ -1470,85 +1466,69 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').ca
             ctx.lineTo((i/(data.length-1))*w, mapY(data[i].wma, 0, 100, h));
             ctx.stroke();
         }
-
-        // 3. DAILY RSI (SILVER)
-        ctx.beginPath(); ctx.strokeStyle = '#333'; ctx.lineWidth = 1;
-        data.forEach((d, i) => {
-            let x = (i / (data.length - 1)) * w; let y = mapY(d.dr, 0, 100, h);
-            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-        }); ctx.stroke();
     };
 
     const renderVelocityGap = (canvas, data) => {
         const ctx = canvas.getContext('2d');
         const rect = canvas.parentElement.getBoundingClientRect();
-        if (rect.width === 0 || rect.height === 0) return;
+        if (rect.width < 10) return;
         const dpr = window.devicePixelRatio || 1;
         canvas.width = rect.width * dpr; canvas.height = rect.height * dpr;
         ctx.scale(dpr, dpr);
-        canvas.style.width = '100%'; canvas.style.height = '100%';
+        canvas.style.width = rect.width + 'px'; canvas.style.height = rect.height + 'px';
         const w = rect.width, h = rect.height, minV = -80, maxV = 100;
         ctx.clearRect(0, 0, w, h);
+
         let zeroY = mapY(0, minV, maxV, h);
-        let barW = Math.max(1, (w / data.length) - 1);
+        let barW = Math.max(2, (w / data.length) * 0.8);
+
         data.forEach((d, i) => {
-            if (Math.abs(d.gap) < 35) return;
-            ctx.fillStyle = d.gap >= 15 ? '#015804' : (d.gap <= -15 ? '#fc0606' : '#7090b0');
+            if (Math.abs(d.gap) < 35) return; // Pine script filter
+            ctx.fillStyle = d.gap >= 15 ? '#015804' : '#fc0606';
             ctx.fillRect((i/(data.length-1))*w - (barW/2), mapY(d.gap, minV, maxV, h), barW, zeroY - mapY(d.gap, minV, maxV, h));
         });
     };
 
-    const canvases = {
-        simRsi: document.createElement('canvas'), simGap: document.createElement('canvas'),
-        liveRsi: document.createElement('canvas'), liveGap: document.createElement('canvas')
-    };
+    const canvases = { simRsi: document.createElement('canvas'), simGap: document.createElement('canvas'), liveRsi: document.createElement('canvas'), liveGap: document.createElement('canvas') };
 
     window.syncNativeChartsWithEngine = function(fHist, cIdx, dailyCache, weeklyCache, modeStr) {
-        injectLiveAlertZone();
         const isSim = (document.getElementById('gameUI').style.display === 'flex' || modeStr === 'sim');
-        const lookback = !isSim ? 250 : 120;
+        const lookback = 120;
         const start = Math.max(0, cIdx - lookback);
         const dataSet = [];
-
         for (let i = start; i <= cIdx; i++) {
             let dr = dailyCache[i] || 50, wr = weeklyCache[i] || 50;
             let sum = 0, weight = 0;
             for (let j = 0; j < 20; j++) { if (i-j >= 0) { sum += (dailyCache[i-j]||50)*(20-j); weight += (20-j); } }
             dataSet.push({ dr, wr, wma: sum/weight, gap: dr - wr });
         }
-
-        // AGGRESSIVE DOM SELECTORS
         const rBox = isSim ? document.querySelector('.main-sim .chart-rsi-pane .canvas-box-bottom') : document.querySelector('#liveChartModal .chart-rsi-pane .canvas-box-bottom');
         const gBox = isSim ? document.querySelector('.main-sim .chart-delta-pane .canvas-box-bottom') : document.querySelector('#liveChartModal .chart-delta-pane .canvas-box-bottom');
-
         if (rBox && gBox) {
             const rCanv = isSim ? canvases.simRsi : canvases.liveRsi;
             const gCanv = isSim ? canvases.simGap : canvases.liveGap;
-            if (!rBox.contains(rCanv)) { rBox.style.position='relative'; rBox.style.height='100%'; rBox.appendChild(rCanv); }
-            if (!gBox.contains(gCanv)) { gBox.style.position='relative'; gBox.style.height='100%'; gBox.appendChild(gCanv); }
+            if (!rBox.contains(rCanv)) rBox.appendChild(rCanv);
+            if (!gBox.contains(gCanv)) gBox.appendChild(gCanv);
             renderRsiRibbon(rCanv, dataSet);
             renderVelocityGap(gCanv, dataSet);
         }
     };
 
     const triggerUpdate = () => {
-        setTimeout(() => {
-            if (document.getElementById('gameUI').style.display === 'flex') {
-                window.syncNativeChartsWithEngine(window.fullHistory, window.currentIdx, window.simDailyRsiCache, window.simWeeklyRsiCache, 'sim');
-            } else if (document.getElementById('liveChartModal').style.display === 'flex') {
-                window.syncNativeChartsWithEngine(window.globalLiveData, window.globalLiveData.length - 1, window.globalDailyRsiCache, window.globalWeeklyRsiCache, 'live');
-            }
-        }, 100);
+        if (document.getElementById('gameUI').style.display === 'flex' && window.fullHistory) {
+            window.syncNativeChartsWithEngine(window.fullHistory, window.currentIdx, window.simDailyRsiCache, window.simWeeklyRsiCache, 'sim');
+        } else if (document.getElementById('liveChartModal').style.display === 'flex' && window.globalLiveData) {
+            window.syncNativeChartsWithEngine(window.globalLiveData, window.globalLiveData.length - 1, window.globalDailyRsiCache, window.globalWeeklyRsiCache, 'live');
+        }
     };
 
     window.addEventListener('DOMContentLoaded', () => {
         const obs = new MutationObserver(triggerUpdate);
-        ['simDay', 'liveNavDate', 'simNav', 'nwVal'].forEach(id => {
+        ['simDay', 'liveNavDate', 'nwVal'].forEach(id => {
             const el = document.getElementById(id); if (el) obs.observe(el, { childList: true, characterData: true, subtree: true });
         });
-        document.body.addEventListener('click', triggerUpdate);
+        document.body.addEventListener('click', () => setTimeout(triggerUpdate, 100));
     });
-    window.addEventListener('resize', triggerUpdate);
 })();
 </script>
 
