@@ -8,43 +8,115 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #ffffff; --surface: #f2f5f9; --surface2: #e4eaf2; --surface3: #d6deeb;
-    --border: #b0bece; --border2: #7090b0;
-    --accent: #009e70; --accent-dim: rgba(0, 158, 112, 0.10);
-    --accent2: #c97a00; --accent2-dim: rgba(201, 122, 0, 0.10);
-    --red: #c8102e; --red-dim: rgba(200, 16, 46, 0.08);
-    --text: #000000; --muted: #404060; --muted2: #304058;
-    --gold: #b07a00; --gold-dim: rgba(176, 122, 0, 0.10);
-    --mono: 'Space Mono', monospace; --radius: 6px; --radius-sm: 4px;
+    --bg: #ffffff;
+    --surface: #f2f5f9;
+    --surface2: #e4eaf2;
+    --surface3: #d6deeb;
+    --border: #b0bece;
+    --border2: #7090b0;
+    --accent: #009e70;
+    --accent-dim: rgba(0, 158, 112, 0.10);
+    --accent2: #c97a00;
+    --accent2-dim: rgba(201, 122, 0, 0.10);
+    --red: #c8102e;
+    --red-dim: rgba(200, 16, 46, 0.08);
+    --text: #000000;
+    --muted: #404060;
+    --muted2: #304058;
+    --gold: #b07a00;
+    --gold-dim: rgba(176, 122, 0, 0.10);
+    --mono: 'Space Mono', monospace;
+    --radius: 6px;
+    --radius-sm: 4px;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html { font-size: 16px; }
-  body { background: var(--bg); color: var(--text); font-family: var(--mono); font-weight: 400; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
-  
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    font-weight: 400;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  canvas { touch-action: none; }
+
   /* ── SPINNER ── */
-  #ov { display: none; position: fixed; inset: 0; background: rgba(255,255,255,0.96); z-index: 1000; align-items: center; justify-content: center; flex-direction: column; backdrop-filter: blur(4px); }
-  .spin { width: 36px; height: 36px; border: 2px solid var(--border2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
+  #ov {
+    display: none; position: fixed; inset: 0;
+    background: rgba(255,255,255,0.96);
+    z-index: 1000; align-items: center; justify-content: center; flex-direction: column;
+    backdrop-filter: blur(4px);
+  }
+  .spin {
+    width: 36px; height: 36px;
+    border: 2px solid var(--border2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
   @keyframes spin { to { transform: rotate(360deg); } }
   #ovTxt { color: var(--accent); font-size: 0.65rem; margin-top: 12px; letter-spacing: 0.12em; opacity: 0.8; transition: color 0.2s;}
 
   /* ── SETUP SCREEN ── */
-  #setupScreen { position: fixed; inset: 0; background: var(--bg); z-index: 500; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1.5rem; text-align: center; }
-  .setup-logo { font-size: 0.65rem; color: var(--accent); letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 1.2rem; opacity: 0.7; }
+  #setupScreen {
+    position: fixed; inset: 0; background: var(--bg);
+    z-index: 500; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 1.5rem; text-align: center;
+  }
+  .setup-logo {
+    font-size: 0.65rem; color: var(--accent);
+    letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 1.2rem; opacity: 0.7;
+  }
   .setup-title { font-size: 1.75rem; font-weight: 400; letter-spacing: -0.02em; margin-bottom: 0.3rem; }
   .setup-sub { color: var(--muted); font-size: 0.75rem; margin-bottom: 1.4rem; letter-spacing: 0.04em; }
-  .fund-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; width: 100%; max-width: 350px; margin-bottom: 0.75rem; }
-  .fund-box { background: var(--surface2); border: 1.5px solid var(--border); color: var(--muted2); padding: 12px 4px; border-radius: var(--radius); font-size: 0.75rem; font-weight: 400; cursor: pointer; transition: all 0.15s ease; letter-spacing: 0.05em; }
+
+  .fund-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 6px; width: 100%; max-width: 350px; margin-bottom: 0.75rem;
+  }
+  .fund-box {
+    background: var(--surface2); border: 1.5px solid var(--border);
+    color: var(--muted2); padding: 12px 4px; border-radius: var(--radius);
+    font-size: 0.75rem; font-weight: 400;
+    cursor: pointer; transition: all 0.15s ease; letter-spacing: 0.05em;
+  }
   .fund-box:hover { border-color: var(--border2); color: var(--text); }
   .fund-box.active { border-color: var(--accent); background: var(--accent-dim); color: var(--accent); }
-  .dropdown { background: var(--surface2); border: 1.5px solid var(--border); color: var(--text); padding: 11px 12px; width: 100%; max-width: 350px; margin-bottom: 0.75rem; border-radius: var(--radius); font-size: 0.75rem; font-family: var(--mono); transition: border-color 0.15s; }
+
+  .dropdown {
+    background: var(--surface2); border: 1.5px solid var(--border);
+    color: var(--text); padding: 11px 12px;
+    width: 100%; max-width: 350px; margin-bottom: 0.75rem;
+    border-radius: var(--radius); font-size: 0.75rem; font-family: var(--mono);
+    transition: border-color 0.15s;
+  }
   .dropdown:focus { outline: none; border-color: var(--accent); }
+
   .custom-inputs { display: flex; gap: 8px; width: 100%; max-width: 350px; margin-bottom: 0.75rem; }
-  .c-input-box { flex: 1; background: var(--surface2); padding: 8px 10px; border-radius: var(--radius); border: 1.5px solid var(--border); transition: border-color 0.15s; }
+  .c-input-box {
+    flex: 1; background: var(--surface2); padding: 8px 10px;
+    border-radius: var(--radius); border: 1.5px solid var(--border);
+    transition: border-color 0.15s;
+  }
   .c-input-box:focus-within { border-color: var(--accent); }
   .c-label { font-size: 0.6rem; color: var(--muted); display: block; margin-bottom: 3px; letter-spacing: 0.1em; }
-  .c-num { width: 100%; background: transparent; border: none; font-weight: 700; font-size: 1rem; font-family: var(--mono); outline: none; text-align: center; color: inherit; }
+  .c-num {
+    width: 100%; background: transparent; border: none;
+    font-weight: 700; font-size: 1rem; font-family: var(--mono);
+    outline: none; text-align: center; color: inherit;
+  }
+
   .setup-btns { display: flex; gap: 8px; width: 100%; max-width: 350px; margin-top: 1rem; }
-  .setup-btn { flex: 1; font-size: 0.68rem; font-weight: 400; font-family: var(--mono); padding: 12px 4px; border-radius: var(--radius); cursor: pointer; border: 1.5px solid; text-transform: uppercase; letter-spacing: 0.08em; transition: all 0.15s ease; background: transparent; }
+  .setup-btn {
+    flex: 1; font-size: 0.68rem; font-weight: 400; font-family: var(--mono);
+    padding: 12px 4px; border-radius: var(--radius); cursor: pointer;
+    border: 1.5px solid; text-transform: uppercase; letter-spacing: 0.08em;
+    transition: all 0.15s ease; background: transparent;
+  }
   .setup-btn-sim { border-color: var(--accent); color: var(--accent); }
   .setup-btn-sim:hover { background: var(--accent-dim); }
   .setup-btn-wave { border-color: var(--accent2); color: var(--accent2); }
@@ -53,26 +125,66 @@
   .setup-btn-live:hover { border-color: var(--muted2); color: var(--text); }
 
   /* ── GAME UI CHROME ── */
-  .app-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 14px; background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0; }
-  .logo { font-weight: 700; font-size: 0.75rem; color: var(--accent); letter-spacing: 0.12em; display: flex; align-items: center; }
+  .app-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 14px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .logo {
+    font-weight: 700; font-size: 0.75rem;
+    color: var(--accent); letter-spacing: 0.12em;
+    display: flex; align-items: center;
+  }
   .logo span { color: var(--muted); font-weight: 400; }
-  .fund-name-tag { font-size: 0.6rem; margin-left: 8px; padding-left: 8px; border-left: 1px solid var(--border); color: var(--text); font-weight: 400; letter-spacing: 0.04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; }
+  
+  .fund-name-tag {
+    font-size: 0.6rem; margin-left: 8px; padding-left: 8px;
+    border-left: 1px solid var(--border); color: var(--text);
+    font-weight: 400; letter-spacing: 0.04em;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px;
+  }
+
   .hdr-btns { display: flex; gap: 8px; align-items: center; }
-  .btn-log { background: transparent; color: var(--muted2); border: 1px solid var(--border2); padding: 5px 10px; font-size: 0.65rem; font-family: var(--mono); font-weight: 400; cursor: pointer; border-radius: var(--radius-sm); letter-spacing: 0.08em; transition: all 0.15s; }
+  .btn-log {
+    background: transparent; color: var(--muted2); border: 1px solid var(--border2);
+    padding: 5px 10px; font-size: 0.65rem; font-family: var(--mono); font-weight: 400;
+    cursor: pointer; border-radius: var(--radius-sm); letter-spacing: 0.08em;
+    transition: all 0.15s;
+  }
   .btn-log:hover { color: var(--text); border-color: var(--muted2); }
-  .btn-review { background: var(--gold-dim); color: var(--gold); border: 1px solid var(--gold); padding: 5px 10px; font-size: 0.65rem; font-family: var(--mono); font-weight: 400; cursor: pointer; border-radius: var(--radius-sm); letter-spacing: 0.08em; transition: all 0.15s; }
+  .btn-review {
+    background: var(--gold-dim); color: var(--gold); border: 1px solid var(--gold);
+    padding: 5px 10px; font-size: 0.65rem; font-family: var(--mono); font-weight: 400;
+    cursor: pointer; border-radius: var(--radius-sm); letter-spacing: 0.08em;
+    transition: all 0.15s;
+  }
   .btn-review:hover { background: rgba(251,191,36,0.15); }
 
   /* ── NETWORTH STRIP ── */
-  .networth-header { display: flex; justify-content: space-around; background: var(--surface); border-bottom: 1px solid var(--border); padding: 7px 8px; flex-shrink: 0; }
+  .networth-header {
+    display: flex; justify-content: space-around;
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 7px 8px; flex-shrink: 0;
+  }
   .nw-col { display: flex; flex-direction: column; align-items: center; gap: 1px; }
   .nw-lbl { font-size: 0.55rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
   .nw-val { font-size: 1.25rem; font-weight: 400; white-space: nowrap; overflow: hidden; }
   .nw-divider { width: 1px; background: var(--border); align-self: stretch; }
 
   /* ── ALERT BANNER ── */
-  #alertBanner, #liveAlertBanner, #liveChartAlertBanner { display: block; height: 36px; line-height: 36px; padding: 0 12px; text-align: center; font-weight: 700; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.06em; flex-shrink: 0; visibility: hidden; border-bottom: 1px solid rgba(0,0,0,0); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-  #alertBanner.banner-on, #liveAlertBanner.banner-on, #liveChartAlertBanner.banner-on { visibility: visible; border-bottom-color: rgba(0,0,0,0.15); animation: pulseAlert 1.8s ease-in-out infinite; }
+  #alertBanner, #liveAlertBanner, #liveChartAlertBanner {
+    display: block; height: 36px; line-height: 36px; padding: 0 12px;
+    text-align: center; font-weight: 700; font-size: 0.82rem;
+    text-transform: uppercase; letter-spacing: 0.06em; flex-shrink: 0;
+    visibility: hidden; border-bottom: 1px solid rgba(0,0,0,0);
+    overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  }
+  #alertBanner.banner-on, #liveAlertBanner.banner-on, #liveChartAlertBanner.banner-on {
+    visibility: visible; border-bottom-color: rgba(0,0,0,0.15);
+    animation: pulseAlert 1.8s ease-in-out infinite;
+  }
   .alert-danger { background: var(--red); color: #fff; }
   .alert-buy { background: var(--accent); color: #021a0f; }
   .alert-profit { background: var(--accent2); color: #1a0a00; }
@@ -82,21 +194,44 @@
   /* ── MAIN SIM AREA ── */
   .main-sim { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
   .main-sim-scroll { flex-shrink: 0; overflow-y: auto; padding-bottom: 96px; }
-  .chart-container { background: var(--bg); padding: 6px 8px; height: 52vh; min-height: 380px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; }
-  .chart-header { display: flex; justify-content: space-between; align-items: center; padding: 0; margin-bottom: 4px; flex-shrink: 0; }
+
+  /* ── CHART CONTAINER ── */
+  .chart-container {
+    background: var(--bg); padding: 6px 8px; 
+    height: 52vh; min-height: 380px; 
+    border-bottom: 1px solid var(--border);
+    display: flex; flex-direction: column; flex-shrink: 0;
+  }
+  .chart-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0; margin-bottom: 4px; flex-shrink: 0;
+  }
   .label-sm { font-size: 0.55rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
   .chart-nav { font-size: 0.75rem; color: var(--text); font-weight: 400; }
+
   .chart-split { display: flex; flex-direction: column; flex-grow: 1; position: relative; min-height: 0; }
+  
   .chart-main-pane { flex: 2.2; position: relative; width: 100%; min-height: 0; }
   .chart-rsi-pane  { flex: 1.43; position: relative; width: 100%; min-height: 0; border-top: 1px dashed var(--border); margin-top: 4px; }
   .chart-delta-pane{ flex: 1.1; position: relative; width: 100%; min-height: 0; border-top: 1px dashed var(--border); margin-top: 4px; }
   
   .canvas-box { position: absolute; inset: 0; }
   .canvas-box-bottom { position: absolute; inset: 0; top: 18px; }
-  .delta-label { position: absolute; top: 3px; left: 4px; font-size: 0.52rem; color: var(--muted); z-index: 10; letter-spacing: 0.08em; pointer-events: none; background: rgba(255,255,255, 0.8); padding: 1px 4px; border-radius: 2px; }
+  .delta-label {
+    position: absolute; top: 3px; left: 4px;
+    font-size: 0.52rem; color: var(--muted);
+    z-index: 10; letter-spacing: 0.08em; pointer-events: none;
+    background: rgba(255,255,255, 0.8); padding: 1px 4px; border-radius: 2px;
+  }
 
   /* ── HUD OVERLAY CLASSES ── */
-  .chart-hud { position: absolute; top: 4px; left: 4px; width: calc(100% - 60px); font-family: var(--mono); font-size: 0.55rem; font-weight: 400; color: #ffffff; z-index: 10; pointer-events: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.4; letter-spacing: -0.02em; }
+  .chart-hud {
+    position: absolute; top: 4px; left: 4px;
+    width: calc(100% - 60px); font-family: var(--mono);
+    font-size: 0.55rem; font-weight: 400; color: #ffffff;
+    z-index: 10; pointer-events: none; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis; line-height: 1.4; letter-spacing: -0.02em;
+  }
   .chart-hud:not(:empty) { background: rgba(255,255,255, 0.88); padding: 2px 5px; border-radius: 2px; }
   #liveRsiHud, #liveDeltaHud, #simRsiHud, #simDeltaHud { top: 20px; font-size: 0.52rem; width: calc(60% - 8px); }
 
@@ -109,34 +244,69 @@
   }
 
   /* ── INDICATOR ROW ── */
-  .indicator-row { display: flex; justify-content: space-between; align-items: stretch; background: var(--surface); padding: 0; border-bottom: 1px solid var(--border); flex-shrink: 0; }
-  .ind-box { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 4px 2px; border-right: 1px solid var(--border); }
+  .indicator-row {
+    display: flex; justify-content: space-between; align-items: stretch;
+    background: var(--surface); padding: 0; border-bottom: 1px solid var(--border); flex-shrink: 0;
+  }
+  .ind-box {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 4px 2px; border-right: 1px solid var(--border);
+  }
   .ind-box:last-child { border-right: none; }
-  .ind-val { font-size: 1.0rem; font-weight: 700; margin-top: 3px; padding: 2px 8px; border-radius: var(--radius-sm); transition: color 0.3s, background 0.3s; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ind-val {
+    font-size: 1.0rem; font-weight: 700; margin-top: 3px; padding: 2px 8px; border-radius: var(--radius-sm);
+    transition: color 0.3s, background 0.3s; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
   .reg-A { color: var(--accent); background: var(--accent-dim); border: 1px solid rgba(0,232,162,0.3); }
   .reg-B { color: var(--accent2); background: var(--accent2-dim); border: 1px solid rgba(245,158,11,0.3); }
   .reg-C { color: var(--red); background: var(--red-dim); border: 1px solid rgba(240,64,96,0.3); }
 
   /* ── PSY BOX ── */
   .psy-box { padding: 4px 14px 10px 14px; background: var(--surface); flex-shrink: 0; font-size: 0.62rem; }
-  .psy-logic { font-size: 0.70rem; color: var(--text); line-height: 1.6; font-weight: 400; border-left: 2px solid var(--accent); padding-left: 10px; margin-top: 6px; }
+  .psy-logic {
+    font-size: 0.70rem; color: var(--text); line-height: 1.6; font-weight: 400;
+    border-left: 2px solid var(--accent); padding-left: 10px; margin-top: 6px;
+  }
   .psy-logic .psy-line { color: var(--muted2); margin-bottom: 4px; }
   .psy-logic .psy-line:first-child { color: var(--text); font-weight: 400; }
 
   /* ── ACTION BAR ── */
-  .action-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: var(--surface); border-top: 1px solid var(--border); display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 8px; z-index: 200; height: 88px; }
-  .btn { font-family: var(--mono); font-size: 0.67rem; font-weight: 700; padding: 8px 2px; border-radius: var(--radius-sm); cursor: pointer; border: 1.5px solid transparent; text-transform: uppercase; text-align: center; letter-spacing: 0.06em; transition: all 0.15s ease; background: transparent; }
+  .action-bar {
+    position: fixed; bottom: 0; left: 0; width: 100%;
+    background: var(--surface); border-top: 1px solid var(--border);
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 6px; padding: 8px; z-index: 200; height: 88px;
+  }
+  .btn {
+    font-family: var(--mono); font-size: 0.67rem; font-weight: 700;
+    padding: 8px 2px; border-radius: var(--radius-sm); cursor: pointer;
+    border: 1.5px solid transparent; text-transform: uppercase;
+    text-align: center; letter-spacing: 0.06em; transition: all 0.15s ease; background: transparent;
+  }
   .btn:hover:not(:disabled) { filter: brightness(1.2); }
   .btn:disabled { opacity: 0.35; cursor: not-allowed; border-color: var(--border) !important; color: var(--muted) !important; background: transparent !important; }
-  .btn-buy { border-color: var(--accent); color: var(--accent); } .btn-buy:hover:not(:disabled) { background: var(--accent-dim); }
-  .btn-hold { border-color: var(--border2); color: var(--muted2); } .btn-hold:hover { background: rgba(0,0,0,0.05); color: var(--text); }
-  .btn-sell { border-color: var(--red); color: var(--red); } .btn-sell:hover:not(:disabled) { background: var(--red-dim); }
-  .btn-profit { border-color: var(--accent2); color: var(--accent2); } .btn-profit:hover:not(:disabled) { background: var(--accent2-dim); }
+  .btn-buy { border-color: var(--accent); color: var(--accent); }
+  .btn-buy:hover:not(:disabled) { background: var(--accent-dim); }
+  .btn-hold { border-color: var(--border2); color: var(--muted2); }
+  .btn-hold:hover { background: rgba(0,0,0,0.05); color: var(--text); }
+  .btn-sell { border-color: var(--red); color: var(--red); }
+  .btn-sell:hover:not(:disabled) { background: var(--red-dim); }
+  .btn-profit { border-color: var(--accent2); color: var(--accent2); }
+  .btn-profit:hover:not(:disabled) { background: var(--accent2-dim); }
 
   /* ── MODALS ── */
-  .modal-overlay { display: none; position: fixed; inset: 0; background: var(--bg); z-index: 600; flex-direction: column; }
-  .modal-close { padding: 11px 14px; text-align: right; border-bottom: 1px solid var(--border); background: var(--surface); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
-  .modal-close-btn { font-size: 0.65rem; color: var(--red); cursor: pointer; letter-spacing: 0.08em; transition: opacity 0.15s; font-weight: 400; }
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: var(--bg); z-index: 600; flex-direction: column;
+  }
+  .modal-close {
+    padding: 11px 14px; text-align: right; border-bottom: 1px solid var(--border); background: var(--surface);
+    display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;
+  }
+  .modal-close-btn {
+    font-size: 0.65rem; color: var(--red); cursor: pointer;
+    letter-spacing: 0.08em; transition: opacity 0.15s; font-weight: 400;
+  }
   .modal-close-btn:hover { opacity: 0.7; }
   .modal-title { font-size: 0.72rem; letter-spacing: 0.1em; font-weight: 400; }
 
@@ -144,9 +314,32 @@
   .log-table { width: 100%; font-size: 0.75rem; text-align: left; border-collapse: collapse; font-weight: 400; }
   .log-table th { padding: 10px 8px; border-bottom: 1px solid var(--border); color: var(--muted); font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 400;}
   .log-table td { padding: 9px 8px; border-bottom: 1px solid var(--border); }
-  .log-buy { color: var(--accent); } .log-sell { color: var(--red); } .log-profit { color: var(--accent2); } .log-tax { color: var(--muted); font-size: 0.65rem; }
+  .log-buy { color: var(--accent); }
+  .log-sell { color: var(--red); }
+  .log-profit { color: var(--accent2); }
+  .log-tax { color: var(--muted); font-size: 0.65rem; }
 
-  /* ── REVIEW UI ── */
+  /* ── LIVE ANALYTICS CARDS ── */
+  #liveAnalyticsModal .indicator-row { background: var(--surface2); }
+  .la-card { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 10px; }
+  .la-card2 { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 4px 6px; }
+  .la-label { font-size: 0.52rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 2px; font-weight: 400; }
+  .la-val { font-size: 1rem; font-weight: 400; line-height: 1.2; }
+  .la-sub { font-size: 0.58rem; color: var(--muted2); margin-top: 3px; line-height: 1.4; font-weight:400; }
+  .la-sub2 { font-size: 0.55rem; color: var(--muted2); margin-top: 1px; line-height: 1.3; font-weight:400; }
+  .la-check { display: flex; align-items: flex-start; gap: 6px; font-size: 0.62rem; line-height: 1.35; padding: 2px 0; min-height: 1.6em; border-bottom: 1px solid var(--border); }
+  .la-check:last-child { border-bottom: none; }
+  .la-check-icon { font-size: 0.75rem; flex-shrink: 0; width: 14px; text-align: center; }
+  .la-check-text { color: var(--text); flex: 1; font-weight:400; }
+  .la-check-val { color: var(--muted2); flex-shrink: 0; font-size: 0.58rem; }
+  .tf-row { display: flex; justify-content: space-around; background: var(--surface2); padding: 4px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .tf-btn { background: transparent; border: none; color: var(--muted); font-family: var(--mono); font-size: 0.70rem; padding: 5px 12px; cursor: pointer; transition: color 0.15s; letter-spacing: 0.06em; border-radius: var(--radius-sm); font-weight: 400; }
+  .tf-btn:hover { color: var(--text); }
+  .tf-btn.active { color: var(--accent); background: var(--accent-dim); }
+  .reset-zoom { font-size: 0.6rem; background: transparent; border: 1px solid var(--border2); color: var(--muted); padding: 3px 8px; border-radius: var(--radius-sm); cursor: pointer; font-family: var(--mono); letter-spacing: 0.06em; transition: all 0.15s; font-weight: 400; }
+  .reset-zoom:hover { border-color: var(--muted); color: var(--text); }
+
+  /* ── NEW REVIEW UI ── */
   .review-container { padding: 10px 14px 24px 14px; overflow-y: scroll; -webkit-overflow-scrolling: touch; flex-grow: 1; min-height: 0; }
   .score-card { background: var(--surface2); border: 1px solid var(--border); padding: 10px 14px; border-radius: var(--radius); margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;}
   .score-title { font-size: 0.55rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 400;}
@@ -158,15 +351,11 @@
   .audit-expected { font-size: 0.60rem; color: var(--muted2); font-style: italic; margin-bottom: 6px; line-height: 1.35; }
   .audit-stat-row { display: flex; justify-content: space-between; font-size: 0.63rem; margin-bottom: 4px; color: var(--text); }
   .audit-stat-val { font-weight: 700; font-family: var(--mono); }
-  .pos-score { color: var(--accent); } .neg-score { color: var(--red); } .neu-score { color: var(--text); }
+  .pos-score { color: var(--accent); }
+  .neg-score { color: var(--red); }
+  .neu-score { color: var(--text); }
   .remarks-box { padding: 7px 11px; border-left: 3px solid; background: rgba(0,0,0,0.2); font-size: 0.68rem; line-height: 1.4; font-weight: 400; margin-bottom: 3px; border-radius: 0 var(--radius-sm) var(--radius-sm) 0;}
   .section-title { font-size: 0.60rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 5px; border-bottom: 1px solid var(--border); padding-bottom: 4px; font-weight: 400; margin-top: 8px;}
-  
-  .tf-row { display: flex; justify-content: space-around; background: var(--surface2); padding: 4px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
-  .tf-btn { background: transparent; border: none; color: var(--muted); font-family: var(--mono); font-size: 0.70rem; padding: 5px 12px; cursor: pointer; transition: color 0.15s; letter-spacing: 0.06em; border-radius: var(--radius-sm); font-weight: 400; }
-  .tf-btn:hover { color: var(--text); } .tf-btn.active { color: var(--accent); background: var(--accent-dim); }
-  .reset-zoom { font-size: 0.6rem; background: transparent; border: 1px solid var(--border2); color: var(--muted); padding: 3px 8px; border-radius: var(--radius-sm); cursor: pointer; font-family: var(--mono); letter-spacing: 0.06em; transition: all 0.15s; font-weight: 400; }
-  .reset-zoom:hover { border-color: var(--muted); color: var(--text); }
 </style>
 </head>
 <body>
@@ -201,8 +390,124 @@
   <div class="setup-btns" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
     <button class="setup-btn setup-btn-sim"  onclick="initGame('random')">Simulator</button>
     <button class="setup-btn setup-btn-wave" onclick="initGame('wave')">Recent Simulator</button>
-    <button class="setup-btn setup-btn-live" onclick="alert('Live Analytics rendering should be handled by external Add-On')">Live</button>
-    <button class="setup-btn" style="border-color:var(--gold);color:var(--gold);" onclick="alert('Live Analytics rendering should be handled by external Add-On')">Live Analytics</button>
+    <button class="setup-btn setup-btn-live" onclick="initLiveChart()">Live</button>
+    <button class="setup-btn" style="border-color:var(--gold);color:var(--gold);" onclick="initLiveAnalytics()">Live Analytics</button>
+  </div>
+</div>
+
+<div id="liveChartModal" class="modal-overlay">
+  <div class="modal-close">
+    <div style="display:flex;gap:8px;align-items:center;">
+      <span class="modal-title" style="color:var(--accent2);">LIVE COCKPIT</span>
+      <span id="liveChartFundName" class="fund-name-tag"></span>
+    </div>
+    <div style="display:flex;gap:6px;align-items:center;">
+      <button class="reset-zoom" onclick="if(window.resetLiveZoom) window.resetLiveZoom()">RESET ZOOM</button>
+      <button class="reset-zoom" style="color:var(--accent);border-color:var(--accent);" onclick="openLiveAnalyticsFromCockpit()">ANALYTICS</button>
+      <span class="modal-close-btn" onclick="document.getElementById('liveChartModal').style.display='none';document.getElementById('setupScreen').style.display='flex'">[ X ]</span>
+    </div>
+  </div>
+
+  <div id="liveChartAlertBanner"></div>
+
+  <div class="indicator-row">
+    <div class="ind-box" style="flex:1.1;"><span class="label-sm" id="liveNavDate">NAV</span><div id="liveNav" class="ind-val">--</div></div>
+    <div class="ind-box" style="flex:0.8;"><span class="label-sm">Daily RSI</span><div id="liveDRsi" class="ind-val">--</div></div>
+    <div class="ind-box" style="flex:0.8;"><span class="label-sm">Weekly RSI</span><div id="liveWRsi" class="ind-val">--</div></div>
+    <div class="ind-box" style="flex:1.3;"><span class="label-sm">Regime</span><div id="liveRegimeBlock" class="ind-val">--</div></div>
+  </div>
+
+  <div class="tf-row" id="liveChartTfRow">
+    <button class="tf-btn" onclick="updateLiveChartOnly(3,this)">3D</button>
+    <button class="tf-btn" onclick="updateLiveChartOnly(5,this)">1W</button>
+    <button class="tf-btn" onclick="updateLiveChartOnly(10,this)">2W</button>
+    <button class="tf-btn" onclick="updateLiveChartOnly(21,this)">1M</button>
+    <button class="tf-btn" onclick="updateLiveChartOnly(63,this)">3M</button>
+    <button class="tf-btn" onclick="updateLiveChartOnly(125,this)">6M</button>
+    <button class="tf-btn active" onclick="updateLiveChartOnly(250,this)">1Y</button>
+  </div>
+
+  <div id="cockpitReturns" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;padding:3px 8px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;"></div>
+
+  <div style="flex-grow:1;padding:4px 8px 6px;display:flex;flex-direction:column;min-height:0;">
+    <div class="chart-split">
+      <div class="chart-main-pane">
+        <div class="chart-hud" id="liveHudMainChart"></div>
+        <div class="canvas-box"></div>
+      </div>
+      <div class="chart-rsi-pane">
+        <div class="delta-label">MOMENTUM RIBBON · RSI vs WMA20(RSI)</div>
+        <div class="chart-hud" id="liveRsiHud" style="top:18px;"></div>
+        <div id="liveRsiLabel" style="position:absolute;top:3px;right:44px;font-size:0.52rem;color:var(--muted2);z-index:10;pointer-events:none;background:rgba(255,255,255,0.90);padding:1px 4px;border-radius:2px;"></div>
+        <div class="canvas-box-bottom"></div>
+      </div>
+      <div class="chart-delta-pane">
+        <div class="delta-label">RSI DELTA · Daily − Weekly</div>
+        <div class="chart-hud" id="liveDeltaHud" style="top:18px;"></div>
+        <div class="canvas-box-bottom"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="liveAnalyticsModal" class="modal-overlay">
+  <div style="flex-shrink:0;background:var(--surface);border-bottom:1px solid var(--border);padding:6px 12px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
+      <span class="modal-title" style="color:var(--accent);">LIVE ANALYTICS</span>
+      <span class="modal-close-btn" onclick="closeLive()">[ X ] CLOSE</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;">
+      <span id="liveFundName" style="font-size:0.6rem;color:var(--text);font-family:var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:65%;"></span>
+      <span style="display:flex;align-items:baseline;gap:6px;flex-shrink:0;">
+        <span id="laNav" style="font-size:0.85rem;font-weight:400;color:var(--text);">--</span>
+        <span id="laNavDesc" style="font-size:0.55rem;color:var(--muted2);"></span>
+      </span>
+    </div>
+  </div>
+
+  <div id="liveAlertBanner"></div>
+
+  <div style="flex-grow:1;overflow-y:auto;padding:3px 7px 6px;display:flex;flex-direction:column;gap:4px;min-height:0;">
+    <div id="laVerdict" style="border-radius:var(--radius);padding:6px 10px;background:var(--surface2);border:2px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:72px;">
+      <div style="flex:1;">
+        <div style="font-size:0.5rem;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:1px;display:flex;align-items:baseline;gap:5px;">
+          <span>System Verdict</span>
+          <span id="laVerdictFundTag" style="color:var(--muted2);text-transform:none;letter-spacing:0.02em;font-size:0.48rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px;"></span>
+        </div>
+        <div id="laVerdictText" style="font-size:0.95rem;font-weight:400;letter-spacing:0.03em;color:var(--text);">--</div>
+        <div id="laVerdictReason" style="font-size:0.58rem;color:var(--muted2);margin-top:2px;line-height:1.4;min-height:2.8em;"></div>
+      </div>
+      <div id="laVerdictBadge" style="font-size:1.6rem;flex-shrink:0;"></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:4px;">
+      <div class="la-card2"><div class="la-label">Regime</div><div id="laRegime" style="font-size:1.25rem;font-weight:400;line-height:1.1;">--</div><div id="laRegimeDesc" class="la-sub2"></div></div>
+      <div class="la-card2"><div class="la-label">W-RSI</div><div id="laWRsi" style="font-size:1rem;font-weight:400;line-height:1.2;">--</div><div id="laWRsiDesc" class="la-sub2"></div></div>
+      <div class="la-card2"><div class="la-label">D-RSI</div><div id="laDRsi" style="font-size:1rem;font-weight:400;line-height:1.2;">--</div><div id="laDRsiDesc" class="la-sub2"></div></div>
+      <div class="la-card2"><div class="la-label">Delta</div><div id="laDelta" style="font-size:1rem;font-weight:400;line-height:1.2;">--</div><div id="laDeltaDesc" class="la-sub2"></div></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1.28fr 0.79fr 0.93fr;gap:4px;">
+      <div class="la-card2"><div class="la-label">TSL Floor</div><div id="laTSL" style="font-size:0.85rem;font-weight:400;line-height:1.2;">--</div><div id="laTSLDesc" class="la-sub2"></div></div>
+      <div class="la-card2"><div class="la-label">WMA 20</div><div id="laWMA" style="font-size:0.85rem;font-weight:400;line-height:1.2;">--</div><div id="laWMADesc" class="la-sub2"></div></div>
+      <div class="la-card2"><div class="la-label">SMA 50</div><div id="laSMA" style="font-size:0.85rem;font-weight:400;line-height:1.2;">--</div><div id="laSMADesc" class="la-sub2"></div></div>
+    </div>
+
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:4px 7px;">
+      <div style="font-size:0.5rem;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px;">Growth %</div>
+      <div id="laGrowthRow" style="display:grid;grid-template-columns:repeat(6,1fr);gap:3px;"></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;">
+      <div class="la-card2"><div class="la-label">Momentum</div><div id="laMomentum" style="font-size:0.62rem;font-weight:400;line-height:1.3;color:var(--text);"></div></div>
+      <div class="la-card2"><div class="la-label">Structure</div><div id="laChoch" style="font-size:0.62rem;font-weight:400;line-height:1.3;color:var(--text);"></div></div>
+      <div class="la-card2"><div class="la-label">Velocity</div><div id="laVelocity" style="font-size:0.62rem;font-weight:400;line-height:1.3;color:var(--text);"></div></div>
+    </div>
+
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:6px 9px;">
+      <div style="font-size:0.58rem;color:var(--muted2);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:6px;font-weight:700;border-bottom:1px solid var(--border);padding-bottom:4px;">Signal Checklist</div>
+      <div id="laChecklist" style="display:flex;flex-direction:column;gap:3px;"></div>
+    </div>
   </div>
 </div>
 
@@ -260,7 +565,7 @@
       <div class="chart-header">
         <span class="label-sm" id="simDay">Day 0</span>
         <div style="display:flex;gap:6px;align-items:center;">
-          <button class="reset-zoom" style="font-size:0.5rem;padding:2px 6px;">RESET ZOOM</button>
+          <button class="reset-zoom" onclick="if(window.resetSimZoom) window.resetSimZoom()" style="font-size:0.5rem;padding:2px 6px;">RESET ZOOM</button>
           <span class="chart-nav" id="simNav">NAV: —</span>
         </div>
       </div>
@@ -319,7 +624,7 @@
 
 <script>
 // ─────────────────────────────────────────────
-//  1. DATA CONSTANTS & FUND SELECTION
+//  DATA CONSTANTS
 // ─────────────────────────────────────────────
 const amcFunds = {
   'HDFC': [
@@ -332,10 +637,10 @@ const amcFunds = {
     { name: 'HDFC Nifty India Digital - Direct',    code: '153097' },
     { name: 'HDFC Nifty India Consumption - Direct',code: '154179' },
     { name: 'HDFC NIFTY500 Multicap - Direct',      code: '152778' },
-    { name: '[NPS] HDFC Scheme E - Tier I',         code: 'SM008001' },
-    { name: '[NPS] HDFC Scheme C - Tier I',         code: 'SM008002' },
-    { name: '[NPS] HDFC Scheme E - Tier II',        code: 'SM008004' },
-    { name: '[NPS] HDFC Scheme C - Tier II',        code: 'SM008005' }
+    { name: '[NPS] HDFC Scheme E - Tier I',   code: 'SM008001' },
+    { name: '[NPS] HDFC Scheme C - Tier I',   code: 'SM008002' },
+    { name: '[NPS] HDFC Scheme E - Tier II',  code: 'SM008004' },
+    { name: '[NPS] HDFC Scheme C - Tier II',  code: 'SM008005' }
   ],
   'ICICI': [
     { name: 'ICICI Flexicap - Growth',              code: '119062' },
@@ -347,10 +652,10 @@ const amcFunds = {
     { name: 'ICICI Nifty Bank Index - Direct',      code: '149858' },
     { name: 'ICICI Nifty Auto Index - Direct',      code: '150643' },
     { name: 'ICICI Nifty Pharma Index - Direct',    code: '150930' },
-    { name: '[NPS] ICICI Scheme E - Tier I',        code: 'SM007001' },
-    { name: '[NPS] ICICI Scheme C - Tier I',        code: 'SM007002' },
-    { name: '[NPS] ICICI Scheme E - Tier II',       code: 'SM007004' },
-    { name: '[NPS] ICICI Scheme C - Tier II',       code: 'SM007005' }
+    { name: '[NPS] ICICI Scheme E - Tier I',  code: 'SM007001' },
+    { name: '[NPS] ICICI Scheme C - Tier I',  code: 'SM007002' },
+    { name: '[NPS] ICICI Scheme E - Tier II', code: 'SM007004' },
+    { name: '[NPS] ICICI Scheme C - Tier II', code: 'SM007005' }
   ],
   'KOTAK': [
     { name: 'KOTAK Flexicap - Growth',              code: '120166' },
@@ -366,10 +671,10 @@ const amcFunds = {
     { name: 'Kotak Nifty500 Momentum 50 - Direct',  code: '154032' },
     { name: 'Kotak Nifty200 Value 30 - Direct',     code: '154145' },
     { name: 'Kotak Nifty Midcap 150 Mom 50 - Direct',code:'152916' },
-    { name: '[NPS] KOTAK Scheme E - Tier I',        code: 'SM005001' },
-    { name: '[NPS] KOTAK Scheme C - Tier I',        code: 'SM005002' },
-    { name: '[NPS] KOTAK Scheme E - Tier II',       code: 'SM005004' },
-    { name: '[NPS] KOTAK Scheme C - Tier II',       code: 'SM005005' }
+    { name: '[NPS] KOTAK Scheme E - Tier I',  code: 'SM005001' },
+    { name: '[NPS] KOTAK Scheme C - Tier I',  code: 'SM005002' },
+    { name: '[NPS] KOTAK Scheme E - Tier II', code: 'SM005004' },
+    { name: '[NPS] KOTAK Scheme C - Tier II', code: 'SM005005' }
   ],
   'ABSL': [
     { name: 'ABSL Flexi Cap - Growth',              code: '120517' },
@@ -380,17 +685,32 @@ const amcFunds = {
     { name: 'ABSL Nifty India Defence - Direct',    code: '152798' },
     { name: 'ABSL BSE India Infrastructure - Direct',code:'153081' },
     { name: 'ABSL Silver ETF FOF - Direct',         code: '149780' },
-    { name: '[NPS] ABSL Scheme E - Tier I',         code: 'SM006001' },
-    { name: '[NPS] ABSL Scheme C - Tier I',         code: 'SM006002' },
-    { name: '[NPS] ABSL Scheme E - Tier II',        code: 'SM006004' },
-    { name: '[NPS] ABSL Scheme C - Tier II',        code: 'SM006005' }
+    { name: '[NPS] ABSL Scheme E - Tier I',   code: 'SM006001' },
+    { name: '[NPS] ABSL Scheme C - Tier I',   code: 'SM006002' },
+    { name: '[NPS] ABSL Scheme E - Tier II',  code: 'SM006004' },
+    { name: '[NPS] ABSL Scheme C - Tier II',  code: 'SM006005' }
   ]
 };
+
+// ─────────────────────────────────────────────
+//  ENGINE STATE VARIABLES
+// ─────────────────────────────────────────────
+let fullHistory = [], globalLiveData = [];
+let globalWeeklyRsiCache = [], globalDailyRsiCache  = [];
+let simWeeklyRsiCache    = [], simDailyRsiCache     = [];
+let currentIdx = 0, simStartIdx = 0;
+let cash = 100000, tranches = [], tradeLog = [];
+let prevRegime = null, prevNav = null, currentRegimeLog = 'A';
+let totalTaxPaid = 0, peakNetWorth = 100000, maxDrawdown = 0;
+let profitDeltaLevel = 15, buyDeltaLevel = -15;
 
 function saveFundSelection() {
   const activeBtn = document.querySelector('#fundGrid .fund-box.active');
   const sel = document.getElementById('fundSelect');
-  if (activeBtn && sel && sel.value) { localStorage.setItem('ld_v3_amc', activeBtn.textContent.trim()); localStorage.setItem('ld_v3_fund', sel.value); }
+  if (activeBtn && sel && sel.value) {
+    localStorage.setItem('ld_v3_amc', activeBtn.textContent.trim());
+    localStorage.setItem('ld_v3_fund', sel.value);
+  }
   localStorage.setItem('ld_v3_profit_delta', document.getElementById('profitDeltaIn').value);
   localStorage.setItem('ld_v3_buy_delta', document.getElementById('buyDeltaIn').value);
 }
@@ -398,28 +718,41 @@ function saveFundSelection() {
 function selectAMC(amc, el, isInit = false) {
   document.querySelectorAll('#fundGrid .fund-box').forEach(b => b.classList.remove('active'));
   el.classList.add('active');
-  const sel = document.getElementById('fundSelect'); sel.innerHTML = '';
-  amcFunds[amc].forEach(f => { const o = document.createElement('option'); o.value = f.code; o.textContent = f.name; sel.appendChild(o); });
+  const sel = document.getElementById('fundSelect');
+  sel.innerHTML = '';
+  amcFunds[amc].forEach(f => {
+    const o = document.createElement('option');
+    o.value = f.code; o.textContent = f.name; sel.appendChild(o);
+  });
   if (!isInit) saveFundSelection();
 }
 
 window.addEventListener('DOMContentLoaded', () => {
   const savedAMC = localStorage.getItem('ld_v3_amc') || 'ICICI';
   const savedFund = localStorage.getItem('ld_v3_fund');
-  let targetBox = Array.from(document.querySelectorAll('.fund-box')).find(b => b.textContent.trim() === savedAMC) || document.querySelectorAll('.fund-box')[1]; 
+  const boxes = Array.from(document.querySelectorAll('.fund-box'));
+  let targetBox = boxes.find(b => b.textContent.trim() === savedAMC);
+  if (!targetBox) targetBox = boxes[1]; 
   selectAMC(savedAMC, targetBox, true);
-  if (savedFund) document.getElementById('fundSelect').value = savedFund;
+  
+  const sel = document.getElementById('fundSelect');
+  if (savedFund) {
+    sel.value = savedFund;
+    if (sel.selectedIndex === -1) sel.selectedIndex = 0; 
+  }
+  
   if (localStorage.getItem('ld_v3_profit_delta') !== null) document.getElementById('profitDeltaIn').value = localStorage.getItem('ld_v3_profit_delta');
   if (localStorage.getItem('ld_v3_buy_delta') !== null) document.getElementById('buyDeltaIn').value = localStorage.getItem('ld_v3_buy_delta');
 });
 
 function getBriefFundName() {
   const sel = document.getElementById('fundSelect');
-  return (!sel || sel.selectedIndex === -1) ? '' : sel.options[sel.selectedIndex].text.replace(/\[NPS\] | - Growth| - Direct/gi, '').trim();
+  if (!sel || sel.selectedIndex === -1) return '';
+  return sel.options[sel.selectedIndex].text.replace(/\[NPS\] | - Growth| - Direct/gi, '').trim();
 }
 
 // ─────────────────────────────────────────────
-//  2. THE API FETCH ENGINE
+//  THE API FETCH ENGINE
 // ─────────────────────────────────────────────
 let _fetchLock = false;
 async function fetchFundData() {
@@ -445,16 +778,8 @@ async function fetchFundData() {
 }
 
 // ─────────────────────────────────────────────
-//  3. ENGINE CALCULATION HELPERS
+//  MATH HELPERS
 // ─────────────────────────────────────────────
-let fullHistory = [];
-let simWeeklyRsiCache = [], simDailyRsiCache = [];
-let currentIdx = 0, simStartIdx = 0;
-let cash = 100000, tranches = [], tradeLog = [];
-let prevRegime = null, prevNav = null, currentRegimeLog = 'A';
-let totalTaxPaid = 0, peakNetWorth = 100000, maxDrawdown = 0;
-let profitDeltaLevel = 15, buyDeltaLevel = -15;
-
 function calculateRSI(prices, period = 14) {
   if (prices.length <= 2) return 50;
   const p = Math.min(period, prices.length - 1); let gains = 0, losses = 0;
@@ -471,6 +796,11 @@ function calculateWMA(prices, period = 20) {
   if (prices.length < period) return null;
   const weightSum = (period * (period + 1)) / 2; let sum = 0;
   for (let i = 0; i < period; i++) sum += prices[prices.length - 1 - i] * (period - i); return sum / weightSum;
+}
+
+function calculateSMA(prices, period = 50) {
+  if (prices.length < period) return null; let sum = 0;
+  for (let i = 0; i < period; i++) sum += prices[prices.length - 1 - i]; return sum / period;
 }
 
 function buildDailyRsiCache(allPrices, period = 14) {
@@ -532,6 +862,18 @@ function calculateConsolidation(prices) {
   } return { pcAlert, ncAlert };
 }
 
+function calculateChoCh(prices) {
+  if (prices.length < 5) return { status: 'INSIDE', lastHigh: null, lastLow: null };
+  const currentNav = prices[prices.length - 1]; let lastHigh = null, lastLow = null;
+  for (let k = prices.length - 3; k >= 2; k--) {
+    if (!lastLow && prices[k] <= prices[k-1] && prices[k] < prices[k-2] && prices[k] <= prices[k+1] && prices[k] < prices[k+2]) lastLow = prices[k];
+    if (!lastHigh && prices[k] >= prices[k-1] && prices[k] > prices[k-2] && prices[k] >= prices[k+1] && prices[k] > prices[k+2]) lastHigh = prices[k];
+    if (lastLow && lastHigh) break;
+  }
+  let status = 'INSIDE'; if (lastHigh && currentNav > lastHigh) status = 'BULL'; else if (lastLow && currentNav < lastLow) status = 'BEAR';
+  return { status, lastHigh, lastLow };
+}
+
 function calcVectorClass(wrsiArr, idx) {
   const wv = wrsiArr[idx]; const wv4 = idx >= 20 ? wrsiArr[idx - 20] : wrsiArr[0]; const dW = wv - wv4;
   if (dW <= -5) return { text: '🔴 Regime Death_Hard Abort', color: '#f04060', sizeRule: 'ABORT', dW };
@@ -543,21 +885,36 @@ function calcVectorClass(wrsiArr, idx) {
 function buildEngineSnapshot(dayIndex, allPricesArr, simStartIdx, cachedDrsiArr, cachedWrsiArr, currentCash, currentTranches, peakNW) {
   const slice = allPricesArr.slice(0, dayIndex + 1);
   const currentNav = slice[slice.length - 1];
+  const prevNav = slice.length > 1 ? slice[slice.length - 2] : currentNav;
   const currentDrsi = cachedDrsiArr[dayIndex] ?? calculateRSI(slice, 14);
   const currentWrsi = cachedWrsiArr[dayIndex] ?? calculateRSI(slice.filter((_, i) => i % 5 === 0), 14);
   const tslData = calculateTSL(slice);
   const consolidationData = calculateConsolidation(slice);
   
+  const recentDrsi = [];
+  for (let i = 0; i < 20; i++) {
+      const ei = dayIndex - 20 + 1 + i;
+      recentDrsi.push(ei < 0 ? 50 : (cachedDrsiArr[ei] ?? 50));
+  }
+  const rsiWma = calculateWMA(recentDrsi, 20);
+  
+  let momState = 'NEUTRAL';
+  if (rsiWma) {
+    if (currentDrsi > rsiWma) momState = (currentNav < prevNav) ? 'HIDDEN BUYING' : 'ACCELERATING';
+    else momState = (currentNav >= prevNav) ? 'FAKE RALLY' : 'DECELERATING';
+  }
+
   const totalUnits = currentTranches.reduce((s, t) => s + t.units, 0);
   const currentNW = currentCash + totalUnits * currentNav;
   const newPeakNW = currentNW > peakNW ? currentNW : peakNW;
   
   return {
     dayNum: dayIndex - simStartIdx, nav: currentNav,
+    wma20: calculateWMA(slice, 20), sma50: calculateSMA(slice, 50),
     drsi: currentDrsi, wrsi: currentWrsi, delta: currentDrsi - currentWrsi,
     regime: currentWrsi >= 50 ? 'A' : (currentWrsi >= 40 ? 'B' : 'C'),
     tsl: tslData, pcAlert: consolidationData.pcAlert, ncAlert: consolidationData.ncAlert,
-    vector: calcVectorClass(cachedWrsiArr, dayIndex),
+    vector: calcVectorClass(cachedWrsiArr, dayIndex), choch: calculateChoCh(slice).status, momentum: momState,
     portfolio: { currentNetWorth: currentNW, peakNetWorth: newPeakNW, currentDrawdown: newPeakNW > 0 ? ((newPeakNW - currentNW) / newPeakNW) * 100 : 0 }
   };
 }
@@ -594,21 +951,241 @@ function executeTradeEngine(action, currentState) {
   } return { cash, tranches, tradeLog, totalTaxPaid, alert: null };
 }
 
+
 // ─────────────────────────────────────────────
-//  4. SIMULATOR GAME LOOP
+//  LIVE ENGINE & ROUTING
+// ─────────────────────────────────────────────
+async function initLiveChart() {
+  saveFundSelection();
+  document.getElementById('liveChartFundName').textContent = getBriefFundName();
+  profitDeltaLevel = parseFloat(document.getElementById('profitDeltaIn').value) || 15;
+  buyDeltaLevel    = parseFloat(document.getElementById('buyDeltaIn').value)    || -15;
+  
+  globalLiveData = await fetchFundData();
+  if (!globalLiveData.length) return;
+  if (globalLiveData.length < 80) { alert("INSUFFICIENT DATA"); document.getElementById('ov').style.display = 'none'; return; }
+  
+  globalWeeklyRsiCache = buildWeeklyRsiCache(globalLiveData.map(d => d.nav));
+  globalDailyRsiCache  = buildDailyRsiCache(globalLiveData.map(d => d.nav));
+  
+  document.getElementById('setupScreen').style.display = 'none';
+  document.getElementById('liveChartModal').style.display = 'flex';
+  
+  const btns = document.getElementById('liveChartTfRow').children;
+  for (const b of btns) b.classList.remove('active');
+  btns[6].classList.add('active'); // default to 1Y
+  
+  updateLiveChartOnly(250, btns[6]);
+}
+
+function updateLiveChartOnly(days, btnEl) {
+  if (btnEl) {
+    for (const b of document.getElementById('liveChartTfRow').children) b.classList.remove('active');
+    btnEl.classList.add('active');
+  }
+  
+  const prices = globalLiveData.map(d => d.nav);
+  const snap = buildEngineSnapshot(globalLiveData.length - 1, prices, 0, globalDailyRsiCache, globalWeeklyRsiCache, 0, [], 0);
+  const lastDate = globalLiveData[globalLiveData.length-1].date;
+  
+  document.getElementById('liveNavDate').textContent = `NAV (${lastDate})`;
+  document.getElementById('liveNav').textContent = `₹${snap.nav.toFixed(2)}`;
+  
+  const dEl = document.getElementById('liveDRsi');
+  dEl.textContent = Math.round(snap.drsi);
+  dEl.style.color = snap.drsi >= 50 ? 'var(--accent)' : (snap.drsi >= 40 ? 'var(--accent2)' : 'var(--red)');
+  
+  const wEl = document.getElementById('liveWRsi');
+  wEl.textContent = Math.round(snap.wrsi);
+  wEl.style.color = snap.wrsi >= 50 ? 'var(--accent)' : (snap.wrsi >= 40 ? 'var(--accent2)' : 'var(--red)');
+  
+  const rEl = document.getElementById('liveRegimeBlock');
+  rEl.textContent = `Regime ${snap.regime}`;
+  rEl.className = 'ind-val ' + (snap.regime === 'A' ? 'reg-A' : (snap.regime === 'B' ? 'reg-B' : 'reg-C'));
+  
+  let alertText = '', alertClass = '';
+  if (snap.tsl.tslHit) { alertText = '🚨 TSL BREACHED'; alertClass = 'alert-danger alert-mega'; }
+  else if (snap.regime === 'C') { alertText = `🚨 REGIME C`; alertClass = 'alert-danger'; }
+  else if (snap.ncAlert) { alertText = '🚨 NC BREAKDOWN ➔ DO NOT BUY'; alertClass = 'alert-danger'; }
+  else if (snap.regime === 'A') {
+    if (snap.vector.sizeRule === 'ABORT') { alertText = `🔴 VECTOR DECLINING: W-RSI Slope ↓ ➔ NO NEW BUYS`; alertClass = 'alert-danger'; }
+    else if (snap.pcAlert) { alertText = `🟢 PC BREAKOUT ➔ BUY TRANCHE [${snap.vector.sizeRule}]`; alertClass = 'alert-buy'; }
+    else if (snap.drsi < 40) { alertText = `🟢 OVERSOLD RSI<40 ➔ BUY TRANCHE [${snap.vector.sizeRule}]`; alertClass = 'alert-buy'; }
+    else if (snap.delta < buyDeltaLevel) { alertText = `🟢 SLINGSHOT Δ<${buyDeltaLevel} ➔ BUY TRANCHE [${snap.vector.sizeRule}]`; alertClass = 'alert-buy'; }
+  }
+  const banner = document.getElementById('liveChartAlertBanner');
+  banner.textContent = alertText || ''; banner.className = alertText ? alertClass + ' banner-on' : '';
+  
+  const tfRets = [{l:'3D',d:3},{l:'1W',d:5},{l:'2W',d:10},{l:'1M',d:21},{l:'3M',d:63},{l:'6M',d:125},{l:'1Y',d:250}];
+  document.getElementById('cockpitReturns').innerHTML = tfRets.map(tf => {
+    const ri = globalLiveData.length - 1 - tf.d;
+    if(ri<0) return `<div style="text-align:center;"><div style="font-size:0.48rem;color:var(--muted);">${tf.l}</div><div style="font-size:0.65rem;color:var(--muted);">--</div></div>`;
+    const pct = (snap.nav - globalLiveData[ri].nav) / globalLiveData[ri].nav * 100;
+    const col = pct>=0?'var(--accent)':'var(--red)';
+    return `<div style="text-align:center;"><div style="font-size:0.48rem;color:var(--muted);text-transform:uppercase;">${tf.l}</div><div style="font-size:0.65rem;font-weight:400;color:${col};">${pct>=0?'+':''}${pct.toFixed(1)}%</div></div>`;
+  }).join('');
+  
+  if (typeof window.syncLiveChartsWithEngine === 'function') {
+    window.syncLiveChartsWithEngine(globalLiveData, days, globalDailyRsiCache, globalWeeklyRsiCache, 'cockpit');
+  }
+}
+
+async function initLiveAnalytics() {
+  saveFundSelection();
+  document.getElementById('liveFundName').textContent = getBriefFundName();
+  profitDeltaLevel = parseFloat(document.getElementById('profitDeltaIn').value) || 15;
+  buyDeltaLevel    = parseFloat(document.getElementById('buyDeltaIn').value)    || -15;
+  
+  globalLiveData = await fetchFundData();
+  if (!globalLiveData.length) return;
+  if (globalLiveData.length < 80) { alert("INSUFFICIENT DATA"); document.getElementById('ov').style.display = 'none'; return; }
+  
+  globalWeeklyRsiCache = buildWeeklyRsiCache(globalLiveData.map(d => d.nav));
+  globalDailyRsiCache  = buildDailyRsiCache(globalLiveData.map(d => d.nav));
+  
+  document.getElementById('setupScreen').style.display = 'none';
+  document.getElementById('liveAnalyticsModal').style.display = 'flex';
+  
+  updateLiveChart(250);
+}
+
+function updateLiveChart(days) {
+  const prices = globalLiveData.map(d => d.nav);
+  const snap = buildEngineSnapshot(globalLiveData.length - 1, prices, 0, globalDailyRsiCache, globalWeeklyRsiCache, 0, [], 0);
+  
+  const lastNav = snap.nav;
+  const lastWma = snap.wma20;
+  const lastSma = snap.sma50;
+  const lastDRsi = snap.drsi;
+  const lastWRsi = snap.wrsi;
+  const lastDelta = snap.delta;
+  const lastRegime = snap.regime;
+  
+  document.getElementById('laNav').textContent = `₹${lastNav.toFixed(2)}`;
+  const last1Y = globalLiveData.length >= 250 ? globalLiveData[globalLiveData.length - 250].nav : globalLiveData[0].nav;
+  const navPct = ((lastNav - last1Y) / last1Y * 100);
+  document.getElementById('laNavDesc').textContent = `${navPct >= 0 ? '+' : ''}${navPct.toFixed(1)}% vs 1Y ago`;
+
+  const regColor = lastRegime === 'A' ? 'var(--accent)' : (lastRegime === 'B' ? 'var(--accent2)' : 'var(--red)');
+  document.getElementById('laRegime').textContent = lastRegime;
+  document.getElementById('laRegime').style.color = regColor;
+  document.getElementById('laRegimeDesc').textContent = lastRegime === 'A' ? 'Structural Bull' : (lastRegime === 'B' ? 'Chop / Transition' : 'Structural Bear');
+  
+  document.getElementById('laWRsi').textContent = Math.round(lastWRsi);
+  document.getElementById('laWRsi').style.color = regColor;
+  document.getElementById('laWRsiDesc').textContent = lastWRsi < 40 ? 'Bear Regime' : lastWRsi < 50 ? 'Transition Regime' : lastWRsi < 60 ? 'Mild Bull' : 'Strong Bull';
+  
+  document.getElementById('laDRsi').textContent = Math.round(lastDRsi);
+  document.getElementById('laDRsi').style.color = lastDRsi < 40 ? 'var(--accent)' : lastDRsi < 50 ? 'rgba(0,232,162,0.7)' : lastDRsi > 70 ? 'var(--red)' : 'var(--muted2)';
+  document.getElementById('laDRsiDesc').textContent = lastDRsi < 30 ? 'Extremely Oversold' : lastDRsi < 40 ? 'Oversold — Buy Zone' : lastDRsi < 50 ? 'Dip Zone — Entry OK' : lastDRsi < 60 ? 'Neutral / Extended' : lastDRsi < 70 ? 'Overbought' : 'Extremely Overbought';
+  
+  const deltaColor = lastDelta >= 20 ? 'var(--accent)' : lastDelta > 0 ? 'rgba(0,232,162,0.7)' : lastDelta > -20 ? 'rgba(240,64,96,0.7)' : 'var(--red)';
+  document.getElementById('laDelta').textContent = lastDelta.toFixed(1);
+  document.getElementById('laDelta').style.color = deltaColor;
+  document.getElementById('laDeltaDesc').textContent = lastDelta >= 20 ? 'Ignition 🔥' : lastDelta > 0 ? 'Bull Drift 🟢' : lastDelta > -20 ? 'Bear Drift 🔴' : 'Collapse 💀';
+  
+  const tslVal = snap.tsl.tslVal;
+  const tslHit = snap.tsl.tslHit;
+  const tslDist = tslVal > 0 ? ((lastNav - tslVal) / tslVal * 100) : null;
+  document.getElementById('laTSL').textContent = tslVal > 0 ? `₹${tslVal.toFixed(2)}` : 'N/A';
+  document.getElementById('laTSL').style.color = tslHit ? 'var(--red)' : tslDist !== null && tslDist < 3 ? 'var(--accent2)' : 'var(--accent)';
+  document.getElementById('laTSLDesc').textContent = tslHit ? '🚨 BREACHED — Floor Gone' : tslVal === 0 ? 'No TSL detected' : tslDist < 2 ? `⚠️ Only ${tslDist.toFixed(1)}% above TSL` : tslDist < 5 ? `${tslDist.toFixed(1)}% above TSL — Watch closely` : `${tslDist.toFixed(1)}% above TSL — Safe`;
+  
+  const wmaDist = lastWma ? ((lastNav - lastWma) / lastWma * 100) : null;
+  document.getElementById('laWMA').textContent = lastWma ? `₹${lastWma.toFixed(2)}` : '--';
+  document.getElementById('laWMA').style.color = wmaDist === null ? 'var(--muted)' : wmaDist > 0 ? 'var(--accent)' : 'var(--red)';
+  document.getElementById('laWMADesc').textContent = wmaDist === null ? '--' : `${wmaDist > 0 ? '+' : ''}${wmaDist.toFixed(1)}% ${wmaDist > 0 ? 'above WMA' : 'below WMA'}`;
+  
+  const smaDist = lastSma ? ((lastNav - lastSma) / lastSma * 100) : null;
+  document.getElementById('laSMA').textContent = lastSma ? `₹${lastSma.toFixed(2)}` : '--';
+  document.getElementById('laSMA').style.color = smaDist === null ? 'var(--muted)' : smaDist > 0 ? 'var(--accent)' : 'var(--red)';
+  document.getElementById('laSMADesc').textContent = smaDist === null ? '--' : `${smaDist > 0 ? '+' : ''}${smaDist.toFixed(1)}% ${smaDist > 0 ? 'above SMA50' : 'below SMA50'}`;
+  
+  document.getElementById('laMomentum').textContent = snap.momentum; 
+  document.getElementById('laMomentum').style.color = snap.momentum.includes('ACCELERATING') || snap.momentum.includes('HIDDEN') ? 'var(--accent)' : 'var(--red)';
+  
+  document.getElementById('laChoch').textContent = snap.choch === 'BULL' ? '🟢 BULL BREAK' : (snap.choch === 'BEAR' ? '🔴 BEAR BREAK' : '➖ INSIDE STRUCT');
+  document.getElementById('laChoch').style.color = snap.choch === 'BULL' ? 'var(--accent)' : (snap.choch === 'BEAR' ? 'var(--red)' : 'var(--muted2)');
+  
+  document.getElementById('laVelocity').textContent = document.getElementById('laDeltaDesc').textContent;
+  document.getElementById('laVelocity').style.color = deltaColor;
+  
+  const tfDefs = [{lbl:'1D',d:1},{lbl:'1W',d:5},{lbl:'1M',d:21},{lbl:'3M',d:63},{lbl:'6M',d:125},{lbl:'1Y',d:250}];
+  document.getElementById('laGrowthRow').innerHTML = tfDefs.map(tf => {
+    const refIdx = globalLiveData.length - 1 - tf.d;
+    if (refIdx < 0) return `<div style="text-align:center;"><div style="font-size:0.52rem;color:var(--muted);">${tf.lbl}</div><div style="font-size:0.72rem;color:var(--muted);">--</div></div>`;
+    const pct = ((lastNav - globalLiveData[refIdx].nav) / globalLiveData[refIdx].nav * 100);
+    const col = pct >= 0 ? 'var(--accent)' : 'var(--red)';
+    return `<div style="text-align:center;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:4px 2px;">
+      <div style="font-size:0.5rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;">${tf.lbl}</div>
+      <div style="font-size:0.78rem;font-weight:700;color:${col};">${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%</div>
+    </div>`;
+  }).join('');
+
+  let verdictText = '', verdictReason = '', verdictBadge = '', verdictBorder = '';
+  if (tslHit) { verdictText = 'TSL SELL ZONE'; verdictBadge = '⚠️'; verdictBorder = 'var(--red)'; }
+  else if (lastRegime === 'C') { verdictText = 'HOLD CASH — DO NOT BUY'; verdictBadge = '🔴'; verdictBorder = 'var(--red)'; }
+  else if (snap.ncAlert) { verdictText = 'HOLD — NC BREAKDOWN TRAP'; verdictBadge = '⚠️'; verdictBorder = 'var(--red)'; }
+  else if (lastRegime === 'A') {
+    if (snap.vector.sizeRule === 'ABORT') { verdictText = 'ABORT BUYING — VECTOR DEATH'; verdictBadge = '🔴'; verdictBorder = 'var(--red)'; }
+    else if (snap.pcAlert) { verdictText = 'BUY 25–50% — PC BREAKOUT'; verdictBadge = '🟢'; verdictBorder = 'var(--accent)'; }
+    else if (lastDRsi < 40 || snap.delta < buyDeltaLevel) { verdictText = `BUY ${snap.vector.sizeRule} — CONFIRMED DIP`; verdictBadge = '🟢'; verdictBorder = 'var(--accent)'; }
+    else if (lastDRsi <= 50) { verdictText = `BUY ${snap.vector.sizeRule} — DIP ENTRY WINDOW`; verdictBadge = '🟢'; verdictBorder = 'var(--accent)'; }
+    else { verdictText = 'HOLD — WAIT FOR DIP'; verdictBadge = '⏸️'; verdictBorder = 'var(--border2)'; }
+  } else { verdictText = 'HOLD — REGIME B CHOP'; verdictBadge = '🟡'; verdictBorder = 'var(--accent2)'; }
+
+  document.getElementById('laVerdict').style.borderColor = verdictBorder;
+  document.getElementById('laVerdictText').textContent = verdictText;
+  document.getElementById('laVerdictText').style.color = verdictBorder;
+  document.getElementById('laVerdictReason').innerHTML = `<span style="color:${snap.vector.color};font-weight:700;font-size:0.58rem;">${snap.vector.text}</span>`;
+  document.getElementById('laVerdictBadge').textContent = verdictBadge;
+  document.getElementById('laVerdictFundTag').textContent = '— ' + getBriefFundName();
+
+  const vecCheck = snap.vector.sizeRule !== 'ABORT';
+  const checks = [
+    { icon: lastRegime === 'A' ? '✅' : '❌', text: `Regime A (W-RSI ≥ 50)`, val: `${Math.round(lastWRsi)}`, pass: lastRegime === 'A' },
+    { icon: snap.vector.sizeRule === 'ABORT' ? '🚨' : snap.vector.sizeRule === '100%' ? '✅' : '🟠', text: `W-RSI Vector Slope`, val: `${snap.vector.text.split('_')[0].trim()}`, pass: vecCheck },
+    { icon: lastDRsi <= 50 ? '✅' : '❌', text: `Daily RSI ≤ 50 (dip window)`, val: `${Math.round(lastDRsi)}`, pass: lastDRsi <= 50 },
+    { icon: !tslHit ? '✅' : '🚨', text: `TSL intact (floor not breached)`, val: tslHit ? 'BREACHED' : 'SAFE', pass: !tslHit },
+    { icon: snap.delta < buyDeltaLevel ? '✅' : '❌', text: `Slingshot (Delta < ${buyDeltaLevel})`, val: `${lastDelta.toFixed(1)}`, pass: snap.delta < buyDeltaLevel },
+    { icon: snap.pcAlert ? '✅' : '❌', text: `PC Breakout active`, val: snap.pcAlert ? 'YES' : 'NO', pass: snap.pcAlert },
+    { icon: !snap.ncAlert ? '✅' : '🚨', text: `No NC Breakdown trap`, val: snap.ncAlert ? 'NC ACTIVE' : 'CLEAR', pass: !snap.ncAlert },
+    { icon: lastDelta < profitDeltaLevel ? '✅' : '🟠', text: `Delta < Profit Limit (${profitDeltaLevel})`, val: `${lastDelta.toFixed(1)}`, pass: lastDelta < profitDeltaLevel }
+  ];
+  document.getElementById('laChecklist').innerHTML = checks.map(c => `
+    <div class="la-check"><span class="la-check-icon">${c.icon}</span><span class="la-check-text" style="color:${c.pass ? 'var(--text)' : 'var(--muted2)'}">${c.text}</span><span class="la-check-val">${c.val}</span></div>
+  `).join('');
+
+  if (typeof window.syncLiveChartsWithEngine === 'function') {
+    window.syncLiveChartsWithEngine(globalLiveData, days, globalDailyRsiCache, globalWeeklyRsiCache, 'analytics');
+  }
+}
+
+function openLiveAnalyticsFromCockpit() {
+  document.getElementById('liveChartModal').style.display = 'none';
+  document.getElementById('liveAnalyticsModal').style.display = 'flex';
+  updateLiveChart(250);
+}
+
+function closeLive() { document.getElementById('liveAnalyticsModal').style.display = 'none'; document.getElementById('setupScreen').style.display = 'flex'; }
+
+
+// ─────────────────────────────────────────────
+//  SIMULATOR GAME LOOP
 // ─────────────────────────────────────────────
 async function initGame(mode) {
   saveFundSelection();
   document.getElementById('simFundName').textContent = getBriefFundName();
   document.getElementById('simModeTag').textContent = mode === 'wave' ? 'RECENT SIM' : 'SIMULATOR';
   profitDeltaLevel = parseFloat(document.getElementById('profitDeltaIn').value) || 15;
-  buyDeltaLevel = parseFloat(document.getElementById('buyDeltaIn').value) || -15;
+  buyDeltaLevel    = parseFloat(document.getElementById('buyDeltaIn').value)    || -15;
   
   fullHistory = await fetchFundData(); if (!fullHistory.length) return;
   simWeeklyRsiCache = buildWeeklyRsiCache(fullHistory.map(d => d.nav));
   simDailyRsiCache = buildDailyRsiCache(fullHistory.map(d => d.nav));
   
   if (fullHistory.length < 80) { alert("INSUFFICIENT DATA"); document.getElementById('ov').style.display = 'none'; return; }
+  
   if (mode === 'wave') {
     const cutoff = new Date(); cutoff.setMonth(cutoff.getMonth() - 18);
     const cutoffStr = `${cutoff.getFullYear()}-${String(cutoff.getMonth()+1).padStart(2,'0')}-${String(cutoff.getDate()).padStart(2,'0')}`;
@@ -659,9 +1236,8 @@ function updateDisplay() {
   
   prevRegime = snap.regime; prevNav = snap.nav;
 
-  // Real Data Bridge - Passes data to external visual Add-On
   if (typeof window.syncChartsWithEngine === 'function') {
-      window.syncChartsWithEngine(fullHistory, currentIdx, simDailyRsiCache, simWeeklyRsiCache);
+    window.syncChartsWithEngine(fullHistory, currentIdx, simDailyRsiCache, simWeeklyRsiCache);
   }
 }
 
