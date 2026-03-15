@@ -746,55 +746,6 @@ function getBriefFundName() {
   return name.replace(/\[NPS\] | - Growth| - Direct/gi, '').trim();
 }
 
-function initGame(mode) {
-  saveFundSelection();
-  document.getElementById('simFundName').textContent = getBriefFundName();
-  document.getElementById('simModeTag').textContent = mode === 'wave' ? 'RECENT SIM' : 'SIMULATOR';
-  document.getElementById('setupScreen').style.display = 'none';
-  document.getElementById('gameUI').style.display = 'flex';
-  
-  console.log("Simulator Initialized (UI Only) - Ready for Calculation Engine Wiring");
-}
-
-function initLiveChart() {
-  saveFundSelection();
-  document.getElementById('liveChartFundName').textContent = getBriefFundName();
-  document.getElementById('setupScreen').style.display = 'none';
-  document.getElementById('liveChartModal').style.display = 'flex';
-  
-  console.log("Live Cockpit Initialized (UI Only) - Ready for Calculation Engine Wiring");
-}
-
-function initLiveAnalytics() {
-  saveFundSelection();
-  document.getElementById('liveFundName').textContent = getBriefFundName();
-  document.getElementById('setupScreen').style.display = 'none';
-  document.getElementById('liveAnalyticsModal').style.display = 'flex';
-  
-  console.log("Live Analytics Initialized (UI Only) - Ready for Calculation Engine Wiring");
-}
-
-function openLiveAnalyticsFromCockpit() {
-  document.getElementById('liveChartModal').style.display = 'none';
-  document.getElementById('liveAnalyticsModal').style.display = 'flex';
-}
-
-function closeLive() { 
-  document.getElementById('liveAnalyticsModal').style.display = 'none'; 
-  document.getElementById('setupScreen').style.display = 'flex'; 
-}
-
-function showLog() { document.getElementById('logModal').style.display = 'flex'; }
-function closeLog() { document.getElementById('logModal').style.display = 'none'; }
-
-function endAndReview() {
-  document.getElementById('reviewModal').style.display = 'flex';
-}
-
-if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(() => {}); }
-
-//---------------------------------------------------------
-
 function executeTradeEngine(action, currentState) {
   let { cash, tranches, tradeLog, totalTaxPaid, currentNav, dayNum, currentRegimeLog } = currentState;
 
@@ -1017,6 +968,26 @@ function calculateAuditScore(fullHistory, simStartIdx, currentIdx, simDailyRsiCa
     behavioralRemarkCode: remarksCode
   };
 }
+
+function openLiveAnalyticsFromCockpit() {
+  document.getElementById('liveChartModal').style.display = 'none';
+  document.getElementById('liveAnalyticsModal').style.display = 'flex';
+}
+
+function closeLive() { 
+  document.getElementById('liveAnalyticsModal').style.display = 'none'; 
+  document.getElementById('setupScreen').style.display = 'flex'; 
+}
+
+function showLog() { document.getElementById('logModal').style.display = 'flex'; }
+function closeLog() { document.getElementById('logModal').style.display = 'none'; }
+
+function endAndReview() {
+  document.getElementById('reviewModal').style.display = 'flex';
+}
+
+if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(() => {}); }
+
 </script>
 
 <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
@@ -1049,34 +1020,61 @@ const charts = {
 let simChartsInitialized = false;
 let liveChartsInitialized = false;
 
-// 3. CHART INITIALIZATION ENGINE (Uses autoSize to permanently defeat the 0x0 bug)
-function initOscillatorCharts(target) {
-    const chartOptions = {
-        autoSize: true,
+// 3. CHART INITIALIZATION ENGINE
+// Added explicit width/height measurement and autoscaleInfoProvider for fixed boundaries
+function buildChart(container, minV, maxV) {
+    container.innerHTML = '';
+    const w = container.clientWidth > 0 ? container.clientWidth : 400;
+    const h = container.clientHeight > 0 ? container.clientHeight : 120;
+    
+    const chart = LightweightCharts.createChart(container, {
+        width: w,
+        height: h,
         layout: { background: { type: 'solid', color: 'transparent' }, textColor: '#7090b0', fontSize: 10 },
         grid: { vertLines: { color: 'rgba(0,0,0,0.05)' }, horzLines: { color: 'rgba(0,0,0,0.05)' } },
         timeScale: { visible: false }, 
-        crosshair: { mode: 0 },
         handleScroll: false,
         handleScale: false
-    };
+    });
 
-    const rsiScale = { rightPriceScale: { autoScale: false, minValue: 0, maxValue: 100 } };
-    const deltaScale = { rightPriceScale: { autoScale: false, minValue: -80, maxValue: 100 } };
+    const ro = new ResizeObserver(entries => {
+        const { width, height } = entries[0].contentRect;
+        if (width > 0 && height > 0) chart.applyOptions({ width, height });
+    });
+    ro.observe(container);
 
+    return chart;
+}
+
+function initOscillatorCharts(target) {
     if (target === 'sim') {
         const simRsiCont = document.querySelector('.main-sim .chart-rsi-pane .canvas-box-bottom');
         const simDelCont = document.querySelector('.main-sim .chart-delta-pane .canvas-box-bottom');
         
         if(simRsiCont && simDelCont) {
-            simRsiCont.innerHTML = ''; simDelCont.innerHTML = '';
-
-            charts.sim.rsi = LightweightCharts.createChart(simRsiCont, { ...chartOptions, ...rsiScale });
-            charts.sim.sRsi = charts.sim.rsi.addLineSeries({ color: '#b0bece', lineWidth: 1 });
-            charts.sim.sWma = charts.sim.rsi.addLineSeries({ color: '#009e70', lineWidth: 2 });
+            charts.sim.rsi = buildChart(simRsiCont);
+            charts.sim.sRsi = charts.sim.rsi.addLineSeries({ 
+                color: '#b0bece', lineWidth: 1,
+                autoscaleInfoProvider: () => ({ priceRange: { minValue: 0, maxValue: 100 } })
+            });
+            charts.sim.sWma = charts.sim.rsi.addLineSeries({ 
+                color: '#009e70', lineWidth: 2,
+                autoscaleInfoProvider: () => ({ priceRange: { minValue: 0, maxValue: 100 } })
+            });
+            // Reference Lines
+            charts.sim.sRsi.createPriceLine({ price: 35, color: '#009e70', lineStyle: 2, axisLabelVisible: false });
+            charts.sim.sRsi.createPriceLine({ price: 15, color: '#00e8a2', lineStyle: 2, axisLabelVisible: false });
             
-            charts.sim.delta = LightweightCharts.createChart(simDelCont, { ...chartOptions, ...deltaScale });
-            charts.sim.sDelta = charts.sim.delta.addHistogramSeries({ base: 0 });
+            charts.sim.delta = buildChart(simDelCont);
+            charts.sim.sDelta = charts.sim.delta.addHistogramSeries({ 
+                base: 0,
+                autoscaleInfoProvider: () => ({ priceRange: { minValue: -80, maxValue: 100 } })
+            });
+            // Reference Lines
+            charts.sim.sDelta.createPriceLine({ price: 35, color: '#009e70', lineStyle: 2, axisLabelVisible: false });
+            charts.sim.sDelta.createPriceLine({ price: -35, color: '#009e70', lineStyle: 2, axisLabelVisible: false });
+            charts.sim.sDelta.createPriceLine({ price: 15, color: '#00e8a2', lineStyle: 2, axisLabelVisible: false });
+            charts.sim.sDelta.createPriceLine({ price: -15, color: '#00e8a2', lineStyle: 2, axisLabelVisible: false });
         }
     }
 
@@ -1085,14 +1083,29 @@ function initOscillatorCharts(target) {
         const liveDelCont = document.querySelector('#liveChartModal .chart-delta-pane .canvas-box-bottom');
 
         if(liveRsiCont && liveDelCont) {
-            liveRsiCont.innerHTML = ''; liveDelCont.innerHTML = '';
+            charts.live.rsi = buildChart(liveRsiCont);
+            charts.live.sRsi = charts.live.rsi.addLineSeries({ 
+                color: '#b0bece', lineWidth: 1,
+                autoscaleInfoProvider: () => ({ priceRange: { minValue: 0, maxValue: 100 } })
+            });
+            charts.live.sWma = charts.live.rsi.addLineSeries({ 
+                color: '#009e70', lineWidth: 2,
+                autoscaleInfoProvider: () => ({ priceRange: { minValue: 0, maxValue: 100 } })
+            });
+            // Reference Lines
+            charts.live.sRsi.createPriceLine({ price: 35, color: '#009e70', lineStyle: 2, axisLabelVisible: false });
+            charts.live.sRsi.createPriceLine({ price: 15, color: '#00e8a2', lineStyle: 2, axisLabelVisible: false });
 
-            charts.live.rsi = LightweightCharts.createChart(liveRsiCont, { ...chartOptions, ...rsiScale });
-            charts.live.sRsi = charts.live.rsi.addLineSeries({ color: '#b0bece', lineWidth: 1 });
-            charts.live.sWma = charts.live.rsi.addLineSeries({ color: '#009e70', lineWidth: 2 });
-
-            charts.live.delta = LightweightCharts.createChart(liveDelCont, { ...chartOptions, ...deltaScale });
-            charts.live.sDelta = charts.live.delta.addHistogramSeries({ base: 0 });
+            charts.live.delta = buildChart(liveDelCont);
+            charts.live.sDelta = charts.live.delta.addHistogramSeries({ 
+                base: 0,
+                autoscaleInfoProvider: () => ({ priceRange: { minValue: -80, maxValue: 100 } })
+            });
+            // Reference Lines
+            charts.live.sDelta.createPriceLine({ price: 35, color: '#009e70', lineStyle: 2, axisLabelVisible: false });
+            charts.live.sDelta.createPriceLine({ price: -35, color: '#009e70', lineStyle: 2, axisLabelVisible: false });
+            charts.live.sDelta.createPriceLine({ price: 15, color: '#00e8a2', lineStyle: 2, axisLabelVisible: false });
+            charts.live.sDelta.createPriceLine({ price: -15, color: '#00e8a2', lineStyle: 2, axisLabelVisible: false });
         }
     }
 }
@@ -1126,14 +1139,10 @@ function updateOscillatorCharts(target, dataArray) {
         charts.sim.sRsi.setData(rsiData);
         charts.sim.sWma.setData(wmaData);
         charts.sim.sDelta.setData(deltaData);
-        charts.sim.rsi.timeScale().fitContent();
-        charts.sim.delta.timeScale().fitContent();
     } else if (target === 'live' && charts.live.sRsi) {
         charts.live.sRsi.setData(rsiData);
         charts.live.sWma.setData(wmaData);
         charts.live.sDelta.setData(deltaData);
-        charts.live.rsi.timeScale().fitContent();
-        charts.live.delta.timeScale().fitContent();
         
         if (latestState) {
             const hEl = document.getElementById('alertHarvest');
@@ -1173,30 +1182,34 @@ function runDummyDataTest() {
     updateOscillatorCharts('live', testData); 
 }
 
-// 6. AUTO-HOOK INTO YOUR EXISTING BUTTONS (With fixed delays to defeat the TV 0x0 bug)
-const originalInitGame = window.initGame;
-window.initGame = function(mode) {
-    if(originalInitGame) originalInitGame(mode);
-    setTimeout(() => {
-        if (!simChartsInitialized) {
-            initOscillatorCharts('sim');
-            simChartsInitialized = true;
-        }
-        runDummyDataTest();
-    }, 150);
-};
+// 6. UI HOOKS: WAIT FOR DISPLAY TO RENDER BEFORE DRAWING
+function initGame(mode) {
+  saveFundSelection();
+  document.getElementById('simFundName').textContent = getBriefFundName();
+  document.getElementById('simModeTag').textContent = mode === 'wave' ? 'RECENT SIM' : 'SIMULATOR';
+  document.getElementById('setupScreen').style.display = 'none';
+  document.getElementById('gameUI').style.display = 'flex';
+  
+  // Addon trigger (Wait 150ms for screen to exist)
+  setTimeout(() => {
+      if (!simChartsInitialized) { initOscillatorCharts('sim'); simChartsInitialized = true; }
+      runDummyDataTest();
+  }, 150);
+}
 
-const originalInitLiveChart = window.initLiveChart;
-window.initLiveChart = function() {
-    if(originalInitLiveChart) originalInitLiveChart();
-    setTimeout(() => {
-        if (!liveChartsInitialized) {
-            initOscillatorCharts('live');
-            liveChartsInitialized = true;
-        }
-        runDummyDataTest();
-    }, 150);
-};
+function initLiveChart() {
+  saveFundSelection();
+  document.getElementById('liveChartFundName').textContent = getBriefFundName();
+  document.getElementById('setupScreen').style.display = 'none';
+  document.getElementById('liveChartModal').style.display = 'flex';
+  
+  // Addon trigger (Wait 150ms for screen to exist)
+  setTimeout(() => {
+      if (!liveChartsInitialized) { initOscillatorCharts('live'); liveChartsInitialized = true; }
+      runDummyDataTest();
+  }, 150);
+}
+
 </script>
 </body>
 </html>
