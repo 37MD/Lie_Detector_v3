@@ -439,12 +439,12 @@
         <div class="delta-label">MOMENTUM RIBBON · RSI vs WMA20(RSI)</div>
         <div class="chart-hud" id="liveRsiHud" style="top:18px;"></div>
         <div id="liveRsiLabel" style="position:absolute;top:3px;right:44px;font-size:0.52rem;color:var(--muted2);z-index:10;pointer-events:none;background:rgba(255,255,255,0.90);padding:1px 4px;border-radius:2px;"></div>
-        <div class="canvas-box-bottom"></div>
+        <div class="canvas-box-bottom" id="liveRsiBox"></div>
       </div>
       <div class="chart-delta-pane">
         <div class="delta-label">RSI DELTA · Daily − Weekly</div>
         <div class="chart-hud" id="liveDeltaHud" style="top:18px;"></div>
-        <div class="canvas-box-bottom"></div>
+        <div class="canvas-box-bottom" id="liveDeltaBox"></div>
       </div>
     </div>
   </div>
@@ -578,13 +578,13 @@
           <div class="delta-label">MOMENTUM RIBBON · RSI vs WMA20(RSI)</div>
           <div class="chart-hud" id="simRsiHud" style="top:18px;"></div>
           <div id="simRsiLabel" style="position:absolute;top:3px;right:4px;font-size:0.52rem;z-index:10;pointer-events:none;background:rgba(255,255,255,0.90);padding:1px 5px;border-radius:2px;letter-spacing:0.02em;"></div>
-          <div class="canvas-box-bottom"></div>
+          <div class="canvas-box-bottom" id="simRsiBox"></div>
         </div>
         <div class="chart-delta-pane">
           <div class="delta-label">VELOCITY · Daily − Weekly</div>
           <div class="chart-hud" id="simDeltaHud" style="top:18px;"></div>
           <div id="simDeltaLabel" style="position:absolute;top:3px;right:4px;font-size:0.52rem;z-index:10;pointer-events:none;background:rgba(255,255,255,0.90);padding:1px 5px;border-radius:2px;letter-spacing:0.02em;"></div>
-          <div class="canvas-box-bottom"></div>
+          <div class="canvas-box-bottom" id="simDeltaBox"></div>
         </div>
       </div>
       <div class="tf-row" id="simTfRow" style="border-top:1px solid var(--border);padding:4px 0 2px;margin-top:2px;">
@@ -746,23 +746,6 @@ function getBriefFundName() {
   return name.replace(/\[NPS\] | - Growth| - Direct/gi, '').trim();
 }
 
-// ─────────────────────────────────────────────
-//  --- PASTE PHASE 1 CALCULATION ENGINE HERE ---
-//  (Functions: calculateTSL, calculateConsolidation, calculateChoCh, 
-//   calculateMomentumState, calculateRegime, calculatePortfolioMetrics, 
-//   buildEngineSnapshot, calculateRSI, calculateWMA, calculateSMA, 
-//   calcTideHTML, calcVectorClass, buildDailyRsiCache, buildWeeklyRsiCache)
-// ─────────────────────────────────────────────
-
-// ─────────────────────────────────────────────
-//  --- PASTE PHASE 1 TRADE & AUDIT ENGINE HERE ---
-//  (Functions: executeTradeEngine, calculateAuditScore)
-// ─────────────────────────────────────────────
-
-// ─────────────────────────────────────────────
-//  UI ROUTING (No Charts)
-// ─────────────────────────────────────────────
-
 function initGame(mode) {
   saveFundSelection();
   document.getElementById('simFundName').textContent = getBriefFundName();
@@ -770,8 +753,10 @@ function initGame(mode) {
   document.getElementById('setupScreen').style.display = 'none';
   document.getElementById('gameUI').style.display = 'flex';
   
-  // App is ready for engine wiring in Phase 3
   console.log("Simulator Initialized (UI Only) - Ready for Calculation Engine Wiring");
+  
+  // Custom hook to trigger dummy charts
+  if(window.runDummyDataTest) setTimeout(window.runDummyDataTest, 50);
 }
 
 function initLiveChart() {
@@ -780,8 +765,10 @@ function initLiveChart() {
   document.getElementById('setupScreen').style.display = 'none';
   document.getElementById('liveChartModal').style.display = 'flex';
   
-  // App is ready for engine wiring in Phase 3
   console.log("Live Cockpit Initialized (UI Only) - Ready for Calculation Engine Wiring");
+  
+  // Custom hook to trigger dummy charts
+  if(window.runDummyDataTest) setTimeout(window.runDummyDataTest, 50);
 }
 
 function initLiveAnalytics() {
@@ -790,7 +777,6 @@ function initLiveAnalytics() {
   document.getElementById('setupScreen').style.display = 'none';
   document.getElementById('liveAnalyticsModal').style.display = 'flex';
   
-  // App is ready for engine wiring in Phase 3
   console.log("Live Analytics Initialized (UI Only) - Ready for Calculation Engine Wiring");
 }
 
@@ -812,12 +798,221 @@ function endAndReview() {
 }
 
 if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(() => {}); }
+
+function executeTradeEngine(action, currentState) {
+  let { cash, tranches, tradeLog, totalTaxPaid, currentNav, dayNum, currentRegimeLog } = currentState;
+
+  if (!currentNav || currentNav <= 0) return currentState;
+
+  if (action.includes('BUY')) {
+    const pct = action.includes('10') ? 0.1 : (action.includes('25') ? 0.25 : 0.5);
+    const amt = cash * pct;
+    if (amt > 10) { 
+      tranches.push({ day: dayNum, units: amt / currentNav, price: currentNav, regime: currentRegimeLog }); 
+      cash -= amt; 
+    }
+    return { cash, tranches, tradeLog, totalTaxPaid, alert: amt <= 10 ? 'INSUFFICIENT_CASH' : null };
+  } 
+
+  let unitsToSell = 0;
+  const totalUnits = tranches.reduce((s, t) => s + t.units, 0);
+  
+  if (totalUnits < 0.001) return { ...currentState, alert: 'NO_POSITION' };
+
+  if (action === 'SELLALL' || action === 'SELL_REGIME') {
+    unitsToSell = totalUnits;
+  } else if (action === 'SELL_PROFIT') {
+    const totalCost = tranches.reduce((s, t) => s + t.units * t.price, 0);
+    const profit = totalUnits * currentNav - totalCost;
+    if (profit <= 10) return { ...currentState, alert: 'NO_PROFIT' };
+    unitsToSell = profit / currentNav;
+  } else if (action === 'SELL_TSL') { 
+    const r = currentRegimeLog === 'A' ? 0.5 : 1.0; 
+    unitsToSell = totalUnits * r;
+  }
+
+  if (unitsToSell > 0) {
+    let remaining = unitsToSell, totalCash = 0, taxIncurred = 0, actualSold = 0;
+    
+    for (let i = 0; i < tranches.length; i++) {
+      if (remaining <= 0) break;
+      const t = tranches[i];
+      const chunk = Math.min(t.units, remaining);
+      t.units -= chunk; 
+      remaining -= chunk; 
+      actualSold += chunk;
+      
+      const profit = (currentNav - t.price) * chunk;
+      const tax = (profit > 0 && (dayNum - t.day < 220)) ? profit * 0.20 : 0;
+      taxIncurred += tax; 
+      totalCash += currentNav * chunk - tax;
+    }
+    
+    tranches = tranches.filter(t => t.units > 0.001);
+    
+    if (actualSold > 0.001) {
+      cash += totalCash; 
+      totalTaxPaid += taxIncurred;
+      tradeLog.push({ day: dayNum, action: action, nav: currentNav, units: actualSold, tax: taxIncurred, regime: currentRegimeLog });
+    }
+  }
+
+  return { cash, tranches, tradeLog, totalTaxPaid, alert: null };
+}
+
+function calculateAuditScore(fullHistory, simStartIdx, currentIdx, simDailyRsiCache, simWeeklyRsiCache, tradeLog, tranches, cash, buyDeltaLevel, profitDeltaLevel) {
+  let scoreEntry = 0, scoreExit = 0, scoreProfit = 0;
+  let goodBuys = 0, badBuys = 0, missedBuyEvents = 0, prematureBuys = 0;
+  let successfulExits = 0, panicSells = 0, daysTslBreachHeld = 0, daysRegimeCHeld = 0;
+  let profitExits = 0, missedProfitEvents = 0;
+  let runningUnits = 0;
+  let regimeADays = 0, regimeBDays = 0, regimeCDays = 0;
+
+  let regimeCBlock = 0;
+  let lastMissedBuyDay = -10, lastProfitDay = -10, lastMissedProfitDay = -10;
+
+  const totalDays = currentIdx - simStartIdx;
+
+  for (let i = simStartIdx; i <= currentIdx; i++) {
+    const sp = fullHistory.slice(0, i + 1).map(h => h.nav);
+    const currNav = sp[sp.length - 1];
+    
+    const dr = simDailyRsiCache[i] ?? 50;
+    const wr = simWeeklyRsiCache[i] ?? 50;
+    const regime = wr >= 50 ? 'A' : wr >= 40 ? 'B' : 'C';
+    const d = dr - wr;
+    const dayNum = i - simStartIdx;
+
+    if (regime === 'A') regimeADays++;
+    else if (regime === 'B') regimeBDays++;
+    else regimeCDays++;
+
+    let pcAlert = false;
+    if (sp.length >= 56) {
+      const box = sp.slice(-6, -1);
+      const boxMax = Math.max(...box), boxMin = Math.min(...box);
+      const preBox = sp.slice(-56, -6);
+      const preMax = Math.max(...preBox);
+      const boxWma = calculateWMA(sp.slice(0, -1), 20); 
+      if ((boxMax - boxMin) / boxMin <= 0.02 && (boxWma ? Math.abs(boxMin - boxWma) / boxWma <= 0.04 : false)) {
+        if (preMax > boxMax * 1.02 && currNav > boxMax) pcAlert = true;
+      }
+    }
+
+    const chartData = sp.slice(-80);
+    let tslVal = 0, sLows = [], sHighs = [];
+    for (let k = chartData.length - 3; k >= 2; k--) {
+      if (chartData[k] <= chartData[k-1] && chartData[k] < chartData[k-2] && chartData[k] <= chartData[k+1] && chartData[k] < chartData[k+2]) {
+        if (sLows.length === 0 || (sLows[sLows.length-1].idx - k) > 4) sLows.push({idx: k, val: chartData[k]});
+      }
+      if (chartData[k] >= chartData[k-1] && chartData[k] > chartData[k-2] && chartData[k] >= chartData[k+1] && chartData[k] > chartData[k+2]) {
+        if (sHighs.length === 0 || (sHighs[sHighs.length-1].idx - k) > 4) sHighs.push({idx: k, val: chartData[k]});
+      }
+    }
+    let reclaimed = false;
+    if (sHighs.length >= 2 && currNav > sHighs[0].val && currNav > sHighs[1].val) reclaimed = true;
+    if (sLows.length > 0) {
+      let targetLow = sLows[0];
+      if (!reclaimed && sLows.length > 1 && sLows[1].val < sLows[0].val) targetLow = sLows[1];
+      tslVal = targetLow.val;
+    }
+    const tslHit = tslVal > 0 && currNav < tslVal;
+
+    const dayT = tradeLog.filter(t => t.day === dayNum);
+    let hasBuy = false, hasProfit = false, hasSell = false;
+
+    dayT.forEach(t => {
+      if (t.action.includes('BUY')) {
+        hasBuy = true;
+        runningUnits += t.units;
+        if (regime === 'A') {
+          if (dr <= 50 || pcAlert || d < buyDeltaLevel) {
+            scoreEntry += 20; goodBuys++;
+          } else {
+            scoreEntry -= 5; prematureBuys++;
+          }
+        } else if (regime === 'C') {
+          if (pcAlert) { goodBuys++; }
+          else { scoreEntry -= 20; badBuys++; }
+        } else if (regime === 'B') {
+          scoreEntry -= 10; badBuys++;
+        }
+      } else if (t.action.includes('SELL')) {
+        hasSell = true;
+        runningUnits = Math.max(0, runningUnits - t.units);
+        if (t.action.includes('TSL') || t.action.includes('REGIME')) {
+          if (regime === 'A' && wr > 60 && !tslHit) {
+            scoreExit -= 15; panicSells++;
+          } else {
+            scoreExit += 30; successfulExits++;
+          }
+        }
+        if (t.action.includes('PROFIT')) {
+          scoreProfit += 5; profitExits++; hasProfit = true; lastProfitDay = dayNum;
+        }
+        if (t.action === 'SELL ALL' && regime === 'A' && wr > 55 && !tslHit) {
+          scoreExit -= 20; panicSells++;
+        }
+      }
+    });
+
+    if (runningUnits > 0.001) {
+      if (tslHit) { daysTslBreachHeld++; scoreExit -= 10; }
+      if (regime === 'C') {
+        daysRegimeCHeld++;
+        regimeCBlock++;
+        const blockPenalty = Math.min(regimeCBlock * 20, 100);
+        const prevBlockPenalty = Math.min((regimeCBlock - 1) * 20, 100);
+        scoreExit -= (blockPenalty - prevBlockPenalty);
+      } else {
+        regimeCBlock = 0; 
+      }
+    } else {
+      regimeCBlock = 0;
+    }
+
+    const isBuySignal = regime === 'A' && (dr < 40 || d < buyDeltaLevel || pcAlert);
+    if (isBuySignal && !hasBuy && (dayNum - lastMissedBuyDay) > 5) {
+      missedBuyEvents++; scoreEntry -= 10; lastMissedBuyDay = dayNum;
+    }
+
+    const isOverheated = d > profitDeltaLevel;
+    if (isOverheated && !hasProfit && runningUnits > 0.001 && (dayNum - lastProfitDay) > 3 && (dayNum - lastMissedProfitDay) > 5) {
+      missedProfitEvents++; scoreProfit -= 2; lastMissedProfitDay = dayNum;
+    }
+  }
+
+  const totalScore = scoreEntry + scoreExit + scoreProfit;
+  const totalUnits = tranches.reduce((s, t) => s + t.units, 0);
+  const finalNW = cash + totalUnits * fullHistory[currentIdx].nav;
+
+  let remarksCode = "DISCIPLINED";
+  if (tradeLog.length === 0) remarksCode = "GHOST";
+  else if (daysRegimeCHeld > 2 || daysTslBreachHeld > 2) remarksCode = "CRITICAL_RISK";
+  else if (panicSells >= 1) remarksCode = "PANIC";
+  else if (badBuys >= 2) remarksCode = "RECKLESS";
+  else if (prematureBuys >= 2) remarksCode = "TRIGGER_HAPPY";
+  else if (missedBuyEvents >= 3) remarksCode = "HESITATION";
+  else if (scoreExit > 0) remarksCode = "EXCELLENT_DEFENSE";
+
+  return {
+    scores: { total: totalScore, entry: scoreEntry, exit: scoreExit, profit: scoreProfit },
+    metrics: { 
+      finalNetWorth: finalNW, 
+      totalDays,
+      regimeCounts: { A: regimeADays, B: regimeBDays, C: regimeCDays }
+    },
+    stats: {
+      goodBuys, prematureBuys, badBuys, missedBuyEvents,
+      successfulExits, panicSells, daysTslBreachHeld, daysRegimeCHeld,
+      profitExits, missedProfitEvents
+    },
+    behavioralRemarkCode: remarksCode
+  };
+}
 </script>
 
-<script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
-
 <script>
-// 1. INJECT THE 2-LINE ALERT ZONE (LIVE COCKPIT ONLY)
 (function injectLiveAlertZone() {
     const liveSplit = document.querySelector('#liveChartModal .chart-split');
     if (liveSplit) {
@@ -835,129 +1030,218 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').ca
     }
 })();
 
-// 2. GLOBAL CHART VARIABLES
-const charts = {
-    sim:  { rsi: null, delta: null, sRsi: null, sWma: null, sDelta: null },
-    live: { rsi: null, delta: null, sRsi: null, sWma: null, sDelta: null }
-};
+function mapY(val, min, max, height) { return height - ((val - min) / (max - min) * height); }
 
-// 3. CHART INITIALIZATION ENGINE
-function initOscillatorCharts() {
-    const chartOptions = {
-        layout: { background: { type: 'solid', color: 'transparent' }, textColor: '#7090b0', fontSize: 10 },
-        grid: { vertLines: { color: 'rgba(0,0,0,0.05)' }, horzLines: { color: 'rgba(0,0,0,0.05)' } },
-        timeScale: { visible: false }, // Hide time scale to keep it clean like an oscillator pane
-        crosshair: { mode: 0 },
-        handleScroll: false,
-        handleScale: false
-    };
-
-    // Ribbon Config (Scale 0 to 100)
-    const rsiScale = { rightPriceScale: { autoScale: false, minValue: 0, maxValue: 100 } };
-    
-    // Delta Config (Scale -80 to +100, per your requirement)
-    const deltaScale = { rightPriceScale: { autoScale: false, minValue: -80, maxValue: 100 } };
-
-    // --- SIMULATOR CHARTS ---
-    const simRsiCont = document.querySelector('.main-sim .chart-rsi-pane .canvas-box-bottom');
-    const simDelCont = document.querySelector('.main-sim .chart-delta-pane .canvas-box-bottom');
-    
-    charts.sim.rsi = LightweightCharts.createChart(simRsiCont, { ...chartOptions, ...rsiScale });
-    charts.sim.sRsi = charts.sim.rsi.addLineSeries({ color: '#b0bece', lineWidth: 1 });
-    charts.sim.sWma = charts.sim.rsi.addLineSeries({ color: '#009e70', lineWidth: 2 });
-    
-    charts.sim.delta = LightweightCharts.createChart(simDelCont, { ...chartOptions, ...deltaScale });
-    charts.sim.sDelta = charts.sim.delta.addHistogramSeries({ base: 0 });
-
-    // --- LIVE COCKPIT CHARTS ---
-    const liveRsiCont = document.querySelector('#liveChartModal .chart-rsi-pane .canvas-box-bottom');
-    const liveDelCont = document.querySelector('#liveChartModal .chart-delta-pane .canvas-box-bottom');
-
-    charts.live.rsi = LightweightCharts.createChart(liveRsiCont, { ...chartOptions, ...rsiScale });
-    charts.live.sRsi = charts.live.rsi.addLineSeries({ color: '#b0bece', lineWidth: 1 });
-    charts.live.sWma = charts.live.rsi.addLineSeries({ color: '#009e70', lineWidth: 2 });
-
-    charts.live.delta = LightweightCharts.createChart(liveDelCont, { ...chartOptions, ...deltaScale });
-    charts.live.sDelta = charts.live.delta.addHistogramSeries({ base: 0 });
-
-    // Ensure they fit the container
-    new ResizeObserver(entries => {
-        if (entries.length === 0 || entries[0].target !== simRsiCont) return;
-        charts.sim.rsi.applyOptions({ width: simRsiCont.clientWidth, height: simRsiCont.clientHeight });
-        charts.sim.delta.applyOptions({ width: simDelCont.clientWidth, height: simDelCont.clientHeight });
-        charts.live.rsi.applyOptions({ width: liveRsiCont.clientWidth, height: liveRsiCont.clientHeight });
-        charts.live.delta.applyOptions({ width: liveDelCont.clientWidth, height: liveDelCont.clientHeight });
-    }).observe(simRsiCont);
+function drawRefLine(ctx, val, color, width, h, min, max, isDashed) {
+    let y = mapY(val, min, max, h);
+    ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 1;
+    if(isDashed) ctx.setLineDash([4, 4]); else ctx.setLineDash([]);
+    ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke(); ctx.setLineDash([]); 
 }
 
-// 4. DATA UPDATE ENGINE (Call this when your HTTP backend returns data)
-// Expects an array of objects: { time: string, dailyRSI, rsiWMA, velocityGap, isRegimeA, isRegimeC, sig_smartHarvest, sig_reload, sig_bearCollapse }
-function updateOscillatorCharts(target, dataArray) {
-    const rsiData = [];
-    const wmaData = [];
-    const deltaData = [];
+function renderRsiCanvas(canvas, data) {
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.parentElement.getBoundingClientRect();
+    if(rect.width === 0) return; 
     
-    const showExtremesOnly = ENGINE_CFG ? true : false; // Assuming your toggle is active
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = rect.width * dpr; canvas.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
+    canvas.style.width = rect.width + 'px'; canvas.style.height = rect.height + 'px';
+    
+    const w = rect.width, h = rect.height, minV = 0, maxV = 100;
+    ctx.clearRect(0, 0, w, h);
 
-    let latestState = null;
+    ctx.beginPath(); ctx.strokeStyle = 'rgba(0,0,0,0.05)'; ctx.lineWidth = 1;
+    for(let i=10; i<=90; i+=20) { let gy = mapY(i, minV, maxV, h); ctx.moveTo(0, gy); ctx.lineTo(w, gy); }
+    ctx.stroke();
 
-    dataArray.forEach(d => {
-        // Build Ribbon Lines
-        rsiData.push({ time: d.time, value: parseFloat(d.dailyRSI) });
-        wmaData.push({ time: d.time, value: parseFloat(d.rsiWMA) }); // WMA color changes aren't natively supported on single line series in LW Charts, handled purely via HTML labels.
+    drawRefLine(ctx, 35, 'rgba(0, 158, 112, 0.4)', w, h, minV, maxV, true);
+    drawRefLine(ctx, 15, 'rgba(0, 232, 162, 0.4)', w, h, minV, maxV, true);
+    
+    if(!data || data.length === 0) return;
 
-        // Build Delta Histogram with Color Logic & Extremes Filter
-        let gap = parseFloat(d.velocityGap);
-        let color = '#fc0606'; // Red default
-        if (gap >= 15) color = '#015804'; // Deep Green
-        else if (gap > 0) color = 'rgba(0, 158, 112, 0.5)'; // Light Green
-        else if (gap > -15) color = 'rgba(200, 16, 46, 0.5)'; // Light Red
+    ctx.beginPath(); ctx.strokeStyle = '#009e70'; ctx.lineWidth = 2;
+    for(let i=0; i<data.length; i++) {
+        let x = (i / Math.max(1, data.length - 1)) * w;
+        let y = mapY(data[i].rsiWMA, minV, maxV, h);
+        if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    } ctx.stroke();
 
-        // Apply extremes filter (+/- 35)
-        if (showExtremesOnly && Math.abs(gap) < 35) {
-            gap = 0; // Hide the bar visually
-        }
+    ctx.beginPath(); ctx.strokeStyle = '#b0bece'; ctx.lineWidth = 1.5;
+    for(let i=0; i<data.length; i++) {
+        let x = (i / Math.max(1, data.length - 1)) * w;
+        let y = mapY(data[i].dailyRSI, minV, maxV, h);
+        if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    } ctx.stroke();
+}
 
-        deltaData.push({ time: d.time, value: gap, color: color });
-        latestState = d;
-    });
+function renderDeltaCanvas(canvas, data) {
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.parentElement.getBoundingClientRect();
+    if(rect.width === 0) return; 
+
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = rect.width * dpr; canvas.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
+    canvas.style.width = rect.width + 'px'; canvas.style.height = rect.height + 'px';
+    
+    const w = rect.width, h = rect.height, minV = -80, maxV = 100;
+    ctx.clearRect(0, 0, w, h);
+
+    drawRefLine(ctx, 0, 'rgba(0, 0, 0, 0.15)', w, h, minV, maxV, false);
+    drawRefLine(ctx, 35, 'rgba(0, 158, 112, 0.4)', w, h, minV, maxV, true);
+    drawRefLine(ctx, -35, 'rgba(0, 158, 112, 0.4)', w, h, minV, maxV, true);
+    drawRefLine(ctx, 15, 'rgba(0, 232, 162, 0.4)', w, h, minV, maxV, true);
+    drawRefLine(ctx, -15, 'rgba(0, 232, 162, 0.4)', w, h, minV, maxV, true);
+
+    if(!data || data.length === 0) return;
+
+    let zeroY = mapY(0, minV, maxV, h);
+    let barW = Math.max(1, (w / data.length) - 1);
+
+    for(let i=0; i<data.length; i++) {
+        let gap = data[i].velocityGap;
+        if (Math.abs(gap) < 35) continue; // SHOW EXTREMES ONLY
+
+        let color = '#fc0606'; 
+        if (gap >= 15) color = '#015804'; 
+        else if (gap > 0) color = 'rgba(0, 158, 112, 0.5)'; 
+        else if (gap > -15) color = 'rgba(200, 16, 46, 0.5)'; 
+
+        let x = (i / Math.max(1, data.length - 1)) * w - (barW/2);
+        let y = mapY(gap, minV, maxV, h);
+        
+        ctx.fillStyle = color;
+        ctx.fillRect(x, y, barW, zeroY - y);
+    }
+}
+
+const myCanvases = {
+    simRsi: document.createElement('canvas'), simDelta: document.createElement('canvas'),
+    liveRsi: document.createElement('canvas'), liveDelta: document.createElement('canvas')
+};
+
+function injectCanvases() {
+    const sRBox = document.getElementById('simRsiBox'), sDBox = document.getElementById('simDeltaBox');
+    const lRBox = document.getElementById('liveRsiBox'), lDBox = document.getElementById('liveDeltaBox');
+
+    if(sRBox && !sRBox.contains(myCanvases.simRsi)) sRBox.appendChild(myCanvases.simRsi);
+    if(sDBox && !sDBox.contains(myCanvases.simDelta)) sDBox.appendChild(myCanvases.simDelta);
+    if(lRBox && !lRBox.contains(myCanvases.liveRsi)) lRBox.appendChild(myCanvases.liveRsi);
+    if(lDBox && !lDBox.contains(myCanvases.liveDelta)) lDBox.appendChild(myCanvases.liveDelta);
+}
+
+function updateOscillatorCharts(target, dataArray) {
+    injectCanvases(); 
+    let latestState = dataArray.length > 0 ? dataArray[dataArray.length - 1] : null;
 
     if (target === 'sim') {
-        charts.sim.sRsi.setData(rsiData);
-        charts.sim.sWma.setData(wmaData);
-        charts.sim.sDelta.setData(deltaData);
+        renderRsiCanvas(myCanvases.simRsi, dataArray);
+        renderDeltaCanvas(myCanvases.simDelta, dataArray);
     } else if (target === 'live') {
-        charts.live.sRsi.setData(rsiData);
-        charts.live.sWma.setData(wmaData);
-        charts.live.sDelta.setData(deltaData);
+        renderRsiCanvas(myCanvases.liveRsi, dataArray);
+        renderDeltaCanvas(myCanvases.liveDelta, dataArray);
         
-        // Update the Live 2-Line Alert Zone
         if (latestState) {
-            const hEl = document.getElementById('alertHarvest');
-            const rEl = document.getElementById('alertReload');
-            const cEl = document.getElementById('alertCollapse');
-
-            // Harvest UI
+            const hEl = document.getElementById('alertHarvest'), rEl = document.getElementById('alertReload'), cEl = document.getElementById('alertCollapse');
             if (latestState.sig_smartHarvest) { hEl.style.color = 'var(--accent2)'; hEl.innerHTML = 'HARVEST: 🟢 FIRE'; } 
             else { hEl.style.color = 'var(--muted2)'; hEl.innerHTML = 'HARVEST: 🌑 STANDBY'; }
-
-            // Reload UI
             if (latestState.sig_reload) { rEl.style.color = 'var(--accent)'; rEl.innerHTML = 'RELOAD: 🟢 FIRE'; } 
             else { rEl.style.color = 'var(--muted2)'; rEl.innerHTML = 'RELOAD: 🌑 STANDBY'; }
-
-            // Collapse UI
             if (latestState.sig_bearCollapse) { cEl.style.color = 'var(--red)'; cEl.innerHTML = 'COLLAPSE: 🔴 FIRE'; } 
             else { cEl.style.color = 'var(--muted2)'; cEl.innerHTML = 'COLLAPSE: 🌑 STANDBY'; }
         }
     }
 }
 
-// Initialize the canvases once the DOM is ready
-window.addEventListener('DOMContentLoaded', () => {
-    // Wait a brief moment to ensure containers are rendered by the browser
-    setTimeout(initOscillatorCharts, 100);
+// ─────────────────────────────────────────────────────────────────────────────
+// DATA SYNC ENGINE: Reconstructs mathematical state from your cache
+// ─────────────────────────────────────────────────────────────────────────────
+window.syncChartsWithEngine = function(fullHistory, currentIdx, dailyRsiCache, weeklyRsiCache) {
+    if (!fullHistory || !dailyRsiCache || !weeklyRsiCache || currentIdx <= 0) return; 
+    
+    let dataArray = [];
+    let lookback = 120; // 6 months of data
+    let startI = Math.max(0, currentIdx - lookback);
+
+    for (let i = startI; i <= currentIdx; i++) {
+        let dr = dailyRsiCache[i] || 50;
+        let wr = weeklyRsiCache[i] || 50;
+        let gap = dr - wr;
+        
+        let wmaSum = 0, weightSum = 0, period = 20;
+        for(let j=0; j<period; j++) {
+            if (i - j >= 0) { wmaSum += (dailyRsiCache[i-j] || 50) * (period - j); weightSum += (period - j); }
+        }
+        let wma = weightSum > 0 ? (wmaSum / weightSum) : 50;
+        let proxyMom = dr - wma;
+        
+        let isRegimeC = wr < 40;
+        let isOverdrive = wr >= 60;
+        
+        let prevProxy = 0, prevPrevProxy = 0, prevGap = 0, priceKnockout = false;
+        if(i > 1) {
+            let pDr = dailyRsiCache[i-1] || 50;
+            let ppDr = dailyRsiCache[i-2] || 50;
+            let pWmaSum = 0, pWeightSum = 0;
+            for(let j=0; j<period; j++) { if(i-1-j >= 0) { pWmaSum += (dailyRsiCache[i-1-j]||50)*(period-j); pWeightSum += (period-j); } }
+            let pWma = pWeightSum > 0 ? (pWmaSum / pWeightSum) : 50;
+            prevProxy = pDr - pWma;
+
+            let ppWmaSum = 0, ppWeightSum = 0;
+            for(let j=0; j<period; j++) { if(i-2-j >= 0) { ppWmaSum += (dailyRsiCache[i-2-j]||50)*(period-j); ppWeightSum += (period-j); } }
+            let ppWma = ppWeightSum > 0 ? (ppWmaSum / ppWeightSum) : 50;
+            prevPrevProxy = ppDr - ppWma;
+
+            prevGap = pDr - (weeklyRsiCache[i-1] || 50);
+            let currNav = fullHistory[i] ? fullHistory[i].nav : 0;
+            let prevNav = fullHistory[i-1] ? fullHistory[i-1].nav : 0;
+            priceKnockout = currNav < prevNav;
+        }
+
+        let smartCutoff = isOverdrive ? 35 : 15;
+        let hookDown = (proxyMom < prevProxy) && (prevProxy > prevPrevProxy);
+
+        dataArray.push({
+            dailyRSI: dr, rsiWMA: wma, velocityGap: gap,
+            sig_smartHarvest: hookDown && (prevProxy >= smartCutoff) && priceKnockout,
+            sig_reload: (proxyMom > 0) && (prevProxy <= 0) && (gap > -10),
+            sig_bearCollapse: isRegimeC && (gap < -15) && (prevGap >= -15)
+        });
+    }
+
+    if (document.getElementById('gameUI').style.display === 'flex') updateOscillatorCharts('sim', dataArray);
+    if (document.getElementById('liveChartModal').style.display === 'flex') updateOscillatorCharts('live', dataArray);
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PROOF OF LIFE: This proves the custom canvas engine works immediately
+// ─────────────────────────────────────────────────────────────────────────────
+window.runDummyDataTest = function() {
+    let testData = [];
+    for(let i=0; i<100; i++) {
+        testData.push({
+            dailyRSI: 50 + Math.sin(i/4) * 35,       
+            rsiWMA: 50 + Math.sin(i/8) * 20,         
+            velocityGap: Math.sin(i/5) * 45,         
+            sig_smartHarvest: i === 20 || i === 80,  
+            sig_reload: i === 40,
+            sig_bearCollapse: i === 60
+        });
+    }
+    if (document.getElementById('gameUI').style.display === 'flex') updateOscillatorCharts('sim', testData);
+    if (document.getElementById('liveChartModal').style.display === 'flex') updateOscillatorCharts('live', testData);
+};
+
+// Auto-redraw charts if window is resized to prevent squishing
+window.addEventListener('resize', () => {
+    if (typeof window.currentIdx !== 'undefined' && window.currentIdx > 0) {
+        window.syncChartsWithEngine(window.fullHistory, window.currentIdx, window.simDailyRsiCache, window.simWeeklyRsiCache);
+    } else {
+        window.runDummyDataTest();
+    }
 });
 </script>
-
 </body>
 </html>
