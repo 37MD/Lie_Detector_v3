@@ -1417,10 +1417,8 @@ function endAndReview() {
 if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(() => {}); }
 </script>
 
-
 <script>
 (function() {
-    // 1. INJECT DYNAMIC SIGNAL HUD
     const injectLiveAlertZone = () => {
         const liveSplit = document.querySelector('#liveChartModal .chart-split');
         if (liveSplit && !document.getElementById('liveAlertZone')) {
@@ -1432,34 +1430,26 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').ca
                         <span id="alertReload" style="color: var(--muted2); transition: color 0.2s;">RELOAD: 🌑</span>
                         <span id="alertCollapse" style="color: var(--muted2); transition: color 0.2s;">COLLAPSE: 🌑</span>
                     </div>
-                </div>
-            `;
+                </div>`;
             liveSplit.insertAdjacentHTML('beforeend', alertHTML);
         }
     };
 
     const mapY = (val, min, max, h) => h - ((val - min) / (max - min) * h);
 
-    // 2. RENDER ENGINES
     const renderRsiRibbon = (canvas, data) => {
         const ctx = canvas.getContext('2d');
         const rect = canvas.parentElement.getBoundingClientRect();
-        if (rect.width === 0) return;
+        if (rect.width === 0 || rect.height === 0) return;
         const dpr = window.devicePixelRatio || 1;
         canvas.width = rect.width * dpr; canvas.height = rect.height * dpr;
         ctx.scale(dpr, dpr);
         canvas.style.width = '100%'; canvas.style.height = '100%';
         const w = rect.width, h = rect.height;
         ctx.clearRect(0, 0, w, h);
-
-        // Fixed Axis Lines
-        ctx.beginPath(); ctx.strokeStyle = 'rgba(0,0,0,0.05)';
-        [70, 50, 30].forEach(v => { let y = mapY(v, 0, 100, h); ctx.moveTo(0, y); ctx.lineTo(w, y); });
-        ctx.stroke();
-
         if (!data.length) return;
 
-        // MOMENTUM FILL (Section 6)
+        // 1. RIBBON FILL
         for (let i = 1; i < data.length; i++) {
             ctx.beginPath();
             ctx.fillStyle = data[i].dr > data[i].wma ? 'rgba(0,158,112,0.12)' : 'rgba(200,16,46,0.12)';
@@ -1471,20 +1461,21 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').ca
             ctx.fill();
         }
 
-        // DRAW WMA (Green/Yellow/Red based on Regime)
-        ctx.beginPath(); ctx.lineWidth = 2;
-        for(let i=0; i<data.length; i++) {
-            ctx.strokeStyle = data[i].wr >= 50 ? '#009e70' : (data[i].wr >= 40 ? '#c97a00' : '#c8102e');
-            let x = (i / (data.length - 1)) * w;
-            let y = mapY(data[i].wma, 0, 100, h);
-            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-        } ctx.stroke();
+        // 2. SEGMENTED REGIME LINE
+        ctx.lineWidth = 2.5;
+        for (let i = 1; i < data.length; i++) {
+            ctx.beginPath();
+            const wr = data[i].wr;
+            ctx.strokeStyle = wr >= 50 ? '#009e70' : (wr >= 40 ? '#c97a00' : '#c8102e');
+            ctx.moveTo(((i-1)/(data.length-1))*w, mapY(data[i-1].wma, 0, 100, h));
+            ctx.lineTo((i/(data.length-1))*w, mapY(data[i].wma, 0, 100, h));
+            ctx.stroke();
+        }
 
-        // DRAW DAILY RSI (Silver)
-        ctx.beginPath(); ctx.strokeStyle = '#b0bece'; ctx.lineWidth = 1;
+        // 3. DAILY RSI (SILVER)
+        ctx.beginPath(); ctx.strokeStyle = '#b0bece'; ctx.lineWidth = 1.2;
         data.forEach((d, i) => {
-            let x = (i / (data.length - 1)) * w;
-            let y = mapY(d.dr, 0, 100, h);
+            let x = (i / (data.length - 1)) * w; let y = mapY(d.dr, 0, 100, h);
             if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
         }); ctx.stroke();
     };
@@ -1497,95 +1488,87 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').ca
         canvas.width = rect.width * dpr; canvas.height = rect.height * dpr;
         ctx.scale(dpr, dpr);
         canvas.style.width = '100%'; canvas.style.height = '100%';
-        const w = rect.width, h = rect.height;
+        const w = rect.width, h = rect.height, minV = -80, maxV = 100;
         ctx.clearRect(0, 0, w, h);
-
-        const minV = -80, maxV = 100;
         let zeroY = mapY(0, minV, maxV, h);
         let barW = Math.max(1, (w / data.length) - 1);
-
         data.forEach((d, i) => {
-            if (Math.abs(d.gap) < 35) return; // Pine Script "showExtremesOnly"
+            if (Math.abs(d.gap) < 35) return;
             ctx.fillStyle = d.gap >= 15 ? '#015804' : (d.gap <= -15 ? '#fc0606' : '#7090b0');
-            let x = (i / (data.length - 1)) * w - (barW / 2);
-            let y = mapY(d.gap, minV, maxV, h);
-            ctx.fillRect(x, y, barW, zeroY - y);
+            ctx.fillRect((i/(data.length-1))*w - (barW/2), mapY(d.gap, minV, maxV, h), barW, zeroY - mapY(d.gap, minV, maxV, h));
         });
         ctx.beginPath(); ctx.strokeStyle = 'rgba(0,0,0,0.1)'; ctx.moveTo(0, zeroY); ctx.lineTo(w, zeroY); ctx.stroke();
     };
 
-    // 3. ATTACH TO WINDOW FOR ENGINE SYNC
     const canvases = {
         simRsi: document.createElement('canvas'), simGap: document.createElement('canvas'),
         liveRsi: document.createElement('canvas'), liveGap: document.createElement('canvas')
     };
 
-    window.syncChartsWithEngine = function(fHist, cIdx, dailyCache, weeklyCache) {
+    window.syncNativeChartsWithEngine = function(fHist, cIdx, dailyCache, weeklyCache, modeStr) {
         injectLiveAlertZone();
-        const target = document.getElementById('gameUI').style.display === 'flex' ? 'sim' : 'live';
-        const lookback = 120;
+        const target = (document.getElementById('gameUI').style.display === 'flex' || modeStr === 'sim') ? 'sim' : 'live';
+        const lookback = (target === 'live') ? 250 : 120; // Default lookbacks
         const start = Math.max(0, cIdx - lookback);
         const dataSet = [];
 
         for (let i = start; i <= cIdx; i++) {
             let dr = dailyCache[i] || 50, wr = weeklyCache[i] || 50;
-            // Native WMA20 calculation
             let sum = 0, weight = 0;
-            for (let j = 0; j < 20; j++) {
-                if (i - j >= 0) { sum += (dailyCache[i - j] || 50) * (20 - j); weight += (20 - j); }
-            }
+            for (let j = 0; j < 20; j++) { if (i-j >= 0) { sum += (dailyCache[i-j]||50)*(20-j); weight += (20-j); } }
             dataSet.push({ dr, wr, wma: sum/weight, gap: dr - wr });
         }
 
         const isSim = target === 'sim';
-        const containerRsi = isSim ? document.querySelector('.main-sim .chart-rsi-pane .canvas-box-bottom') : document.querySelector('#liveChartModal .chart-rsi-pane .canvas-box-bottom');
-        const containerGap = isSim ? document.querySelector('.main-sim .chart-delta-pane .canvas-box-bottom') : document.querySelector('#liveChartModal .chart-delta-pane .canvas-box-bottom');
+        const rBox = isSim ? document.querySelector('.main-sim .chart-rsi-pane .canvas-box-bottom') : document.querySelector('#liveChartModal .chart-rsi-pane .canvas-box-bottom');
+        const gBox = isSim ? document.querySelector('.main-sim .chart-delta-pane .canvas-box-bottom') : document.querySelector('#liveChartModal .chart-delta-pane .canvas-box-bottom');
 
-        if (containerRsi && containerGap) {
+        if (rBox && gBox) {
             const rCanv = isSim ? canvases.simRsi : canvases.liveRsi;
             const gCanv = isSim ? canvases.simGap : canvases.liveGap;
-            if (!containerRsi.contains(rCanv)) { containerRsi.style.position='relative'; containerRsi.appendChild(rCanv); }
-            if (!containerGap.contains(gCanv)) { containerGap.style.position='relative'; containerGap.appendChild(gCanv); }
+            if (!rBox.contains(rCanv)) { rBox.style.position='relative'; rBox.appendChild(rCanv); }
+            if (!gBox.contains(gCanv)) { gBox.style.position='relative'; gBox.appendChild(gCanv); }
             renderRsiRibbon(rCanv, dataSet);
             renderVelocityGap(gCanv, dataSet);
         }
 
-        // ACTION SIGNAL LOGIC (Pine Section 8)
-        if (!isSim && dataSet.length > 3) {
-            const now = dataSet[dataSet.length-1], pre = dataSet[dataSet.length-2], ppre = dataSet[dataSet.length-3];
-            const proxy = now.dr - now.wma, pProxy = pre.dr - pre.wma, ppProxy = ppre.dr - ppre.wma;
-            
-            const overdrive = now.wr >= 60;
-            const cutoff = overdrive ? 35 : 15;
-            const hookDown = (proxy < pProxy) && (pProxy > ppProxy);
-            const priceKnock = fHist[cIdx].nav < fHist[cIdx-1].nav;
-
-            const hEl = document.getElementById('alertHarvest'), rEl = document.getElementById('alertReload'), cEl = document.getElementById('alertCollapse');
-            
-            if (hEl) {
-                const harvest = hookDown && pProxy >= cutoff && priceKnock;
+        // Action HUD logic for Live
+        if (target === 'live' && dataSet.length > 3) {
+            const now = dataSet[dataSet.length-1], pre = dataSet[dataSet.length-2];
+            const proxy = now.dr-now.wma, pProxy = pre.dr-pre.wma;
+            const hEl = document.getElementById('alertHarvest'), rEl = document.getElementById('alertReload');
+            if(hEl) { 
+                const harvest = (proxy < pProxy) && pProxy >= (now.wr>=60?35:15) && (fHist[cIdx].nav < fHist[cIdx-1].nav);
                 hEl.style.color = harvest ? 'var(--accent2)' : 'var(--muted2)';
                 hEl.innerHTML = `HARVEST: ${harvest ? '🟢 FIRE' : '🌑'}`;
             }
-            if (rEl) {
+            if(rEl) {
                 const reload = (proxy > 0 && pProxy <= 0) && (now.gap > -10);
                 rEl.style.color = reload ? 'var(--accent)' : 'var(--muted2)';
                 rEl.innerHTML = `RELOAD: ${reload ? '🟢 FIRE' : '🌑'}`;
             }
-            if (cEl) {
-                const collapse = now.wr < 40 && (now.gap < -15 && pre.gap >= -15);
-                cEl.style.color = collapse ? 'var(--red)' : 'var(--muted2)';
-                cEl.innerHTML = `COLLAPSE: ${collapse ? '🔴 FIRE' : '🌑'}`;
-            }
         }
     };
 
-    window.addEventListener('resize', () => {
-        if(typeof currentIdx !== 'undefined' && fullHistory.length > 0) {
-            const isSim = document.getElementById('gameUI').style.display === 'flex';
-            window.syncChartsWithEngine(fullHistory, currentIdx, isSim ? simDailyRsiCache : globalDailyRsiCache, isSim ? simWeeklyRsiCache : globalWeeklyRsiCache);
-        }
+    const triggerUpdate = () => {
+        setTimeout(() => {
+            if (document.getElementById('gameUI').style.display === 'flex') {
+                window.syncNativeChartsWithEngine(window.fullHistory, window.currentIdx, window.simDailyRsiCache, window.simWeeklyRsiCache, 'sim');
+            } else if (document.getElementById('liveChartModal').style.display === 'flex') {
+                window.syncNativeChartsWithEngine(window.globalLiveData, window.globalLiveData.length - 1, window.globalDailyRsiCache, window.globalWeeklyRsiCache, 'live');
+            }
+        }, 50);
+    };
+
+    window.addEventListener('DOMContentLoaded', () => {
+        const obs = new MutationObserver(triggerUpdate);
+        ['simDay', 'liveNavDate', 'simNav', 'liveChartTfRow'].forEach(id => {
+            const el = document.getElementById(id); if (el) obs.observe(el, { childList: true, characterData: true, subtree: true });
+        });
+        document.body.addEventListener('click', triggerUpdate);
     });
+
+    window.addEventListener('resize', triggerUpdate);
 })();
 </script>
 
