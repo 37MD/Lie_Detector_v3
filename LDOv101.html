@@ -1417,20 +1417,8 @@ function endAndReview() {
 if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(() => {}); }
 </script>
 
-<script>
-// 1. ANTI-CRASH PROTECTION FOR CORE CODE
-// The core code expects 'rsiChart' and 'deltaChart' to exist for Chart.js. 
-// We provide invisible dummy canvases so the core code doesn't throw null errors.
-['rsiChart', 'deltaChart', 'liveRsiCanvas2', 'liveDeltaCanvas2'].forEach(id => {
-    if(!document.getElementById(id)) {
-        let dummy = document.createElement('canvas');
-        dummy.id = id;
-        dummy.style.display = 'none';
-        document.body.appendChild(dummy);
-    }
-});
 
-// 2. ALERT ZONE INJECTION
+<script>
 (function injectLiveAlertZone() {
     const liveSplit = document.querySelector('#liveChartModal .chart-split');
     if (liveSplit && !document.getElementById('liveAlertZone')) {
@@ -1460,12 +1448,12 @@ function drawRefLine(ctx, val, color, width, h, min, max, isDashed) {
 function renderRsiCanvas(canvas, data) {
     const ctx = canvas.getContext('2d');
     const rect = canvas.parentElement.getBoundingClientRect();
-    if(rect.width === 0 || rect.height === 0) return; 
+    if(rect.width === 0) return; 
     
     const dpr = window.devicePixelRatio || 1;
     canvas.width = rect.width * dpr; canvas.height = rect.height * dpr;
     ctx.scale(dpr, dpr);
-    canvas.style.width = '100%'; canvas.style.height = '100%';
+    canvas.style.width = rect.width + 'px'; canvas.style.height = rect.height + 'px';
     canvas.style.position = 'absolute'; canvas.style.top = '0'; canvas.style.left = '0'; canvas.style.zIndex = '5';
     
     const w = rect.width, h = rect.height, minV = 0, maxV = 100;
@@ -1498,12 +1486,12 @@ function renderRsiCanvas(canvas, data) {
 function renderDeltaCanvas(canvas, data) {
     const ctx = canvas.getContext('2d');
     const rect = canvas.parentElement.getBoundingClientRect();
-    if(rect.width === 0 || rect.height === 0) return; 
+    if(rect.width === 0) return; 
 
     const dpr = window.devicePixelRatio || 1;
     canvas.width = rect.width * dpr; canvas.height = rect.height * dpr;
     ctx.scale(dpr, dpr);
-    canvas.style.width = '100%'; canvas.style.height = '100%';
+    canvas.style.width = rect.width + 'px'; canvas.style.height = rect.height + 'px';
     canvas.style.position = 'absolute'; canvas.style.top = '0'; canvas.style.left = '0'; canvas.style.zIndex = '5';
     
     const w = rect.width, h = rect.height, minV = -80, maxV = 100;
@@ -1542,16 +1530,24 @@ const myCanvases = {
     liveRsi: document.createElement('canvas'), liveDelta: document.createElement('canvas')
 };
 
-function injectCanvases() {
-    const sRBox = document.getElementById('simRsiBox') || document.querySelector('.main-sim .chart-rsi-pane .canvas-box-bottom');
-    const sDBox = document.getElementById('simDeltaBox') || document.querySelector('.main-sim .chart-delta-pane .canvas-box-bottom');
-    const lRBox = document.getElementById('liveRsiBox') || document.querySelector('#liveChartModal .chart-rsi-pane .canvas-box-bottom');
-    const lDBox = document.getElementById('liveDeltaBox') || document.querySelector('#liveChartModal .chart-delta-pane .canvas-box-bottom');
+function hideChartJs() {
+    ['rsiChart', 'deltaChart', 'liveRsiCanvas2', 'liveDeltaCanvas2'].forEach(id => {
+        const el = document.getElementById(id);
+        if(el) el.style.opacity = '0'; // Silently hide Chart.js elements
+    });
+}
 
-    if(sRBox && !sRBox.contains(myCanvases.simRsi)) { sRBox.style.position = 'relative'; sRBox.appendChild(myCanvases.simRsi); }
-    if(sDBox && !sDBox.contains(myCanvases.simDelta)) { sDBox.style.position = 'relative'; sDBox.appendChild(myCanvases.simDelta); }
-    if(lRBox && !lRBox.contains(myCanvases.liveRsi)) { lRBox.style.position = 'relative'; lRBox.appendChild(myCanvases.liveRsi); }
-    if(lDBox && !lDBox.contains(myCanvases.liveDelta)) { lDBox.style.position = 'relative'; lDBox.appendChild(myCanvases.liveDelta); }
+function injectCanvases() {
+    hideChartJs();
+    const sRBox = document.querySelector('.main-sim .chart-rsi-pane .canvas-box-bottom');
+    const sDBox = document.querySelector('.main-sim .chart-delta-pane .canvas-box-bottom');
+    const lRBox = document.querySelector('#liveChartModal .chart-rsi-pane .canvas-box-bottom');
+    const lDBox = document.querySelector('#liveChartModal .chart-delta-pane .canvas-box-bottom');
+
+    if(sRBox && !sRBox.contains(myCanvases.simRsi)) sRBox.appendChild(myCanvases.simRsi);
+    if(sDBox && !sDBox.contains(myCanvases.simDelta)) sDBox.appendChild(myCanvases.simDelta);
+    if(lRBox && !lRBox.contains(myCanvases.liveRsi)) lRBox.appendChild(myCanvases.liveRsi);
+    if(lDBox && !lDBox.contains(myCanvases.liveDelta)) lDBox.appendChild(myCanvases.liveDelta);
 }
 
 function updateOscillatorCharts(target, dataArray) {
@@ -1679,7 +1675,6 @@ window.addEventListener('resize', () => {
     }
 });
 </script>
-
 
 </body>
 </html>
