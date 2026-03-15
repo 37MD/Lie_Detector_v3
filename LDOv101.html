@@ -1417,264 +1417,180 @@ function endAndReview() {
 if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(() => {}); }
 </script>
 
-
 <script>
-(function injectLiveAlertZone() {
-    const liveSplit = document.querySelector('#liveChartModal .chart-split');
-    if (liveSplit && !document.getElementById('liveAlertZone')) {
-        const alertHTML = `
-            <div id="liveAlertZone" style="height: 42px; border-top: 1px dashed var(--border); margin-top: 4px; display: flex; flex-direction: column; justify-content: center; align-items: center; background: var(--surface2); border-radius: 2px; flex-shrink: 0;">
-                <div style="font-size: 0.55rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 3px;">System Action Triggers</div>
-                <div style="display: flex; gap: 16px; font-size: 0.65rem; font-weight: 700; font-family: var(--mono);">
-                    <span id="alertHarvest" style="color: var(--muted2); transition: color 0.2s;">HARVEST: 🌑</span>
-                    <span id="alertReload" style="color: var(--muted2); transition: color 0.2s;">RELOAD: 🌑</span>
-                    <span id="alertCollapse" style="color: var(--muted2); transition: color 0.2s;">COLLAPSE: 🌑</span>
+(function() {
+    // 1. INJECT SIGNAL HUD (Matches Pine Script Section 8)
+    const injectLiveAlertZone = () => {
+        const liveSplit = document.querySelector('#liveChartModal .chart-split');
+        if (liveSplit && !document.getElementById('liveAlertZone')) {
+            const alertHTML = `
+                <div id="liveAlertZone" style="height: 42px; border-top: 1px dashed var(--border); margin-top: 4px; display: flex; flex-direction: column; justify-content: center; align-items: center; background: var(--surface2); border-radius: 2px; flex-shrink: 0;">
+                    <div style="font-size: 0.55rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 3px;">System Action Triggers</div>
+                    <div style="display: flex; gap: 16px; font-size: 0.65rem; font-weight: 700; font-family: var(--mono);">
+                        <span id="alertHarvest" style="color: var(--muted2); transition: color 0.2s;">HARVEST: 🌑</span>
+                        <span id="alertReload" style="color: var(--muted2); transition: color 0.2s;">RELOAD: 🌑</span>
+                        <span id="alertCollapse" style="color: var(--muted2); transition: color 0.2s;">COLLAPSE: 🌑</span>
+                    </div>
                 </div>
-            </div>
-        `;
-        liveSplit.insertAdjacentHTML('beforeend', alertHTML);
-    }
-})();
-
-function mapY(val, min, max, height) { return height - ((val - min) / (max - min) * height); }
-
-function drawRefLine(ctx, val, color, width, h, min, max, isDashed) {
-    let y = mapY(val, min, max, h);
-    ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 1;
-    if(isDashed) ctx.setLineDash([4, 4]); else ctx.setLineDash([]);
-    ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke(); ctx.setLineDash([]); 
-}
-
-function renderRsiCanvas(canvas, data) {
-    const ctx = canvas.getContext('2d');
-    const rect = canvas.parentElement.getBoundingClientRect();
-    if(rect.width === 0) return; 
-    
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = rect.width * dpr; canvas.height = rect.height * dpr;
-    ctx.scale(dpr, dpr);
-    canvas.style.width = rect.width + 'px'; canvas.style.height = rect.height + 'px';
-    canvas.style.position = 'absolute'; canvas.style.top = '0'; canvas.style.left = '0'; canvas.style.zIndex = '5';
-    
-    const w = rect.width, h = rect.height, minV = 0, maxV = 100;
-    ctx.clearRect(0, 0, w, h);
-
-    ctx.beginPath(); ctx.strokeStyle = 'rgba(0,0,0,0.05)'; ctx.lineWidth = 1;
-    for(let i=10; i<=90; i+=20) { let gy = mapY(i, minV, maxV, h); ctx.moveTo(0, gy); ctx.lineTo(w, gy); }
-    ctx.stroke();
-
-    drawRefLine(ctx, 35, 'rgba(0, 158, 112, 0.4)', w, h, minV, maxV, true);
-    drawRefLine(ctx, 15, 'rgba(0, 232, 162, 0.4)', w, h, minV, maxV, true);
-    
-    if(!data || data.length === 0) return;
-
-    ctx.beginPath(); ctx.strokeStyle = '#009e70'; ctx.lineWidth = 2;
-    for(let i=0; i<data.length; i++) {
-        let x = (i / Math.max(1, data.length - 1)) * w;
-        let y = mapY(data[i].rsiWMA, minV, maxV, h);
-        if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
-    } ctx.stroke();
-
-    ctx.beginPath(); ctx.strokeStyle = '#b0bece'; ctx.lineWidth = 1.5;
-    for(let i=0; i<data.length; i++) {
-        let x = (i / Math.max(1, data.length - 1)) * w;
-        let y = mapY(data[i].dailyRSI, minV, maxV, h);
-        if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
-    } ctx.stroke();
-}
-
-function renderDeltaCanvas(canvas, data) {
-    const ctx = canvas.getContext('2d');
-    const rect = canvas.parentElement.getBoundingClientRect();
-    if(rect.width === 0) return; 
-
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = rect.width * dpr; canvas.height = rect.height * dpr;
-    ctx.scale(dpr, dpr);
-    canvas.style.width = rect.width + 'px'; canvas.style.height = rect.height + 'px';
-    canvas.style.position = 'absolute'; canvas.style.top = '0'; canvas.style.left = '0'; canvas.style.zIndex = '5';
-    
-    const w = rect.width, h = rect.height, minV = -80, maxV = 100;
-    ctx.clearRect(0, 0, w, h);
-
-    drawRefLine(ctx, 0, 'rgba(0, 0, 0, 0.15)', w, h, minV, maxV, false);
-    drawRefLine(ctx, 35, 'rgba(0, 158, 112, 0.4)', w, h, minV, maxV, true);
-    drawRefLine(ctx, -35, 'rgba(0, 158, 112, 0.4)', w, h, minV, maxV, true);
-    drawRefLine(ctx, 15, 'rgba(0, 232, 162, 0.4)', w, h, minV, maxV, true);
-    drawRefLine(ctx, -15, 'rgba(0, 232, 162, 0.4)', w, h, minV, maxV, true);
-
-    if(!data || data.length === 0) return;
-
-    let zeroY = mapY(0, minV, maxV, h);
-    let barW = Math.max(1, (w / data.length) - 1);
-
-    for(let i=0; i<data.length; i++) {
-        let gap = data[i].velocityGap;
-        if (Math.abs(gap) < 35) continue; // SHOW EXTREMES ONLY
-
-        let color = '#fc0606'; 
-        if (gap >= 15) color = '#015804'; 
-        else if (gap > 0) color = 'rgba(0, 158, 112, 0.5)'; 
-        else if (gap > -15) color = 'rgba(200, 16, 46, 0.5)'; 
-
-        let x = (i / Math.max(1, data.length - 1)) * w - (barW/2);
-        let y = mapY(gap, minV, maxV, h);
-        
-        ctx.fillStyle = color;
-        ctx.fillRect(x, y, barW, zeroY - y);
-    }
-}
-
-const myCanvases = {
-    simRsi: document.createElement('canvas'), simDelta: document.createElement('canvas'),
-    liveRsi: document.createElement('canvas'), liveDelta: document.createElement('canvas')
-};
-
-function injectCanvases() {
-    const sRBox = document.querySelector('.main-sim .chart-rsi-pane .canvas-box-bottom');
-    const sDBox = document.querySelector('.main-sim .chart-delta-pane .canvas-box-bottom');
-    const lRBox = document.querySelector('#liveChartModal .chart-rsi-pane .canvas-box-bottom');
-    const lDBox = document.querySelector('#liveChartModal .chart-delta-pane .canvas-box-bottom');
-
-    if(sRBox && !sRBox.contains(myCanvases.simRsi)) sRBox.appendChild(myCanvases.simRsi);
-    if(sDBox && !sDBox.contains(myCanvases.simDelta)) sDBox.appendChild(myCanvases.simDelta);
-    if(lRBox && !lRBox.contains(myCanvases.liveRsi)) lRBox.appendChild(myCanvases.liveRsi);
-    if(lDBox && !lDBox.contains(myCanvases.liveDelta)) lDBox.appendChild(myCanvases.liveDelta);
-}
-
-function updateOscillatorCharts(target, dataArray) {
-    injectCanvases(); 
-    let latestState = dataArray.length > 0 ? dataArray[dataArray.length - 1] : null;
-
-    if (target === 'sim') {
-        renderRsiCanvas(myCanvases.simRsi, dataArray);
-        renderDeltaCanvas(myCanvases.simDelta, dataArray);
-    } else if (target === 'live') {
-        renderRsiCanvas(myCanvases.liveRsi, dataArray);
-        renderDeltaCanvas(myCanvases.liveDelta, dataArray);
-        
-        if (latestState) {
-            const hEl = document.getElementById('alertHarvest'), rEl = document.getElementById('alertReload'), cEl = document.getElementById('alertCollapse');
-            if(hEl && rEl && cEl) {
-                if (latestState.sig_smartHarvest) { hEl.style.color = 'var(--accent2)'; hEl.innerHTML = 'HARVEST: 🟢 FIRE'; } 
-                else { hEl.style.color = 'var(--muted2)'; hEl.innerHTML = 'HARVEST: 🌑 STANDBY'; }
-                if (latestState.sig_reload) { rEl.style.color = 'var(--accent)'; rEl.innerHTML = 'RELOAD: 🟢 FIRE'; } 
-                else { rEl.style.color = 'var(--muted2)'; rEl.innerHTML = 'RELOAD: 🌑 STANDBY'; }
-                if (latestState.sig_bearCollapse) { cEl.style.color = 'var(--red)'; cEl.innerHTML = 'COLLAPSE: 🔴 FIRE'; } 
-                else { cEl.style.color = 'var(--muted2)'; cEl.innerHTML = 'COLLAPSE: 🌑 STANDBY'; }
-            }
+            `;
+            liveSplit.insertAdjacentHTML('beforeend', alertHTML);
         }
-    }
-}
-
-window.syncNativeChartsWithEngine = function(fHist, cIdx, dailyCache, weeklyCache, modeStr) {
-    if (!fHist || !dailyCache || !weeklyCache || cIdx <= 0) return;
-    
-    let dataArray = [];
-    let lookback = 250; 
-    if (modeStr === 'live' || modeStr === 'cockpit') {
-        const activeLiveBtn = document.querySelector('#liveChartTfRow .tf-btn.active');
-        if (activeLiveBtn) {
-            const map = {'3D':3, '1W':5, '2W':10, '1M':21, '3M':63, '6M':125, '1Y':250};
-            lookback = map[activeLiveBtn.textContent.trim()] || 250;
-        }
-    } else if (modeStr === 'sim') {
-        const activeSimBtn = document.querySelector('#simTfRow .tf-btn.active');
-        if (activeSimBtn) {
-             const txt = activeSimBtn.textContent.trim();
-             if (txt === 'ALL') lookback = fHist.length;
-             else {
-                 const map = {'1W':5, '2W':10, '1M':21, '3M':63, '1Y':250};
-                 lookback = map[txt] || 250;
-             }
-        }
-    }
-
-    let startI = Math.max(0, cIdx - lookback + 1);
-
-    for (let i = startI; i <= cIdx; i++) {
-        let dr = dailyCache[i] || 50;
-        let wr = weeklyCache[i] || 50;
-        let gap = dr - wr;
-        
-        let wmaSum = 0, weightSum = 0, period = 20;
-        for(let j=0; j<period; j++) {
-            if (i - j >= 0) { wmaSum += (dailyCache[i-j] || 50) * (period - j); weightSum += (period - j); }
-        }
-        let wma = weightSum > 0 ? (wmaSum / weightSum) : 50;
-        let proxyMom = dr - wma;
-        
-        let isRegimeC = wr < 40;
-        let isOverdrive = wr >= 60;
-        
-        let prevProxy = 0, prevPrevProxy = 0, prevGap = 0, priceKnockout = false;
-        if(i > 1) {
-            let pDr = dailyCache[i-1] || 50;
-            let ppDr = dailyCache[i-2] || 50;
-            let pWmaSum = 0, pWeightSum = 0;
-            for(let j=0; j<period; j++) { if(i-1-j >= 0) { pWmaSum += (dailyCache[i-1-j]||50)*(period-j); pWeightSum += (period-j); } }
-            let pWma = pWeightSum > 0 ? (pWmaSum / pWeightSum) : 50;
-            prevProxy = pDr - pWma;
-
-            let ppWmaSum = 0, ppWeightSum = 0;
-            for(let j=0; j<period; j++) { if(i-2-j >= 0) { ppWmaSum += (dailyCache[i-2-j]||50)*(period-j); ppWeightSum += (period-j); } }
-            let ppWma = ppWeightSum > 0 ? (ppWmaSum / ppWeightSum) : 50;
-            prevPrevProxy = ppDr - ppWma;
-
-            prevGap = pDr - (weeklyCache[i-1] || 50);
-            let currNav = fHist[i] ? fHist[i].nav : 0;
-            let prevNav = fHist[i-1] ? fHist[i-1].nav : 0;
-            priceKnockout = currNav < prevNav;
-        }
-
-        let smartCutoff = isOverdrive ? 35 : 15;
-        let hookDown = (proxyMom < prevProxy) && (prevProxy > prevPrevProxy);
-
-        dataArray.push({
-            dailyRSI: dr, rsiWMA: wma, velocityGap: gap,
-            sig_smartHarvest: hookDown && (prevProxy >= smartCutoff) && priceKnockout,
-            sig_reload: (proxyMom > 0) && (prevProxy <= 0) && (gap > -10),
-            sig_bearCollapse: isRegimeC && (gap < -15) && (prevGap >= -15)
-        });
-    }
-
-    if (document.getElementById('gameUI').style.display === 'flex' || modeStr === 'sim') updateOscillatorCharts('sim', dataArray);
-    if (document.getElementById('liveChartModal').style.display === 'flex' || modeStr === 'live' || modeStr === 'cockpit') updateOscillatorCharts('live', dataArray);
-};
-
-window.addEventListener('DOMContentLoaded', () => {
-    const triggerSyncIfDataReady = () => {
-        setTimeout(() => {
-            if (typeof window.fullHistory !== 'undefined' && typeof window.currentIdx !== 'undefined' && 
-                typeof window.simDailyRsiCache !== 'undefined' && typeof window.simWeeklyRsiCache !== 'undefined') {
-                window.syncNativeChartsWithEngine(window.fullHistory, window.currentIdx, window.simDailyRsiCache, window.simWeeklyRsiCache, 'sim');
-            }
-            if (typeof window.globalLiveData !== 'undefined' && window.globalLiveData.length > 0 &&
-                typeof window.globalDailyRsiCache !== 'undefined' && typeof window.globalWeeklyRsiCache !== 'undefined') {
-                window.syncNativeChartsWithEngine(window.globalLiveData, window.globalLiveData.length - 1, window.globalDailyRsiCache, window.globalWeeklyRsiCache, 'live');
-            }
-        }, 100); 
     };
 
-    const obsOpts = { childList: true, characterData: true, subtree: true };
-    ['simDay', 'liveNavDate', 'simNav', 'liveChartTfRow', 'simTfRow'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) new MutationObserver(triggerSyncIfDataReady).observe(el, obsOpts);
-    });
-    
-    document.body.addEventListener('click', (e) => {
-        if(e.target.tagName === 'BUTTON' || e.target.closest('.fund-box') || e.target.classList.contains('tf-btn')) triggerSyncIfDataReady();
-    });
-});
+    // 2. CANVAS CORE UTILS
+    const mapY = (val, min, max, h) => h - ((val - min) / (max - min) * h);
 
-window.addEventListener('resize', () => {
-    if (typeof window.currentIdx !== 'undefined' && window.currentIdx > 0 && document.getElementById('gameUI').style.display === 'flex') {
-        window.syncNativeChartsWithEngine(window.fullHistory, window.currentIdx, window.simDailyRsiCache, window.simWeeklyRsiCache, 'sim');
-    }
-    if (typeof window.globalLiveData !== 'undefined' && window.globalLiveData.length > 0 && document.getElementById('liveChartModal').style.display === 'flex') {
-        window.syncNativeChartsWithEngine(window.globalLiveData, window.globalLiveData.length - 1, window.globalDailyRsiCache, window.globalWeeklyRsiCache, 'live');
-    }
-});
+    const drawLine = (ctx, data, min, max, w, h, color, width, dash = []) => {
+        ctx.beginPath();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = width;
+        ctx.setLineDash(dash);
+        data.forEach((val, i) => {
+            let x = (i / (data.length - 1)) * w;
+            let y = mapY(val, min, max, h);
+            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+        ctx.setLineDash([]);
+    };
+
+    // 3. RENDER ENGINES
+    const renderRsiRibbon = (canvas, data) => {
+        const ctx = canvas.getContext('2d');
+        const rect = canvas.parentElement.getBoundingClientRect();
+        if (rect.width === 0) return;
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = rect.width * dpr; canvas.height = rect.height * dpr;
+        ctx.scale(dpr, dpr);
+        canvas.style.width = '100%'; canvas.style.height = '100%';
+        const w = rect.width, h = rect.height;
+        ctx.clearRect(0, 0, w, h);
+
+        // Reference Lines (35/15)
+        [35, 15].forEach(v => {
+            let y = mapY(v, 0, 100, h);
+            ctx.beginPath(); ctx.strokeStyle = 'rgba(0,158,112,0.2)'; ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+        });
+
+        if (!data.length) return;
+        const drsi = data.map(d => d.dr);
+        const wma = data.map(d => d.wma);
+
+        // Fill Ribbon (Matches Pine Section 6)
+        for (let i = 1; i < data.length; i++) {
+            ctx.beginPath();
+            ctx.fillStyle = drsi[i] > wma[i] ? 'rgba(0,158,112,0.1)' : 'rgba(200,16,46,0.1)';
+            let x1 = ((i - 1) / (data.length - 1)) * w, x2 = (i / (data.length - 1)) * w;
+            let y1_a = mapY(drsi[i-1], 0, 100, h), y2_a = mapY(drsi[i], 0, 100, h);
+            let y1_b = mapY(wma[i-1], 0, 100, h), y2_b = mapY(wma[i], 0, 100, h);
+            ctx.moveTo(x1, y1_a); ctx.lineTo(x2, y2_a); ctx.lineTo(x2, y2_b); ctx.lineTo(x1, y1_b); ctx.fill();
+        }
+
+        drawLine(ctx, wma, 0, 100, w, h, '#009e70', 2); // WMA Ribbon Base
+        drawLine(ctx, drsi, 0, 100, w, h, '#b0bece', 1); // Daily RSI
+    };
+
+    const renderVelocityHistogram = (canvas, data) => {
+        const ctx = canvas.getContext('2d');
+        const rect = canvas.parentElement.getBoundingClientRect();
+        if (rect.width === 0) return;
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = rect.width * dpr; canvas.height = rect.height * dpr;
+        ctx.scale(dpr, dpr);
+        canvas.style.width = '100%'; canvas.style.height = '100%';
+        const w = rect.width, h = rect.height;
+        ctx.clearRect(0, 0, w, h);
+
+        const minV = -80, maxV = 100;
+        let zeroY = mapY(0, minV, maxV, h);
+        let barW = Math.max(1, (w / data.length) - 1);
+
+        data.forEach((d, i) => {
+            if (Math.abs(d.gap) < 35) return; // Pine Script "Show Extremes Only" logic
+            ctx.fillStyle = d.gap >= 15 ? '#015804' : (d.gap <= -15 ? '#fc0606' : '#7090b0');
+            let x = (i / (data.length - 1)) * w - (barW / 2);
+            let y = mapY(d.gap, minV, maxV, h);
+            ctx.fillRect(x, y, barW, zeroY - y);
+        });
+        // Zero line
+        ctx.beginPath(); ctx.strokeStyle = 'rgba(0,0,0,0.1)'; ctx.moveTo(0, zeroY); ctx.lineTo(w, zeroY); ctx.stroke();
+    };
+
+    // 4. DATA PROCESSING BRIDGE
+    const canvases = {
+        simRsi: document.createElement('canvas'), simGap: document.createElement('canvas'),
+        liveRsi: document.createElement('canvas'), liveGap: document.createElement('canvas')
+    };
+
+    window.syncNativeChartsWithEngine = function(fullHistory, currentIdx, dailyCache, weeklyCache, target) {
+        injectLiveAlertZone();
+        const lookback = 120;
+        const start = Math.max(0, currentIdx - lookback);
+        const dataSet = [];
+
+        for (let i = start; i <= currentIdx; i++) {
+            let dr = dailyCache[i] || 50, wr = weeklyCache[i] || 50;
+            // Native WMA20 calculation for the ribbon
+            let sum = 0, weight = 0;
+            for (let j = 0; j < 20; j++) {
+                if (i - j >= 0) { sum += (dailyCache[i - j] || 50) * (20 - j); weight += (20 - j); }
+            }
+            let wma = sum / weight;
+            dataSet.push({ dr, wma, gap: dr - wr });
+        }
+
+        const isSim = target === 'sim';
+        const containerRsi = isSim ? document.querySelector('.main-sim .chart-rsi-pane .canvas-box-bottom') : document.querySelector('#liveChartModal .chart-rsi-pane .canvas-box-bottom');
+        const containerGap = isSim ? document.querySelector('.main-sim .chart-delta-pane .canvas-box-bottom') : document.querySelector('#liveChartModal .chart-delta-pane .canvas-box-bottom');
+
+        if (containerRsi && containerGap) {
+            const rsiCanv = isSim ? canvases.simRsi : canvases.liveRsi;
+            const gapCanv = isSim ? canvases.simGap : canvases.liveGap;
+            if (!containerRsi.contains(rsiCanv)) { containerRsi.style.position = 'relative'; containerRsi.appendChild(rsiCanv); }
+            if (!containerGap.contains(gapCanv)) { containerGap.style.position = 'relative'; containerGap.appendChild(gapCanv); }
+            renderRsiRibbon(rsiCanv, dataSet);
+            renderVelocityHistogram(gapCanv, dataSet);
+        }
+
+        // Signal UI Update (Pine Section 8 logic)
+        if (target !== 'sim' && dataSet.length > 2) {
+            const now = dataSet[dataSet.length - 1], pre = dataSet[dataSet.length - 2], ppre = dataSet[dataSet.length - 3];
+            const proxy = now.dr - now.wma, pProxy = pre.dr - pre.wma, ppProxy = ppre.dr - ppre.wma;
+            const hookDown = (proxy < pProxy) && (pProxy > ppProxy);
+            const smartCutoff = (weeklyCache[currentIdx] >= 60) ? 35 : 15;
+            const priceKnock = fullHistory[currentIdx].nav < fullHistory[currentIdx - 1].nav;
+
+            const hEl = document.getElementById('alertHarvest'), rEl = document.getElementById('alertReload'), cEl = document.getElementById('alertCollapse');
+            if (hEl) {
+                const harvest = hookDown && pProxy >= smartCutoff && priceKnock;
+                hEl.style.color = harvest ? 'var(--accent2)' : 'var(--muted2)';
+                hEl.innerHTML = `HARVEST: ${harvest ? '🟢 FIRE' : '🌑'}`;
+            }
+            if (rEl) {
+                const reload = (proxy > 0 && pProxy <= 0) && (now.gap > -10);
+                rEl.style.color = reload ? 'var(--accent)' : 'var(--muted2)';
+                rEl.innerHTML = `RELOAD: ${reload ? '🟢 FIRE' : '🌑'}`;
+            }
+        }
+    };
+
+    // 5. AUTO-HOOK VIA OBSERVER
+    const observer = new MutationObserver(() => {
+        if (typeof currentIdx !== 'undefined' && fullHistory.length > 0) {
+            const target = document.getElementById('gameUI').style.display === 'flex' ? 'sim' : 'live';
+            const daily = target === 'sim' ? simDailyRsiCache : globalDailyRsiCache;
+            const weekly = target === 'sim' ? simWeeklyRsiCache : globalWeeklyRsiCache;
+            window.syncNativeChartsWithEngine(fullHistory, currentIdx, daily, weekly, target);
+        }
+    });
+
+    window.addEventListener('DOMContentLoaded', () => {
+        ['simDay', 'liveNavDate', 'simNav'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) observer.observe(el, { childList: true, characterData: true, subtree: true });
+        });
+    });
+})();
 </script>
 
 
