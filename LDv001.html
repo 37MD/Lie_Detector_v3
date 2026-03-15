@@ -754,6 +754,9 @@ function initGame(mode) {
   document.getElementById('gameUI').style.display = 'flex';
   
   console.log("Simulator Initialized (UI Only) - Ready for Calculation Engine Wiring");
+  
+  // RUN THE DUMMY DATA CHART TEST
+  setTimeout(runDummyDataTest, 200);
 }
 
 function initLiveChart() {
@@ -1157,6 +1160,31 @@ function updateOscillatorCharts(target, dataArray) {
             else { cEl.style.color = 'var(--muted2)'; cEl.innerHTML = 'COLLAPSE: 🌑 STANDBY'; }
         }
     }
+}
+
+// 5. DUMMY DATA TEST (Provides Proof of Life to charts on Simulator Click)
+function runDummyDataTest() {
+    let testData = [];
+    let d = new Date();
+    
+    // Generate 100 days of fake oscillating data
+    for(let i=0; i<100; i++) {
+        d.setDate(d.getDate() + 1);
+        let timeStr = d.toISOString().split('T')[0];
+        
+        testData.push({
+            time: timeStr,
+            dailyRSI: 50 + Math.sin(i/4) * 35,       
+            rsiWMA: 50 + Math.sin(i/8) * 20,         
+            velocityGap: Math.sin(i/5) * 45,         
+            sig_smartHarvest: i === 20 || i === 80,  
+            sig_reload: i === 40,
+            sig_bearCollapse: i === 60
+        });
+    }
+
+    // Fire the data into the Simulator Addon
+    updateOscillatorCharts('sim', testData);
 }
 
 window.addEventListener('DOMContentLoaded', () => {
