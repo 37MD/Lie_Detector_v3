@@ -746,23 +746,6 @@ function getBriefFundName() {
   return name.replace(/\[NPS\] | - Growth| - Direct/gi, '').trim();
 }
 
-// ─────────────────────────────────────────────
-//  --- PASTE PHASE 1 CALCULATION ENGINE HERE ---
-//  (Functions: calculateTSL, calculateConsolidation, calculateChoCh, 
-//   calculateMomentumState, calculateRegime, calculatePortfolioMetrics, 
-//   buildEngineSnapshot, calculateRSI, calculateWMA, calculateSMA, 
-//   calcTideHTML, calcVectorClass, buildDailyRsiCache, buildWeeklyRsiCache)
-// ─────────────────────────────────────────────
-
-// ─────────────────────────────────────────────
-//  --- PASTE PHASE 1 TRADE & AUDIT ENGINE HERE ---
-//  (Functions: executeTradeEngine, calculateAuditScore)
-// ─────────────────────────────────────────────
-
-// ─────────────────────────────────────────────
-//  UI ROUTING (No Charts)
-// ─────────────────────────────────────────────
-
 function initGame(mode) {
   saveFundSelection();
   document.getElementById('simFundName').textContent = getBriefFundName();
@@ -770,7 +753,6 @@ function initGame(mode) {
   document.getElementById('setupScreen').style.display = 'none';
   document.getElementById('gameUI').style.display = 'flex';
   
-  // App is ready for engine wiring in Phase 3
   console.log("Simulator Initialized (UI Only) - Ready for Calculation Engine Wiring");
 }
 
@@ -780,7 +762,6 @@ function initLiveChart() {
   document.getElementById('setupScreen').style.display = 'none';
   document.getElementById('liveChartModal').style.display = 'flex';
   
-  // App is ready for engine wiring in Phase 3
   console.log("Live Cockpit Initialized (UI Only) - Ready for Calculation Engine Wiring");
 }
 
@@ -790,7 +771,6 @@ function initLiveAnalytics() {
   document.getElementById('setupScreen').style.display = 'none';
   document.getElementById('liveAnalyticsModal').style.display = 'flex';
   
-  // App is ready for engine wiring in Phase 3
   console.log("Live Analytics Initialized (UI Only) - Ready for Calculation Engine Wiring");
 }
 
@@ -812,12 +792,8 @@ function endAndReview() {
 }
 
 if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(() => {}); }
-</script>
 
-
-
-
-
+//---------------------------------------------------------
 
 function executeTradeEngine(action, currentState) {
   let { cash, tranches, tradeLog, totalTaxPaid, currentNav, dayNum, currentRegimeLog } = currentState;
@@ -883,10 +859,6 @@ function executeTradeEngine(action, currentState) {
 
   return { cash, tranches, tradeLog, totalTaxPaid, alert: null };
 }
-
-
-
-
 
 function calculateAuditScore(fullHistory, simStartIdx, currentIdx, simDailyRsiCache, simWeeklyRsiCache, tradeLog, tranches, cash, buyDeltaLevel, profitDeltaLevel) {
   let scoreEntry = 0, scoreExit = 0, scoreProfit = 0;
@@ -1046,9 +1018,8 @@ function calculateAuditScore(fullHistory, simStartIdx, currentIdx, simDailyRsiCa
   };
 }
 
-
-
-
+//------------------------------------
+</script>
 
 <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
 
@@ -1192,8 +1163,5 @@ window.addEventListener('DOMContentLoaded', () => {
     setTimeout(initOscillatorCharts, 100);
 });
 </script>
-
-
-
 </body>
 </html>
