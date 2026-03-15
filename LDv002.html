@@ -720,43 +720,30 @@ function selectAMC(amc, el, isInit = false) {
   el.classList.add('active');
   const sel = document.getElementById('fundSelect');
   sel.innerHTML = '';
-  if (amcFunds[amc]) {
-    amcFunds[amc].forEach(f => {
-      const o = document.createElement('option');
-      o.value = f.code; o.textContent = f.name; sel.appendChild(o);
-    });
-  }
+  amcFunds[amc].forEach(f => {
+    const o = document.createElement('option');
+    o.value = f.code; o.textContent = f.name; sel.appendChild(o);
+  });
   if (!isInit) saveFundSelection();
 }
 
-// ─────────────────────────────────────────────
-//  INITIALIZATION
-// ─────────────────────────────────────────────
-(function initApp() {
-  let savedAMC = localStorage.getItem('ld_v3_amc') || 'ICICI';
-  // Fallback protection if localStorage holds invalid AMC data
-  if (!amcFunds[savedAMC]) { savedAMC = 'ICICI'; }
-  
+window.addEventListener('DOMContentLoaded', () => {
+  const savedAMC = localStorage.getItem('ld_v3_amc') || 'ICICI';
+  const savedFund = localStorage.getItem('ld_v3_fund');
   const boxes = Array.from(document.querySelectorAll('.fund-box'));
   let targetBox = boxes.find(b => b.textContent.trim() === savedAMC);
-  if (!targetBox) targetBox = boxes[1]; // default to ICICI box
-  
+  if (!targetBox) targetBox = boxes[1]; 
   selectAMC(savedAMC, targetBox, true);
   
   const sel = document.getElementById('fundSelect');
-  const savedFund = localStorage.getItem('ld_v3_fund');
   if (savedFund) {
     sel.value = savedFund;
     if (sel.selectedIndex === -1) sel.selectedIndex = 0; 
   }
   
-  if (localStorage.getItem('ld_v3_profit_delta') !== null) {
-    document.getElementById('profitDeltaIn').value = localStorage.getItem('ld_v3_profit_delta');
-  }
-  if (localStorage.getItem('ld_v3_buy_delta') !== null) {
-    document.getElementById('buyDeltaIn').value = localStorage.getItem('ld_v3_buy_delta');
-  }
-})();
+  if (localStorage.getItem('ld_v3_profit_delta') !== null) document.getElementById('profitDeltaIn').value = localStorage.getItem('ld_v3_profit_delta');
+  if (localStorage.getItem('ld_v3_buy_delta') !== null) document.getElementById('buyDeltaIn').value = localStorage.getItem('ld_v3_buy_delta');
+});
 
 function getBriefFundName() {
   const sel = document.getElementById('fundSelect');
