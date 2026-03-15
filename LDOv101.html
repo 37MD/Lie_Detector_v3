@@ -813,5 +813,151 @@ function endAndReview() {
 
 if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(() => {}); }
 </script>
+
+<script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+
+<script>
+// 1. INJECT THE 2-LINE ALERT ZONE (LIVE COCKPIT ONLY)
+(function injectLiveAlertZone() {
+    const liveSplit = document.querySelector('#liveChartModal .chart-split');
+    if (liveSplit) {
+        const alertHTML = `
+            <div id="liveAlertZone" style="height: 42px; border-top: 1px dashed var(--border); margin-top: 4px; display: flex; flex-direction: column; justify-content: center; align-items: center; background: var(--surface2); border-radius: 2px; flex-shrink: 0;">
+                <div style="font-size: 0.55rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 3px;">System Action Triggers</div>
+                <div style="display: flex; gap: 16px; font-size: 0.65rem; font-weight: 700; font-family: var(--mono);">
+                    <span id="alertHarvest" style="color: var(--muted2); transition: color 0.2s;">HARVEST: 🌑</span>
+                    <span id="alertReload" style="color: var(--muted2); transition: color 0.2s;">RELOAD: 🌑</span>
+                    <span id="alertCollapse" style="color: var(--muted2); transition: color 0.2s;">COLLAPSE: 🌑</span>
+                </div>
+            </div>
+        `;
+        liveSplit.insertAdjacentHTML('beforeend', alertHTML);
+    }
+})();
+
+// 2. GLOBAL CHART VARIABLES
+const charts = {
+    sim:  { rsi: null, delta: null, sRsi: null, sWma: null, sDelta: null },
+    live: { rsi: null, delta: null, sRsi: null, sWma: null, sDelta: null }
+};
+
+// 3. CHART INITIALIZATION ENGINE
+function initOscillatorCharts() {
+    const chartOptions = {
+        layout: { background: { type: 'solid', color: 'transparent' }, textColor: '#7090b0', fontSize: 10 },
+        grid: { vertLines: { color: 'rgba(0,0,0,0.05)' }, horzLines: { color: 'rgba(0,0,0,0.05)' } },
+        timeScale: { visible: false }, // Hide time scale to keep it clean like an oscillator pane
+        crosshair: { mode: 0 },
+        handleScroll: false,
+        handleScale: false
+    };
+
+    // Ribbon Config (Scale 0 to 100)
+    const rsiScale = { rightPriceScale: { autoScale: false, minValue: 0, maxValue: 100 } };
+    
+    // Delta Config (Scale -80 to +100, per your requirement)
+    const deltaScale = { rightPriceScale: { autoScale: false, minValue: -80, maxValue: 100 } };
+
+    // --- SIMULATOR CHARTS ---
+    const simRsiCont = document.querySelector('.main-sim .chart-rsi-pane .canvas-box-bottom');
+    const simDelCont = document.querySelector('.main-sim .chart-delta-pane .canvas-box-bottom');
+    
+    charts.sim.rsi = LightweightCharts.createChart(simRsiCont, { ...chartOptions, ...rsiScale });
+    charts.sim.sRsi = charts.sim.rsi.addLineSeries({ color: '#b0bece', lineWidth: 1 });
+    charts.sim.sWma = charts.sim.rsi.addLineSeries({ color: '#009e70', lineWidth: 2 });
+    
+    charts.sim.delta = LightweightCharts.createChart(simDelCont, { ...chartOptions, ...deltaScale });
+    charts.sim.sDelta = charts.sim.delta.addHistogramSeries({ base: 0 });
+
+    // --- LIVE COCKPIT CHARTS ---
+    const liveRsiCont = document.querySelector('#liveChartModal .chart-rsi-pane .canvas-box-bottom');
+    const liveDelCont = document.querySelector('#liveChartModal .chart-delta-pane .canvas-box-bottom');
+
+    charts.live.rsi = LightweightCharts.createChart(liveRsiCont, { ...chartOptions, ...rsiScale });
+    charts.live.sRsi = charts.live.rsi.addLineSeries({ color: '#b0bece', lineWidth: 1 });
+    charts.live.sWma = charts.live.rsi.addLineSeries({ color: '#009e70', lineWidth: 2 });
+
+    charts.live.delta = LightweightCharts.createChart(liveDelCont, { ...chartOptions, ...deltaScale });
+    charts.live.sDelta = charts.live.delta.addHistogramSeries({ base: 0 });
+
+    // Ensure they fit the container
+    new ResizeObserver(entries => {
+        if (entries.length === 0 || entries[0].target !== simRsiCont) return;
+        charts.sim.rsi.applyOptions({ width: simRsiCont.clientWidth, height: simRsiCont.clientHeight });
+        charts.sim.delta.applyOptions({ width: simDelCont.clientWidth, height: simDelCont.clientHeight });
+        charts.live.rsi.applyOptions({ width: liveRsiCont.clientWidth, height: liveRsiCont.clientHeight });
+        charts.live.delta.applyOptions({ width: liveDelCont.clientWidth, height: liveDelCont.clientHeight });
+    }).observe(simRsiCont);
+}
+
+// 4. DATA UPDATE ENGINE (Call this when your HTTP backend returns data)
+// Expects an array of objects: { time: string, dailyRSI, rsiWMA, velocityGap, isRegimeA, isRegimeC, sig_smartHarvest, sig_reload, sig_bearCollapse }
+function updateOscillatorCharts(target, dataArray) {
+    const rsiData = [];
+    const wmaData = [];
+    const deltaData = [];
+    
+    const showExtremesOnly = ENGINE_CFG ? true : false; // Assuming your toggle is active
+
+    let latestState = null;
+
+    dataArray.forEach(d => {
+        // Build Ribbon Lines
+        rsiData.push({ time: d.time, value: parseFloat(d.dailyRSI) });
+        wmaData.push({ time: d.time, value: parseFloat(d.rsiWMA) }); // WMA color changes aren't natively supported on single line series in LW Charts, handled purely via HTML labels.
+
+        // Build Delta Histogram with Color Logic & Extremes Filter
+        let gap = parseFloat(d.velocityGap);
+        let color = '#fc0606'; // Red default
+        if (gap >= 15) color = '#015804'; // Deep Green
+        else if (gap > 0) color = 'rgba(0, 158, 112, 0.5)'; // Light Green
+        else if (gap > -15) color = 'rgba(200, 16, 46, 0.5)'; // Light Red
+
+        // Apply extremes filter (+/- 35)
+        if (showExtremesOnly && Math.abs(gap) < 35) {
+            gap = 0; // Hide the bar visually
+        }
+
+        deltaData.push({ time: d.time, value: gap, color: color });
+        latestState = d;
+    });
+
+    if (target === 'sim') {
+        charts.sim.sRsi.setData(rsiData);
+        charts.sim.sWma.setData(wmaData);
+        charts.sim.sDelta.setData(deltaData);
+    } else if (target === 'live') {
+        charts.live.sRsi.setData(rsiData);
+        charts.live.sWma.setData(wmaData);
+        charts.live.sDelta.setData(deltaData);
+        
+        // Update the Live 2-Line Alert Zone
+        if (latestState) {
+            const hEl = document.getElementById('alertHarvest');
+            const rEl = document.getElementById('alertReload');
+            const cEl = document.getElementById('alertCollapse');
+
+            // Harvest UI
+            if (latestState.sig_smartHarvest) { hEl.style.color = 'var(--accent2)'; hEl.innerHTML = 'HARVEST: 🟢 FIRE'; } 
+            else { hEl.style.color = 'var(--muted2)'; hEl.innerHTML = 'HARVEST: 🌑 STANDBY'; }
+
+            // Reload UI
+            if (latestState.sig_reload) { rEl.style.color = 'var(--accent)'; rEl.innerHTML = 'RELOAD: 🟢 FIRE'; } 
+            else { rEl.style.color = 'var(--muted2)'; rEl.innerHTML = 'RELOAD: 🌑 STANDBY'; }
+
+            // Collapse UI
+            if (latestState.sig_bearCollapse) { cEl.style.color = 'var(--red)'; cEl.innerHTML = 'COLLAPSE: 🔴 FIRE'; } 
+            else { cEl.style.color = 'var(--muted2)'; cEl.innerHTML = 'COLLAPSE: 🌑 STANDBY'; }
+        }
+    }
+}
+
+// Initialize the canvases once the DOM is ready
+window.addEventListener('DOMContentLoaded', () => {
+    // Wait a brief moment to ensure containers are rendered by the browser
+    setTimeout(initOscillatorCharts, 100);
+});
+</script>
+
 </body>
 </html>
