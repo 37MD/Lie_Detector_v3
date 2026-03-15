@@ -746,6 +746,55 @@ function getBriefFundName() {
   return name.replace(/\[NPS\] | - Growth| - Direct/gi, '').trim();
 }
 
+function initGame(mode) {
+  saveFundSelection();
+  document.getElementById('simFundName').textContent = getBriefFundName();
+  document.getElementById('simModeTag').textContent = mode === 'wave' ? 'RECENT SIM' : 'SIMULATOR';
+  document.getElementById('setupScreen').style.display = 'none';
+  document.getElementById('gameUI').style.display = 'flex';
+  
+  console.log("Simulator Initialized (UI Only) - Ready for Calculation Engine Wiring");
+}
+
+function initLiveChart() {
+  saveFundSelection();
+  document.getElementById('liveChartFundName').textContent = getBriefFundName();
+  document.getElementById('setupScreen').style.display = 'none';
+  document.getElementById('liveChartModal').style.display = 'flex';
+  
+  console.log("Live Cockpit Initialized (UI Only) - Ready for Calculation Engine Wiring");
+}
+
+function initLiveAnalytics() {
+  saveFundSelection();
+  document.getElementById('liveFundName').textContent = getBriefFundName();
+  document.getElementById('setupScreen').style.display = 'none';
+  document.getElementById('liveAnalyticsModal').style.display = 'flex';
+  
+  console.log("Live Analytics Initialized (UI Only) - Ready for Calculation Engine Wiring");
+}
+
+function openLiveAnalyticsFromCockpit() {
+  document.getElementById('liveChartModal').style.display = 'none';
+  document.getElementById('liveAnalyticsModal').style.display = 'flex';
+}
+
+function closeLive() { 
+  document.getElementById('liveAnalyticsModal').style.display = 'none'; 
+  document.getElementById('setupScreen').style.display = 'flex'; 
+}
+
+function showLog() { document.getElementById('logModal').style.display = 'flex'; }
+function closeLog() { document.getElementById('logModal').style.display = 'none'; }
+
+function endAndReview() {
+  document.getElementById('reviewModal').style.display = 'flex';
+}
+
+if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(() => {}); }
+
+//---------------------------------------------------------
+
 function executeTradeEngine(action, currentState) {
   let { cash, tranches, tradeLog, totalTaxPaid, currentNav, dayNum, currentRegimeLog } = currentState;
 
@@ -958,29 +1007,10 @@ function calculateAuditScore(fullHistory, simStartIdx, currentIdx, simDailyRsiCa
   };
 }
 
-function openLiveAnalyticsFromCockpit() {
-  document.getElementById('liveChartModal').style.display = 'none';
-  document.getElementById('liveAnalyticsModal').style.display = 'flex';
-}
+// ═════════════════════════════════════════════════════════════════════════
+// NATIVE HTML5 CANVAS ENGINE: REAL DATA SYNC ONLY
+// ═════════════════════════════════════════════════════════════════════════
 
-function closeLive() { 
-  document.getElementById('liveAnalyticsModal').style.display = 'none'; 
-  document.getElementById('setupScreen').style.display = 'flex'; 
-}
-
-function showLog() { document.getElementById('logModal').style.display = 'flex'; }
-function closeLog() { document.getElementById('logModal').style.display = 'none'; }
-
-function endAndReview() {
-  document.getElementById('reviewModal').style.display = 'flex';
-}
-
-if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(() => {}); }
-
-</script>
-
-<script>
-// 1. INJECT THE 2-LINE ALERT ZONE (LIVE COCKPIT ONLY)
 (function injectLiveAlertZone() {
     const liveSplit = document.querySelector('#liveChartModal .chart-split');
     if (liveSplit) {
@@ -998,21 +1028,13 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').ca
     }
 })();
 
-// 2. NATIVE CANVAS DRAWING FUNCTIONS
-function mapY(val, min, max, height) {
-    return height - ((val - min) / (max - min) * height);
-}
+function mapY(val, min, max, height) { return height - ((val - min) / (max - min) * height); }
 
 function drawRefLine(ctx, val, color, width, h, min, max, isDashed) {
     let y = mapY(val, min, max, h);
-    ctx.beginPath();
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 1;
     if(isDashed) ctx.setLineDash([4, 4]); else ctx.setLineDash([]);
-    ctx.moveTo(0, y);
-    ctx.lineTo(width, y);
-    ctx.stroke();
-    ctx.setLineDash([]); 
+    ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke(); ctx.setLineDash([]); 
 }
 
 function renderRsiCanvas(canvas, data) {
@@ -1021,26 +1043,15 @@ function renderRsiCanvas(canvas, data) {
     if(rect.width === 0) return; 
     
     const dpr = window.devicePixelRatio || 1;
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
+    canvas.width = rect.width * dpr; canvas.height = rect.height * dpr;
     ctx.scale(dpr, dpr);
-    canvas.style.width = rect.width + 'px';
-    canvas.style.height = rect.height + 'px';
+    canvas.style.width = rect.width + 'px'; canvas.style.height = rect.height + 'px';
     
-    const w = rect.width;
-    const h = rect.height;
-    const minV = 0, maxV = 100;
-
+    const w = rect.width, h = rect.height, minV = 0, maxV = 100;
     ctx.clearRect(0, 0, w, h);
 
-    // Grid lines
-    ctx.beginPath();
-    ctx.strokeStyle = 'rgba(0,0,0,0.05)';
-    ctx.lineWidth = 1;
-    for(let i=10; i<=90; i+=20) {
-        let gy = mapY(i, minV, maxV, h);
-        ctx.moveTo(0, gy); ctx.lineTo(w, gy);
-    }
+    ctx.beginPath(); ctx.strokeStyle = 'rgba(0,0,0,0.05)'; ctx.lineWidth = 1;
+    for(let i=10; i<=90; i+=20) { let gy = mapY(i, minV, maxV, h); ctx.moveTo(0, gy); ctx.lineTo(w, gy); }
     ctx.stroke();
 
     drawRefLine(ctx, 35, 'rgba(0, 158, 112, 0.4)', w, h, minV, maxV, true);
@@ -1048,27 +1059,19 @@ function renderRsiCanvas(canvas, data) {
     
     if(!data || data.length === 0) return;
 
-    // Draw WMA Line (Green)
-    ctx.beginPath();
-    ctx.strokeStyle = '#009e70';
-    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.strokeStyle = '#009e70'; ctx.lineWidth = 2;
     for(let i=0; i<data.length; i++) {
         let x = (i / Math.max(1, data.length - 1)) * w;
         let y = mapY(data[i].rsiWMA, minV, maxV, h);
         if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
-    }
-    ctx.stroke();
+    } ctx.stroke();
 
-    // Draw Daily RSI Line (Silver)
-    ctx.beginPath();
-    ctx.strokeStyle = '#b0bece';
-    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.strokeStyle = '#b0bece'; ctx.lineWidth = 1.5;
     for(let i=0; i<data.length; i++) {
         let x = (i / Math.max(1, data.length - 1)) * w;
         let y = mapY(data[i].dailyRSI, minV, maxV, h);
         if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
-    }
-    ctx.stroke();
+    } ctx.stroke();
 }
 
 function renderDeltaCanvas(canvas, data) {
@@ -1077,16 +1080,11 @@ function renderDeltaCanvas(canvas, data) {
     if(rect.width === 0) return; 
 
     const dpr = window.devicePixelRatio || 1;
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
+    canvas.width = rect.width * dpr; canvas.height = rect.height * dpr;
     ctx.scale(dpr, dpr);
-    canvas.style.width = rect.width + 'px';
-    canvas.style.height = rect.height + 'px';
+    canvas.style.width = rect.width + 'px'; canvas.style.height = rect.height + 'px';
     
-    const w = rect.width;
-    const h = rect.height;
-    const minV = -80, maxV = 100;
-
+    const w = rect.width, h = rect.height, minV = -80, maxV = 100;
     ctx.clearRect(0, 0, w, h);
 
     drawRefLine(ctx, 0, 'rgba(0, 0, 0, 0.15)', w, h, minV, maxV, false);
@@ -1102,7 +1100,7 @@ function renderDeltaCanvas(canvas, data) {
 
     for(let i=0; i<data.length; i++) {
         let gap = data[i].velocityGap;
-        if (Math.abs(gap) < 35) continue; // Show Extremes Only logic
+        if (Math.abs(gap) < 35) continue; // SHOW EXTREMES ONLY
 
         let color = '#fc0606'; 
         if (gap >= 15) color = '#015804'; 
@@ -1117,19 +1115,14 @@ function renderDeltaCanvas(canvas, data) {
     }
 }
 
-// 3. SETUP & UPDATE ENGINE
 const myCanvases = {
-    simRsi: document.createElement('canvas'),
-    simDelta: document.createElement('canvas'),
-    liveRsi: document.createElement('canvas'),
-    liveDelta: document.createElement('canvas')
+    simRsi: document.createElement('canvas'), simDelta: document.createElement('canvas'),
+    liveRsi: document.createElement('canvas'), liveDelta: document.createElement('canvas')
 };
 
 function injectCanvases() {
-    const sRBox = document.getElementById('simRsiBox');
-    const sDBox = document.getElementById('simDeltaBox');
-    const lRBox = document.getElementById('liveRsiBox');
-    const lDBox = document.getElementById('liveDeltaBox');
+    const sRBox = document.getElementById('simRsiBox'), sDBox = document.getElementById('simDeltaBox');
+    const lRBox = document.getElementById('liveRsiBox'), lDBox = document.getElementById('liveDeltaBox');
 
     if(sRBox && !sRBox.contains(myCanvases.simRsi)) sRBox.appendChild(myCanvases.simRsi);
     if(sDBox && !sDBox.contains(myCanvases.simDelta)) sDBox.appendChild(myCanvases.simDelta);
@@ -1139,7 +1132,6 @@ function injectCanvases() {
 
 function updateOscillatorCharts(target, dataArray) {
     injectCanvases(); 
-
     let latestState = dataArray.length > 0 ? dataArray[dataArray.length - 1] : null;
 
     if (target === 'sim') {
@@ -1150,120 +1142,102 @@ function updateOscillatorCharts(target, dataArray) {
         renderDeltaCanvas(myCanvases.liveDelta, dataArray);
         
         if (latestState) {
-            const hEl = document.getElementById('alertHarvest');
-            const rEl = document.getElementById('alertReload');
-            const cEl = document.getElementById('alertCollapse');
-
+            const hEl = document.getElementById('alertHarvest'), rEl = document.getElementById('alertReload'), cEl = document.getElementById('alertCollapse');
             if (latestState.sig_smartHarvest) { hEl.style.color = 'var(--accent2)'; hEl.innerHTML = 'HARVEST: 🟢 FIRE'; } 
             else { hEl.style.color = 'var(--muted2)'; hEl.innerHTML = 'HARVEST: 🌑 STANDBY'; }
-
             if (latestState.sig_reload) { rEl.style.color = 'var(--accent)'; rEl.innerHTML = 'RELOAD: 🟢 FIRE'; } 
             else { rEl.style.color = 'var(--muted2)'; rEl.innerHTML = 'RELOAD: 🌑 STANDBY'; }
-
             if (latestState.sig_bearCollapse) { cEl.style.color = 'var(--red)'; cEl.innerHTML = 'COLLAPSE: 🔴 FIRE'; } 
             else { cEl.style.color = 'var(--muted2)'; cEl.innerHTML = 'COLLAPSE: 🌑 STANDBY'; }
         }
     }
 }
 
-// 4. DATA BRIDGE ENGINE: LINKS REAL PHASE 1 DATA TO CHARTS
-// Call this function inside your Phase 3 game loop every time the day advances
-window.syncChartsWithEngine = function(fullHistory, currentIdx, dailyRsiCache, weeklyRsiCache) {
-    let dataArray = [];
+// THE DATA BRIDGE: Calculates triggers from your real Phase 1 variables
+window.syncChartsWithEngine = function(fHist, cIdx, dailyCache, weeklyCache) {
+    if (!fHist || !dailyCache || !weeklyCache || cIdx <= 0) return;
     
-    if (fullHistory && dailyRsiCache && weeklyRsiCache && currentIdx > 0) {
-        // REAL DATA PIPELINE: Pull the last 120 days of calculations
-        let lookback = 120;
-        let startI = Math.max(0, currentIdx - lookback);
+    let dataArray = [];
+    let lookback = 120;
+    let startI = Math.max(0, cIdx - lookback);
 
-        for (let i = startI; i <= currentIdx; i++) {
-            let dr = dailyRsiCache[i] || 50;
-            let wr = weeklyRsiCache[i] || 50;
-            let gap = dr - wr;
-            
-            // Generate local WMA(20) for Ribbon
-            let wmaSum = 0, weightSum = 0, period = 20;
-            for(let j=0; j<period; j++) {
-                if (i - j >= 0) {
-                    wmaSum += (dailyRsiCache[i-j] || 50) * (period - j);
-                    weightSum += (period - j);
-                }
-            }
-            let wma = weightSum > 0 ? (wmaSum / weightSum) : 50;
-            let proxyMom = dr - wma;
-            let isRegimeC = wr < 40;
-            let isOverdrive = wr >= 60;
-            
-            // Reconstruct Alert Signals
-            let prevProxy = 0, prevPrevProxy = 0, prevGap = 0, priceKnockout = false;
-            if(i > 1) {
-                let pDr = dailyRsiCache[i-1] || 50;
-                let ppDr = dailyRsiCache[i-2] || 50;
-                let pWmaSum = 0, pWeightSum = 0;
-                for(let j=0; j<period; j++) { if(i-1-j >= 0) { pWmaSum += (dailyRsiCache[i-1-j]||50)*(period-j); pWeightSum += (period-j); } }
-                let pWma = pWeightSum > 0 ? (pWmaSum / pWeightSum) : 50;
-                prevProxy = pDr - pWma;
-
-                let ppWmaSum = 0, ppWeightSum = 0;
-                for(let j=0; j<period; j++) { if(i-2-j >= 0) { ppWmaSum += (dailyRsiCache[i-2-j]||50)*(period-j); ppWeightSum += (period-j); } }
-                let ppWma = ppWeightSum > 0 ? (ppWmaSum / ppWeightSum) : 50;
-                prevPrevProxy = ppDr - ppWma;
-
-                prevGap = pDr - (weeklyRsiCache[i-1] || 50);
-                let currNav = fullHistory[i] ? fullHistory[i].nav : 0;
-                let prevNav = fullHistory[i-1] ? fullHistory[i-1].nav : 0;
-                priceKnockout = currNav < prevNav;
-            }
-
-            let trimStd = 15;
-            let trimClimax = 35;
-            let smartCutoff = isOverdrive ? trimClimax : trimStd;
-            let hookDown = (proxyMom < prevProxy) && (prevProxy > prevPrevProxy);
-
-            dataArray.push({
-                dailyRSI: dr,
-                rsiWMA: wma,
-                velocityGap: gap,
-                sig_smartHarvest: hookDown && (prevProxy >= smartCutoff) && priceKnockout,
-                sig_reload: (proxyMom > 0) && (prevProxy <= 0) && (gap > -10),
-                sig_bearCollapse: isRegimeC && (gap < -trimStd) && (prevGap >= -trimStd)
-            });
+    for (let i = startI; i <= cIdx; i++) {
+        let dr = dailyCache[i] || 50;
+        let wr = weeklyCache[i] || 50;
+        let gap = dr - wr;
+        
+        let wmaSum = 0, weightSum = 0, period = 20;
+        for(let j=0; j<period; j++) {
+            if (i - j >= 0) { wmaSum += (dailyCache[i-j] || 50) * (period - j); weightSum += (period - j); }
         }
-    } else {
-        // FALLBACK: Dummy data plays if you click Simulator before wiring the backend
-        for(let i=0; i<100; i++) {
-            dataArray.push({
-                dailyRSI: 50 + Math.sin(i/4) * 35,       
-                rsiWMA: 50 + Math.sin(i/8) * 20,         
-                velocityGap: Math.sin(i/5) * 45,         
-                sig_smartHarvest: i === 20 || i === 80,  
-                sig_reload: i === 40,
-                sig_bearCollapse: i === 60
-            });
+        let wma = weightSum > 0 ? (wmaSum / weightSum) : 50;
+        let proxyMom = dr - wma;
+        
+        let isRegimeC = wr < 40;
+        let isOverdrive = wr >= 60;
+        
+        let prevProxy = 0, prevPrevProxy = 0, prevGap = 0, priceKnockout = false;
+        if(i > 1) {
+            let pDr = dailyCache[i-1] || 50;
+            let ppDr = dailyCache[i-2] || 50;
+            let pWmaSum = 0, pWeightSum = 0;
+            for(let j=0; j<period; j++) { if(i-1-j >= 0) { pWmaSum += (dailyCache[i-1-j]||50)*(period-j); pWeightSum += (period-j); } }
+            let pWma = pWeightSum > 0 ? (pWmaSum / pWeightSum) : 50;
+            prevProxy = pDr - pWma;
+
+            let ppWmaSum = 0, ppWeightSum = 0;
+            for(let j=0; j<period; j++) { if(i-2-j >= 0) { ppWmaSum += (dailyCache[i-2-j]||50)*(period-j); ppWeightSum += (period-j); } }
+            let ppWma = ppWeightSum > 0 ? (ppWmaSum / ppWeightSum) : 50;
+            prevPrevProxy = ppDr - ppWma;
+
+            prevGap = pDr - (weeklyCache[i-1] || 50);
+            let currNav = fHist[i] ? fHist[i].nav : 0;
+            let prevNav = fHist[i-1] ? fHist[i-1].nav : 0;
+            priceKnockout = currNav < prevNav;
         }
+
+        let smartCutoff = isOverdrive ? 35 : 15;
+        let hookDown = (proxyMom < prevProxy) && (prevProxy > prevPrevProxy);
+
+        dataArray.push({
+            dailyRSI: dr, rsiWMA: wma, velocityGap: gap,
+            sig_smartHarvest: hookDown && (prevProxy >= smartCutoff) && priceKnockout,
+            sig_reload: (proxyMom > 0) && (prevProxy <= 0) && (gap > -10),
+            sig_bearCollapse: isRegimeC && (gap < -15) && (prevGap >= -15)
+        });
     }
 
     if (document.getElementById('gameUI').style.display === 'flex') updateOscillatorCharts('sim', dataArray);
     if (document.getElementById('liveChartModal').style.display === 'flex') updateOscillatorCharts('live', dataArray);
 };
 
-// 5. UI HOOKS
-const originalInitGame = window.initGame;
-window.initGame = function(mode) {
-  if(originalInitGame) originalInitGame(mode);
-  setTimeout(() => window.syncChartsWithEngine(), 50); // Calls bridge with no args to trigger dummy fallback until real data arrives
-}
+// AUTO-HOOK INTO CORE UI UPDATES USING MUTATION OBSERVERS
+window.addEventListener('DOMContentLoaded', () => {
+    const triggerSyncIfDataReady = () => {
+        if (typeof window.fullHistory !== 'undefined' && typeof window.currentIdx !== 'undefined' && 
+            typeof window.simDailyRsiCache !== 'undefined' && typeof window.simWeeklyRsiCache !== 'undefined') {
+            window.syncChartsWithEngine(window.fullHistory, window.currentIdx, window.simDailyRsiCache, window.simWeeklyRsiCache);
+        }
+    };
 
-const originalInitLiveChart = window.initLiveChart;
-window.initLiveChart = function() {
-  if(originalInitLiveChart) originalInitLiveChart();
-  setTimeout(() => window.syncChartsWithEngine(), 50);
-}
+    // Watch the Simulator UI for changes (Day label)
+    const simDayNode = document.getElementById('simDay');
+    if (simDayNode) {
+        new MutationObserver(triggerSyncIfDataReady).observe(simDayNode, { childList: true, characterData: true, subtree: true });
+    }
 
-// Auto-resize active charts to fit screen without squishing
+    // Watch the Live Cockpit UI for changes (NAV Date label)
+    const liveNavNode = document.getElementById('liveNavDate');
+    if (liveNavNode) {
+        new MutationObserver(triggerSyncIfDataReady).observe(liveNavNode, { childList: true, characterData: true, subtree: true });
+    }
+});
+
+// Auto-redraw charts if window is resized to prevent squishing
 window.addEventListener('resize', () => {
-    if(document.getElementById('gameUI').style.display === 'flex' || document.getElementById('liveChartModal').style.display === 'flex') {
-        window.syncChartsWithEngine();
+    if ((document.getElementById('gameUI').style.display === 'flex' || document.getElementById('liveChartModal').style.display === 'flex') &&
+        typeof window.currentIdx !== 'undefined') {
+        window.syncChartsWithEngine(window.fullHistory, window.currentIdx, window.simDailyRsiCache, window.simWeeklyRsiCache);
     }
 });
 </script>
