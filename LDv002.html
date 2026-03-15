@@ -211,10 +211,9 @@
 
   .chart-split { display: flex; flex-direction: column; flex-grow: 1; position: relative; min-height: 0; }
   
-  /* ── UPDATED 60/40 SPLIT ── */
   .chart-main-pane { flex: 6; position: relative; width: 100%; min-height: 0; }
   .chart-rsi-pane  { flex: 4; position: relative; width: 100%; min-height: 0; border-top: 1px dashed var(--border); margin-top: 4px; }
-  .chart-delta-pane{ display: none; } /* Hidden for 2-chart layout */
+  .chart-delta-pane{ display: none; }
   
   .canvas-box { position: absolute; inset: 0; }
   .canvas-box-bottom { position: absolute; inset: 0; top: 18px; }
@@ -310,7 +309,7 @@
     letter-spacing: 0.08em; transition: opacity 0.15s; font-weight: 400;
   }
   .modal-close-btn:hover { opacity: 0.7; }
-  .modal-title { font-size: 0.72rem; letter-spacing: 1.1em; font-weight: 400; }
+  .modal-title { font-size: 0.72rem; letter-spacing: 0.1em; font-weight: 400; }
 
   /* ── LOG TABLE ── */
   .log-table { width: 100%; font-size: 0.75rem; text-align: left; border-collapse: collapse; font-weight: 400; }
@@ -438,15 +437,15 @@
         <div class="canvas-box"></div>
       </div>
       <div class="chart-rsi-pane">
-        <div class="delta-label">MOMENTUM (RSI) · VELOCITY (Δ)</div>
+        <div class="delta-label">MOMENTUM (RSI) &amp; VELOCITY (Δ)</div>
         <div class="chart-hud" id="liveRsiHud" style="top:18px;"></div>
-        <div class="chart-hud" id="liveDeltaHud" style="top:18px;"></div>
+        <div class="chart-hud" id="liveDeltaHud" style="top:18px;"></div>
         <div id="liveRsiLabel" style="position:absolute;top:3px;right:44px;font-size:0.52rem;color:var(--muted2);z-index:10;pointer-events:none;background:rgba(255,255,255,0.90);padding:1px 4px;border-radius:2px;"></div>
         <div class="canvas-box-bottom"></div>
       </div>
       <div class="chart-delta-pane">
-        <div class="canvas-box-bottom"></div>
-      </div>
+        <div class="canvas-box-bottom"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -538,7 +537,7 @@
       <div><div class="score-title">Final Net Worth</div><div class="score-val pos-score" id="revNW2">--</div><div id="revReturn" style="font-size:0.65rem;margin-top:2px;font-weight:400;"></div></div>
       <div style="text-align:center;"><div class="score-title">Max DD</div><div class="score-val" id="revDD" style="color:var(--red);">--%</div><div id="revDays" style="font-size:0.55rem;color:var(--muted);margin-top:2px;"></div></div>
       <div style="text-align:right;"><div class="score-title">Total Score</div><div class="score-val" id="totalScore" style="color:var(--gold);">0</div><div id="revRegimes" style="font-size:0.55rem;color:var(--muted);margin-top:2px;text-align:right;"></div></div>
-      </div>
+    </div>
     <div id="auditContent"></div>
     <p class="section-title">Overall Behavioral Remarks</p>
     <div id="feedbackContainer"></div>
@@ -576,15 +575,16 @@
           <div class="canvas-box"></div>
         </div>
         <div class="chart-rsi-pane">
-          <div class="delta-label">MOMENTUM (RSI) · VELOCITY (Δ)</div>
+          <div class="delta-label">MOMENTUM (RSI) &amp; VELOCITY (Δ)</div>
           <div class="chart-hud" id="simRsiHud" style="top:18px;"></div>
-          <div class="chart-hud" id="simDeltaHud" style="top:18px;"></div>
+          <div class="chart-hud" id="simDeltaHud" style="top:18px;"></div>
           <div id="simRsiLabel" style="position:absolute;top:3px;right:4px;font-size:0.52rem;z-index:10;pointer-events:none;background:rgba(255,255,255,0.90);padding:1px 5px;border-radius:2px;letter-spacing:0.02em;"></div>
           <div class="canvas-box-bottom"></div>
         </div>
         <div class="chart-delta-pane">
-          <div class="canvas-box-bottom"></div>
-        </div>
+          <div id="simDeltaLabel" style="display:none;"></div>
+          <div class="canvas-box-bottom"></div>
+        </div>
       </div>
       <div class="tf-row" id="simTfRow" style="border-top:1px solid var(--border);padding:4px 0 2px;margin-top:2px;">
         <button class="tf-btn">1W</button>
@@ -1295,7 +1295,7 @@ function endAndReview() {
       const box = sp.slice(-6, -1); const boxMax = Math.max(...box), boxMin = Math.min(...box);
       const preBox = sp.slice(-56, -6); const preMax = Math.max(...preBox);
       const boxWma = calculateWMA(sp.slice(0, -1), 20);
-    if ((boxMax - boxMin) / boxMin <= 0.02 && (boxWma ? Math.abs(boxMin - boxWma) / boxWma <= 0.04 : false)) {
+      if ((boxMax - boxMin) / boxMin <= 0.02 && (boxWma ? Math.abs(boxMin - boxWma) / boxWma <= 0.04 : false)) {
         if (preMax > boxMax * 1.02 && currNav > boxMax) pcAlert = true;
       }
     }
