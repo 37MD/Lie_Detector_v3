@@ -1448,7 +1448,7 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').ca
         ctx.clearRect(0, 0, w, h);
         if (!data.length) return;
 
-        // 1. RIBBON FILL (Daily RSI vs WMA)
+        // 1. RIBBON FILL
         for (let i = 1; i < data.length; i++) {
             ctx.beginPath();
             ctx.fillStyle = data[i].dr > data[i].wma ? 'rgba(0,158,112,0.12)' : 'rgba(200,16,46,0.12)';
@@ -1460,18 +1460,18 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').ca
             ctx.fill();
         }
 
-        // 2. SEGMENTED WMA LINE (Forces color change per day)
-        ctx.lineWidth = 3;
+        // 2. SEGMENTED WMA LINE (Fixed Regime Colors)
+        ctx.lineWidth = 2.5;
         for (let i = 1; i < data.length; i++) {
             ctx.beginPath();
             const wr = data[i].wr;
             ctx.strokeStyle = wr >= 50 ? '#009e70' : (wr >= 40 ? '#c97a00' : '#c8102e');
             ctx.moveTo(((i-1)/(data.length-1))*w, mapY(data[i-1].wma, 0, 100, h));
             ctx.lineTo((i/(data.length-1))*w, mapY(data[i].wma, 0, 100, h));
-            ctx.stroke(); // Stroke per segment to lock in the color
+            ctx.stroke();
         }
 
-        // 3. DAILY RSI LINE (Silver Overlay)
+        // 3. DAILY RSI (SILVER)
         ctx.beginPath(); ctx.strokeStyle = '#333'; ctx.lineWidth = 1;
         data.forEach((d, i) => {
             let x = (i / (data.length - 1)) * w; let y = mapY(d.dr, 0, 100, h);
@@ -1482,7 +1482,7 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').ca
     const renderVelocityGap = (canvas, data) => {
         const ctx = canvas.getContext('2d');
         const rect = canvas.parentElement.getBoundingClientRect();
-        if (rect.width === 0) return;
+        if (rect.width === 0 || rect.height === 0) return;
         const dpr = window.devicePixelRatio || 1;
         canvas.width = rect.width * dpr; canvas.height = rect.height * dpr;
         ctx.scale(dpr, dpr);
@@ -1517,31 +1517,17 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').ca
             dataSet.push({ dr, wr, wma: sum/weight, gap: dr - wr });
         }
 
+        // AGGRESSIVE DOM SELECTORS
         const rBox = isSim ? document.querySelector('.main-sim .chart-rsi-pane .canvas-box-bottom') : document.querySelector('#liveChartModal .chart-rsi-pane .canvas-box-bottom');
         const gBox = isSim ? document.querySelector('.main-sim .chart-delta-pane .canvas-box-bottom') : document.querySelector('#liveChartModal .chart-delta-pane .canvas-box-bottom');
 
         if (rBox && gBox) {
             const rCanv = isSim ? canvases.simRsi : canvases.liveRsi;
             const gCanv = isSim ? canvases.simGap : canvases.liveGap;
-            if (!rBox.contains(rCanv)) { rBox.style.position='relative'; rBox.appendChild(rCanv); }
-            if (!gBox.contains(gCanv)) { gBox.style.position='relative'; gBox.appendChild(gCanv); }
+            if (!rBox.contains(rCanv)) { rBox.style.position='relative'; rBox.style.height='100%'; rBox.appendChild(rCanv); }
+            if (!gBox.contains(gCanv)) { gBox.style.position='relative'; gBox.style.height='100%'; gBox.appendChild(gCanv); }
             renderRsiRibbon(rCanv, dataSet);
             renderVelocityGap(gCanv, dataSet);
-        }
-
-        if (!isSim && dataSet.length > 2) {
-            const now = dataSet[dataSet.length-1], pre = dataSet[dataSet.length-2];
-            const hEl = document.getElementById('alertHarvest'), rEl = document.getElementById('alertReload');
-            if (hEl) { 
-                const harvest = (now.dr < pre.dr) && (pre.dr - pre.wma >= (now.wr>=60?35:15)) && (fHist[cIdx].nav < fHist[cIdx-1].nav);
-                hEl.style.color = harvest ? 'var(--accent2)' : 'var(--muted2)';
-                hEl.innerHTML = `HARVEST: ${harvest ? '🟢 FIRE' : '🌑'}`;
-            }
-            if (rEl) {
-                const reload = (now.dr > now.wma && pre.dr <= pre.wma) && (now.gap > -10);
-                rEl.style.color = reload ? 'var(--accent)' : 'var(--muted2)';
-                rEl.innerHTML = `RELOAD: ${reload ? '🟢 FIRE' : '🌑'}`;
-            }
         }
     };
 
@@ -1552,12 +1538,12 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').ca
             } else if (document.getElementById('liveChartModal').style.display === 'flex') {
                 window.syncNativeChartsWithEngine(window.globalLiveData, window.globalLiveData.length - 1, window.globalDailyRsiCache, window.globalWeeklyRsiCache, 'live');
             }
-        }, 50);
+        }, 100);
     };
 
     window.addEventListener('DOMContentLoaded', () => {
         const obs = new MutationObserver(triggerUpdate);
-        ['simDay', 'liveNavDate', 'simNav', 'liveChartTfRow'].forEach(id => {
+        ['simDay', 'liveNavDate', 'simNav', 'nwVal'].forEach(id => {
             const el = document.getElementById(id); if (el) obs.observe(el, { childList: true, characterData: true, subtree: true });
         });
         document.body.addEventListener('click', triggerUpdate);
