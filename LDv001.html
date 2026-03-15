@@ -1018,9 +1018,8 @@ function drawRefLine(ctx, val, color, width, h, min, max, isDashed) {
 function renderRsiCanvas(canvas, data) {
     const ctx = canvas.getContext('2d');
     const rect = canvas.parentElement.getBoundingClientRect();
-    if(rect.width === 0) return; // Screen still hidden
+    if(rect.width === 0) return; 
     
-    // High DPI Retina Support
     const dpr = window.devicePixelRatio || 1;
     canvas.width = rect.width * dpr;
     canvas.height = rect.height * dpr;
@@ -1034,7 +1033,16 @@ function renderRsiCanvas(canvas, data) {
 
     ctx.clearRect(0, 0, w, h);
 
-    // Reference Lines
+    // Grid lines
+    ctx.beginPath();
+    ctx.strokeStyle = 'rgba(0,0,0,0.05)';
+    ctx.lineWidth = 1;
+    for(let i=10; i<=90; i+=20) {
+        let gy = mapY(i, minV, maxV, h);
+        ctx.moveTo(0, gy); ctx.lineTo(w, gy);
+    }
+    ctx.stroke();
+
     drawRefLine(ctx, 35, 'rgba(0, 158, 112, 0.4)', w, h, minV, maxV, true);
     drawRefLine(ctx, 15, 'rgba(0, 232, 162, 0.4)', w, h, minV, maxV, true);
     
@@ -1081,7 +1089,6 @@ function renderDeltaCanvas(canvas, data) {
 
     ctx.clearRect(0, 0, w, h);
 
-    // Reference Lines
     drawRefLine(ctx, 0, 'rgba(0, 0, 0, 0.15)', w, h, minV, maxV, false);
     drawRefLine(ctx, 35, 'rgba(0, 158, 112, 0.4)', w, h, minV, maxV, true);
     drawRefLine(ctx, -35, 'rgba(0, 158, 112, 0.4)', w, h, minV, maxV, true);
@@ -1095,8 +1102,7 @@ function renderDeltaCanvas(canvas, data) {
 
     for(let i=0; i<data.length; i++) {
         let gap = data[i].velocityGap;
-        let showExtremesOnly = true;
-        if (showExtremesOnly && Math.abs(gap) < 35) continue; // Skip drawing small bars
+        if (Math.abs(gap) < 35) continue; // Show Extremes Only logic
 
         let color = '#fc0606'; 
         if (gap >= 15) color = '#015804'; 
@@ -1132,7 +1138,7 @@ function injectCanvases() {
 }
 
 function updateOscillatorCharts(target, dataArray) {
-    injectCanvases(); // Ensure they exist in the DOM
+    injectCanvases(); 
 
     let latestState = dataArray.length > 0 ? dataArray[dataArray.length - 1] : null;
 
@@ -1160,50 +1166,106 @@ function updateOscillatorCharts(target, dataArray) {
     }
 }
 
-// 4. DUMMY DATA TEST
-function runDummyDataTest() {
-    let testData = [];
-    for(let i=0; i<100; i++) {
-        testData.push({
-            dailyRSI: 50 + Math.sin(i/4) * 35,       
-            rsiWMA: 50 + Math.sin(i/8) * 20,         
-            velocityGap: Math.sin(i/5) * 45,         
-            sig_smartHarvest: i === 20 || i === 80,  
-            sig_reload: i === 40,
-            sig_bearCollapse: i === 60
-        });
+// 4. DATA BRIDGE ENGINE: LINKS REAL PHASE 1 DATA TO CHARTS
+// Call this function inside your Phase 3 game loop every time the day advances
+window.syncChartsWithEngine = function(fullHistory, currentIdx, dailyRsiCache, weeklyRsiCache) {
+    let dataArray = [];
+    
+    if (fullHistory && dailyRsiCache && weeklyRsiCache && currentIdx > 0) {
+        // REAL DATA PIPELINE: Pull the last 120 days of calculations
+        let lookback = 120;
+        let startI = Math.max(0, currentIdx - lookback);
+
+        for (let i = startI; i <= currentIdx; i++) {
+            let dr = dailyRsiCache[i] || 50;
+            let wr = weeklyRsiCache[i] || 50;
+            let gap = dr - wr;
+            
+            // Generate local WMA(20) for Ribbon
+            let wmaSum = 0, weightSum = 0, period = 20;
+            for(let j=0; j<period; j++) {
+                if (i - j >= 0) {
+                    wmaSum += (dailyRsiCache[i-j] || 50) * (period - j);
+                    weightSum += (period - j);
+                }
+            }
+            let wma = weightSum > 0 ? (wmaSum / weightSum) : 50;
+            let proxyMom = dr - wma;
+            let isRegimeC = wr < 40;
+            let isOverdrive = wr >= 60;
+            
+            // Reconstruct Alert Signals
+            let prevProxy = 0, prevPrevProxy = 0, prevGap = 0, priceKnockout = false;
+            if(i > 1) {
+                let pDr = dailyRsiCache[i-1] || 50;
+                let ppDr = dailyRsiCache[i-2] || 50;
+                let pWmaSum = 0, pWeightSum = 0;
+                for(let j=0; j<period; j++) { if(i-1-j >= 0) { pWmaSum += (dailyRsiCache[i-1-j]||50)*(period-j); pWeightSum += (period-j); } }
+                let pWma = pWeightSum > 0 ? (pWmaSum / pWeightSum) : 50;
+                prevProxy = pDr - pWma;
+
+                let ppWmaSum = 0, ppWeightSum = 0;
+                for(let j=0; j<period; j++) { if(i-2-j >= 0) { ppWmaSum += (dailyRsiCache[i-2-j]||50)*(period-j); ppWeightSum += (period-j); } }
+                let ppWma = ppWeightSum > 0 ? (ppWmaSum / ppWeightSum) : 50;
+                prevPrevProxy = ppDr - ppWma;
+
+                prevGap = pDr - (weeklyRsiCache[i-1] || 50);
+                let currNav = fullHistory[i] ? fullHistory[i].nav : 0;
+                let prevNav = fullHistory[i-1] ? fullHistory[i-1].nav : 0;
+                priceKnockout = currNav < prevNav;
+            }
+
+            let trimStd = 15;
+            let trimClimax = 35;
+            let smartCutoff = isOverdrive ? trimClimax : trimStd;
+            let hookDown = (proxyMom < prevProxy) && (prevProxy > prevPrevProxy);
+
+            dataArray.push({
+                dailyRSI: dr,
+                rsiWMA: wma,
+                velocityGap: gap,
+                sig_smartHarvest: hookDown && (prevProxy >= smartCutoff) && priceKnockout,
+                sig_reload: (proxyMom > 0) && (prevProxy <= 0) && (gap > -10),
+                sig_bearCollapse: isRegimeC && (gap < -trimStd) && (prevGap >= -trimStd)
+            });
+        }
+    } else {
+        // FALLBACK: Dummy data plays if you click Simulator before wiring the backend
+        for(let i=0; i<100; i++) {
+            dataArray.push({
+                dailyRSI: 50 + Math.sin(i/4) * 35,       
+                rsiWMA: 50 + Math.sin(i/8) * 20,         
+                velocityGap: Math.sin(i/5) * 45,         
+                sig_smartHarvest: i === 20 || i === 80,  
+                sig_reload: i === 40,
+                sig_bearCollapse: i === 60
+            });
+        }
     }
-    updateOscillatorCharts('sim', testData);
-    updateOscillatorCharts('live', testData); 
-}
+
+    if (document.getElementById('gameUI').style.display === 'flex') updateOscillatorCharts('sim', dataArray);
+    if (document.getElementById('liveChartModal').style.display === 'flex') updateOscillatorCharts('live', dataArray);
+};
 
 // 5. UI HOOKS
-function initGame(mode) {
-  saveFundSelection();
-  document.getElementById('simFundName').textContent = getBriefFundName();
-  document.getElementById('simModeTag').textContent = mode === 'wave' ? 'RECENT SIM' : 'SIMULATOR';
-  document.getElementById('setupScreen').style.display = 'none';
-  document.getElementById('gameUI').style.display = 'flex';
-  
-  // Wait a fraction of a second for CSS to render the flexbox sizes, then draw!
-  setTimeout(runDummyDataTest, 50);
+const originalInitGame = window.initGame;
+window.initGame = function(mode) {
+  if(originalInitGame) originalInitGame(mode);
+  setTimeout(() => window.syncChartsWithEngine(), 50); // Calls bridge with no args to trigger dummy fallback until real data arrives
 }
 
-function initLiveChart() {
-  saveFundSelection();
-  document.getElementById('liveChartFundName').textContent = getBriefFundName();
-  document.getElementById('setupScreen').style.display = 'none';
-  document.getElementById('liveChartModal').style.display = 'flex';
-  
-  setTimeout(runDummyDataTest, 50);
+const originalInitLiveChart = window.initLiveChart;
+window.initLiveChart = function() {
+  if(originalInitLiveChart) originalInitLiveChart();
+  setTimeout(() => window.syncChartsWithEngine(), 50);
 }
 
-// Auto-resize charts if window size changes while active
+// Auto-resize active charts to fit screen without squishing
 window.addEventListener('resize', () => {
-    if(document.getElementById('gameUI').style.display === 'flex') runDummyDataTest();
-    if(document.getElementById('liveChartModal').style.display === 'flex') runDummyDataTest();
+    if(document.getElementById('gameUI').style.display === 'flex' || document.getElementById('liveChartModal').style.display === 'flex') {
+        window.syncChartsWithEngine();
+    }
 });
-
 </script>
 </body>
 </html>
